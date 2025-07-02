@@ -38,4 +38,3 @@ jobs:
         external_repository: tallyhubpro/tallyhubpro.github.io
         publish_branch: main
         publish_dir: ./site
-        cname: tallyhub.pro
