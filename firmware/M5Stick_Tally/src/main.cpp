@@ -830,7 +830,7 @@ void updateDisplay() {
                      (isStreaming != lastStreamingState) ||
                      (currentSource != lastSource);
   
-  if (stateChanged || (millis() - lastDisplayUpdate > 3000)) { // Faster updates - 3 seconds
+  if (stateChanged || (millis() - lastDisplayUpdate > 30000)) { // Longer interval - 30 seconds to reduce flicker
     if (WiFi.status() != WL_CONNECTED) {
       showStatus("NO WIFI", RED);
     } else if (!isRegisteredWithHub) {

@@ -415,7 +415,7 @@ void loop() {
     lastHeartbeat = millis();
   }
 
-  // Update display only if state changes or after 5 seconds (M5Stick style)
+  // Update display only on meaningful state changes or every 30 seconds
   static bool lastProgram = false;
   static bool lastPreview = false;
   static bool lastRecording = false;
@@ -428,12 +428,17 @@ void loop() {
   static bool lastIsConnected = false;
   static bool lastIsRegisteredWithHub = false;
   
-  // Reduced display interval for faster updates
-  unsigned long displayInterval = 3000; // 3 seconds instead of 5
+  // Longer display interval to reduce flicker - only update every 30 seconds if no state changes
+  unsigned long displayInterval = 30000; // 30 seconds instead of 3
   
-  bool stateChanged = (isProgram != lastProgram) || (isPreview != lastPreview) || (isRecording != lastRecording) || (isStreaming != lastStreaming) || (assignedSource != lastAssignedSource) || (currentSource != lastCurrentSource) || (customDisplayName != lastCustomDisplayName) || (currentStatus != lastStatus) || (isAssigned != lastIsAssigned) || (isConnected != lastIsConnected) || (isRegisteredWithHub != lastIsRegisteredWithHub);
+  bool stateChanged = (isProgram != lastProgram) || (isPreview != lastPreview) || 
+                     (isRecording != lastRecording) || (isStreaming != lastStreaming) || 
+                     (assignedSource != lastAssignedSource) || (currentSource != lastCurrentSource) || 
+                     (customDisplayName != lastCustomDisplayName) || (currentStatus != lastStatus) || 
+                     (isAssigned != lastIsAssigned) || (isConnected != lastIsConnected) || 
+                     (isRegisteredWithHub != lastIsRegisteredWithHub);
   
-  // Immediate update on state change, or periodic update
+  // Only update display on meaningful state changes or after long interval
   if (stateChanged || (millis() - lastDisplayUpdate > displayInterval)) {
     updateDisplay();
     lastDisplayUpdate = millis();
@@ -886,7 +891,10 @@ void handleUDPMessages() {
     Serial.println("Registration confirmed by hub");
     isRegisteredWithHub = true;
     hubConnectionAttempts = 0; // Reset reconnection attempts
-    updateStatus("READY"); // Clear any previous error status
+    // Don't set READY status if device is already assigned - maintain current tally status
+    if (!isAssigned || assignedSource.length() == 0) {
+      updateStatus("READY");
+    }
     showingRegistrationStatus = true;
     registrationStatusStart = millis();
     registrationStatusMessage = "Connected";
@@ -894,7 +902,7 @@ void handleUDPMessages() {
   } else if (type == "heartbeat_ack") {
     Serial.println("Heartbeat acknowledged");
     hubConnectionAttempts = 0; // Reset reconnection attempts on successful communication
-    // Optionally show a brief status
+    // No display update needed - heartbeat ack should not change display state
   }
 }
 
