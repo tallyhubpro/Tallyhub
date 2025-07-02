@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tally Hub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .container {
+            text-align: center;
+            max-width: 600px;
+            padding: 2rem;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            margin-bottom: 3rem;
+            opacity: 0.9;
+        }
+
+        .nav-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .nav-button {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            padding: 2rem 1.5rem;
+            text-decoration: none;
+            color: white;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .nav-button h3 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .nav-button p {
+            opacity: 0.8;
+            font-size: 0.9rem;
+        }
+
+        .status {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 2rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .status-item:last-child {
+            border-bottom: none;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4CAF50;
+        }
+
+        .status-indicator.disconnected {
+            background: #f44336;
+        }
+
+        .device-list {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            display: none;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .device-list.show {
+            display: block;
+        }
+
+        .device-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.3rem 0;
+            font-size: 0.85rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .device-item:last-child {
+            border-bottom: none;
+        }
+
+        .device-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .device-name {
+            font-weight: bold;
+        }
+
+        .device-type {
+            opacity: 0.7;
+            font-size: 0.75rem;
+        }
+
+        .device-status {
+            font-size: 0.75rem;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            background: rgba(76, 175, 80, 0.3);
+        }
+
+        .device-status.unassigned {
+            background: rgba(255, 193, 7, 0.3);
+        }
+
+        .clickable {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .clickable:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚦 Tally Hub</h1>
+        <p class="subtitle">Professional Tally Light System</p>
+
+        <div class="nav-buttons">
+            <a href="/tally" class="nav-button">
+                <h3>📱 Web Tally</h3>
+                <p>Use your phone as a tally light</p>
+            </a>
+            <a href="/admin" class="nav-button">
+                <h3>⚙️ Admin Panel</h3>
+                <p>Configure mixers and manage devices</p>
+            </a>
+        </div>
+
+        <div class="status">
+            <div class="status-item">
+                <span>Server Status</span>
+                <div class="status-indicator" id="server-status"></div>
+            </div>
+            <div class="status-item clickable" id="device-toggle" onclick="toggleDeviceList()">
+                <span>Connected Devices</span>
+                <span id="device-count">0</span>
+            </div>
+            <div class="device-list" id="device-list">
+                <!-- Device details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let devices = [];
+
+        function toggleDeviceList() {
+            const deviceList = document.getElementById('device-list');
+            deviceList.classList.toggle('show');
+        }
+
+        function renderDeviceList() {
+            const deviceListElement = document.getElementById('device-list');
+            
+            if (devices.length === 0) {
+                deviceListElement.innerHTML = '<div style="text-align: center; opacity: 0.7; padding: 1rem;">No devices connected</div>';
+                return;
+            }
+
+            const deviceItems = devices.map(device => {
+                const assignmentStatus = device.assignedSource ? 'Assigned' : 'Unassigned';
+                const statusClass = device.assignedSource ? '' : 'unassigned';
+                const assignmentInfo = device.assignedSource ? 
+                    `<div class="device-type">Assigned to: ${device.assignedSource}</div>` : 
+                    `<div class="device-type">Type: ${device.type}</div>`;
+
+                return `
+                    <div class="device-item">
+                        <div class="device-info">
+                            <div class="device-name">${device.name}</div>
+                            ${assignmentInfo}
+                        </div>
+                        <div class="device-status ${statusClass}">${assignmentStatus}</div>
+                    </div>
+                `;
+            }).join('');
+
+            deviceListElement.innerHTML = deviceItems;
+        }
+
+        async function updateStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                
+                devices = data.devices;
+                document.getElementById('device-count').textContent = devices.length;
+                document.getElementById('server-status').className = 'status-indicator';
+                
+                // Update device list if it's currently shown
+                if (document.getElementById('device-list').classList.contains('show')) {
+                    renderDeviceList();
+                }
+            } catch (error) {
+                document.getElementById('server-status').className = 'status-indicator disconnected';
+                devices = [];
+                document.getElementById('device-count').textContent = '0';
+            }
+        }
+
+        // Update status every 5 seconds
+        updateStatus();
+        setInterval(updateStatus, 5000);
+    </script>
+</body>
+</html>

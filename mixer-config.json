@@ -1,0 +1,9 @@
+[
+  {
+    "id": "obs-1750705509885",
+    "name": "OBS",
+    "type": "obs",
+    "host": "localhost",
+    "port": 4455
+  }
+]

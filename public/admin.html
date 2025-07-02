@@ -1,0 +1,3149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Tally Hub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* macOS System Colors */
+            --system-blue: #007AFF;
+            --system-green: #34C759;
+            --system-red: #FF3B30;
+            --system-orange: #FF9500;
+            --system-yellow: #FFCC00;
+            --system-purple: #AF52DE;
+            --system-gray: #8E8E93;
+            --system-gray2: #AEAEB2;
+            --system-gray3: #C7C7CC;
+            --system-gray4: #D1D1D6;
+            --system-gray5: #E5E5EA;
+            --system-gray6: #F2F2F7;
+            
+            /* Background Colors */
+            --bg-primary: #FFFFFF;
+            --bg-secondary: #F2F2F7;
+            --bg-tertiary: #FFFFFF;
+            --bg-quaternary: rgba(116, 116, 128, 0.08);
+            
+            /* Text Colors - Updated for gradient background */
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.8);
+            --text-tertiary: rgba(255, 255, 255, 0.6);
+            
+            /* Separator Colors */
+            --separator-opaque: #C6C6C8;
+            --separator-non-opaque: rgba(60, 60, 67, 0.36);
+            
+            /* Shadows */
+            --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.08);
+            --shadow-2: 0 2px 10px rgba(0, 0, 0, 0.08);
+            --shadow-3: 0 4px 20px rgba(0, 0, 0, 0.08);
+            
+            /* Border Radius */
+            --radius-small: 6px;
+            --radius-medium: 10px;
+            --radius-large: 16px;
+            --radius-xlarge: 20px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+            color: white;
+            line-height: 1.47059;
+            font-size: 16px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .dashboard {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 16px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .card:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .card-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .card h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+        }
+
+        .status-item {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 1rem;
+            border-radius: var(--radius-medium);
+            text-align: center;
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            backdrop-filter: blur(5px);
+        }
+
+        .status-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.25);
+            transform: scale(1.02);
+        }
+
+        .status-number {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--system-blue);
+            line-height: 1.1;
+            margin-bottom: 4px;
+            letter-spacing: -0.05em;
+        }
+
+        .status-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .device-list {
+            max-height: none;
+            overflow-y: visible;
+            margin: -0.5rem;
+            padding: 0.5rem;
+        }
+
+        .device-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .device-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .device-list::-webkit-scrollbar-thumb {
+            background: var(--system-gray3);
+            border-radius: 3px;
+        }
+
+        .device-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: var(--radius-medium);
+            margin-bottom: 0.5rem;
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative;
+            backdrop-filter: blur(10px);
+        }
+
+        .device-item:hover {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .device-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .device-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .device-name {
+            font-weight: 600;
+            font-size: 15px;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .device-type {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .device-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--system-green);
+            margin-left: 1rem;
+            flex-shrink: 0;
+            position: relative;
+            top: 4px;
+        }
+
+        .device-status.disconnected {
+            background: var(--system-gray3);
+        }
+
+        .device-status::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            border-radius: 50%;
+            background: inherit;
+            opacity: 0.3;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.5); opacity: 0.1; }
+            100% { transform: scale(1); opacity: 0.3; }
+        }
+
+        .device-assignment {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-top: 0.75rem;
+            padding: 0.875rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: var(--radius-medium);
+            font-size: 13px;
+            backdrop-filter: blur(5px);
+        }
+
+        .assignment-mode {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .assignment-mode.auto {
+            color: var(--text-secondary);
+        }
+
+        .assignment-mode.assigned {
+            color: var(--system-blue);
+        }
+
+        .assignment-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .assignment-select {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: var(--radius-small);
+            color: var(--text-primary);
+            padding: 0.5rem 0.75rem;
+            font-size: 13px;
+            font-weight: 500;
+            width: 100%;
+            min-width: 160px;
+            max-width: 220px;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            backdrop-filter: blur(5px);
+        }
+
+        .assignment-select:focus {
+            outline: none;
+            border-color: var(--system-blue);
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+        }
+
+        .assignment-select option {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            padding: 0.5rem;
+        }
+
+        .assignment-select optgroup {
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-style: normal;
+            padding: 0.5rem;
+            border-bottom: 1px solid var(--separator-non-opaque);
+        }
+
+        .assignment-btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: var(--radius-small);
+            color: var(--text-primary);
+            padding: 0.5rem 0.875rem;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            white-space: nowrap;
+            backdrop-filter: blur(5px);
+        }
+
+        .assignment-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .assignment-btn:active {
+            transform: translateY(0);
+        }
+
+        .assignment-btn.assign {
+            background: var(--system-blue);
+            color: white;
+            border-color: var(--system-blue);
+        }
+
+        .assignment-btn.assign:hover {
+            background: rgba(0, 122, 255, 0.85);
+            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2);
+        }
+
+        .assignment-btn.unassign {
+            background: var(--system-orange);
+            color: white;
+            border-color: var(--system-orange);
+        }
+
+        .assignment-btn.unassign:hover {
+            background: rgba(255, 149, 0, 0.85);
+            box-shadow: 0 2px 8px rgba(255, 149, 0, 0.2);
+        }
+
+        .assignment-btn.web-portal {
+            background: var(--system-purple);
+            color: white;
+            border-color: var(--system-purple);
+        }
+
+        .assignment-btn.web-portal:hover {
+            background: rgba(175, 82, 222, 0.85);
+            box-shadow: 0 2px 8px rgba(175, 82, 222, 0.2);
+        }
+
+        .mixer-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .mixer-item {
+            margin-bottom: 1rem;
+        }
+
+        .mixer-card {
+            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: var(--radius-medium);
+            border-left: 4px solid var(--system-blue);
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .mixer-item:hover .mixer-card {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            border-left-color: var(--system-blue);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .mixer-item.mixer-disconnected .mixer-card {
+            border-left-color: var(--system-orange);
+            background: rgba(255, 149, 0, 0.05);
+        }
+
+        .mixer-item.mixer-disconnected:hover .mixer-card {
+            border-left-color: var(--system-orange);
+            background: rgba(255, 149, 0, 0.1);
+        }
+
+        .mixer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .mixer-title {
+            color: var(--text-primary);
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            margin: 0;
+        }
+
+        .mixer-connection-info {
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-small);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .mixer-error-container {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            margin-top: 0.75rem;
+            padding: 0.875rem;
+            background: rgba(255, 149, 0, 0.1);
+            border: 1px solid rgba(255, 149, 0, 0.2);
+            border-radius: var(--radius-medium);
+            backdrop-filter: blur(5px);
+            max-width: 100%;
+            overflow: hidden;
+        }
+
+        .mixer-error-icon {
+            font-size: 18px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .mixer-error-content {
+            flex: 1;
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        .mixer-error-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--system-orange);
+            margin-bottom: 0.5rem;
+        }
+
+        .mixer-error-message {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin-bottom: 0.75rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+
+        .mixer-error-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .mixer-help-btn {
+            background: rgba(255, 149, 0, 0.15);
+            border: 1px solid rgba(255, 149, 0, 0.3);
+            border-radius: var(--radius-small);
+            color: var(--system-orange);
+            padding: 0.25rem 0.5rem;
+            cursor: pointer;
+            font-size: 10px;
+            font-weight: 600;
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            white-space: nowrap;
+            backdrop-filter: blur(5px);
+        }
+
+        .mixer-help-btn:hover {
+            background: rgba(255, 149, 0, 0.25);
+            border-color: rgba(255, 149, 0, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .mixer-actions {
+            display: flex;
+            justify-content: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .mixer-status {
+            padding: 0.375rem 0.75rem;
+            border-radius: var(--radius-small);
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            border: 1px solid transparent;
+            position: relative;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+        }
+
+        .mixer-status.connected {
+            background: rgba(52, 199, 89, 0.15);
+            color: #ffffff;
+            border-color: rgba(52, 199, 89, 0.3);
+            font-weight: 800;
+        }
+
+        .mixer-status.connected::before {
+            content: "";
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--system-green);
+            box-shadow: 0 0 6px rgba(52, 199, 89, 0.6);
+        }
+
+        .mixer-status.disconnected {
+            background: rgba(142, 142, 147, 0.15);
+            color: #ffffff;
+            border-color: rgba(142, 142, 147, 0.3);
+            font-weight: 800;
+        }
+
+        .mixer-status.disconnected::before {
+            content: "";
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--system-gray);
+            opacity: 0.8;
+        }
+
+        .mixer-recording-status {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            margin-top: 0.5rem;
+        }
+
+        .recording-indicator, .streaming-indicator {
+            padding: 0.25rem 0.5rem;
+            border-radius: var(--radius-small);
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .recording-indicator.active {
+            background: rgba(255, 59, 48, 0.15);
+            color: var(--system-red);
+            border: 1px solid rgba(255, 59, 48, 0.2);
+        }
+
+        .recording-indicator.inactive {
+            background: rgba(142, 142, 147, 0.15);
+            color: var(--system-gray);
+            border: 1px solid rgba(142, 142, 147, 0.2);
+        }
+
+        .streaming-indicator.active {
+            background: rgba(52, 199, 89, 0.15);
+            color: var(--system-green);
+            border: 1px solid rgba(52, 199, 89, 0.2);
+        }
+
+        .streaming-indicator.inactive {
+            background: rgba(142, 142, 147, 0.15);
+            color: var(--system-gray);
+            border: 1px solid rgba(142, 142, 147, 0.2);
+        }
+
+        .recording-indicator::before {
+            content: "⏺";
+            font-size: 8px;
+        }
+
+        .streaming-indicator::before {
+            content: "📡";
+            font-size: 8px;
+        }
+
+        .mixer-btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: var(--radius-small);
+            color: var(--text-primary);
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            min-height: 32px;
+            flex-shrink: 0;
+            backdrop-filter: blur(5px);
+        }
+
+        .mixer-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .mixer-btn:active {
+            transform: translateY(0);
+        }
+
+        .mixer-btn svg {
+            flex-shrink: 0;
+            opacity: 0.8;
+        }
+
+        .mixer-btn.test {
+            background: var(--system-green);
+            color: white;
+            border-color: var(--system-green);
+        }
+
+        .mixer-btn.test:hover {
+            background: rgba(52, 199, 89, 0.85);
+            box-shadow: 0 2px 8px rgba(52, 199, 89, 0.2);
+        }
+
+        .mixer-btn.reconnect {
+            background: var(--system-orange);
+            color: white;
+            border-color: var(--system-orange);
+        }
+
+        .mixer-btn.reconnect:hover {
+            background: rgba(255, 149, 0, 0.85);
+            box-shadow: 0 2px 8px rgba(255, 149, 0, 0.2);
+        }
+
+        .mixer-btn.remove {
+            background: var(--system-red);
+            color: white;
+            border-color: var(--system-red);
+        }
+
+        .mixer-btn.remove:hover {
+            background: rgba(255, 59, 48, 0.85);
+            box-shadow: 0 2px 8px rgba(255, 59, 48, 0.2);
+        }
+
+        .refresh-button {
+            padding: 0.75rem 1.5rem;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .refresh-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .refresh-button:active {
+            transform: translateY(0);
+        }
+
+        .logs {
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            min-height: 200px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            color: white;
+        }
+
+        .logs::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .logs::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .logs::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        .log-entry {
+            margin-bottom: 0.25rem;
+            font-size: 0.9rem;
+        }
+
+        .log-error {
+            color: #ff6b6b;
+        }
+
+        .log-success {
+            color: #51cf66;
+        }
+
+        .log-info {
+            color: #74c0fc;
+        }
+
+        .mixer-config-form {
+            background: var(--bg-quaternary);
+            padding: 1.25rem;
+            border-radius: var(--radius-medium);
+            margin-bottom: 1rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-field {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1rem;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .form-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+        }
+
+        .form-select option {
+            background: #4a5568;
+            color: white;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .form-btn {
+            padding: 0.75rem 1.5rem;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+
+        .form-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .form-btn:active {
+            transform: translateY(0);
+        }
+
+        .form-btn.secondary {
+            background: rgba(142, 142, 147, 0.3);
+            border-color: rgba(142, 142, 147, 0.5);
+        }
+
+        .form-btn.success {
+            background: rgba(40, 167, 69, 0.3);
+            border-color: rgba(40, 167, 69, 0.5);
+        }
+
+        .config-description {
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* Button group for better organization */
+        .mixer-btn-group {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .back-button {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            text-decoration: none;
+            color: white;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            margin-bottom: 1rem;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+            text-decoration: none;
+            color: white;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .controls button {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+            }
+            
+            .controls button {
+                min-width: 100%;
+            }
+
+            .container {
+                padding: 1rem;
+            }
+            
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-actions {
+                flex-direction: column;
+            }
+            
+            .assignment-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .assignment-select {
+                max-width: none;
+            }
+
+            .mixer-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.75rem;
+            }
+
+            .mixer-connection-info {
+                font-size: 12px;
+            }
+
+            .mixer-actions {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .mixer-btn {
+                flex: 1;
+                text-align: center;
+                justify-content: center;
+            }
+
+            .mixer-error-message {
+                font-size: 13px;
+            }
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-primary: #1C1C1E;
+                --bg-secondary: #000000;
+                --bg-tertiary: #2C2C2E;
+                --bg-quaternary: rgba(118, 118, 128, 0.12);
+                
+                --text-primary: #FFFFFF;
+                --text-secondary: rgba(235, 235, 245, 0.6);
+                --text-tertiary: rgba(235, 235, 245, 0.3);
+                
+                --separator-opaque: #38383A;
+                --separator-non-opaque: rgba(84, 84, 88, 0.65);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="/" class="back-button">← Back to Hub</a>
+            <h1>Tally Hub Admin</h1>
+            <p class="subtitle">System Management & Monitoring</p>
+        </div>
+
+        <div class="controls" style="display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap;">
+            <button class="refresh-button" onclick="refreshData()">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M13.65 2.35C12.2 0.9 10.2 0 8 0C3.58 0 0 3.58 0 8C0 12.42 3.58 16 8 16C11.73 16 14.84 13.45 15.73 10H13.65C12.83 12.33 10.61 14 8 14C4.69 14 2 11.31 2 8C2 4.69 4.69 2 8 2C9.66 2 11.14 2.69 12.22 3.78L9 7H16V0L13.65 2.35Z" fill="currentColor"/>
+                </svg>
+                Refresh
+            </button>
+            <button class="refresh-button" onclick="openFlasherInSupportedBrowser()" style="background: rgba(220, 53, 69, 0.3); border-color: rgba(220, 53, 69, 0.5);">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M8 0L3 6H6V12H10V6H13L8 0Z" fill="currentColor"/>
+                </svg>
+                Flash ESP32
+            </button>
+            <button class="refresh-button" onclick="shutdownServer()" style="background: rgba(255, 59, 48, 0.3); border-color: rgba(255, 59, 48, 0.5);">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M8 0C8.55228 0 9 0.447715 9 1V7C9 7.55228 8.55228 8 8 8C7.44772 8 7 7.55228 7 7V1C7 0.447715 7.44772 0 8 0Z" fill="currentColor"/>
+                    <path d="M12.95 2.636C13.3408 3.02673 13.3408 3.65989 12.95 4.05061C12.5593 4.44134 11.9261 4.44134 11.5354 4.05061C10.5979 3.11307 9.3261 2.5 8 2.5C5.51472 2.5 3.5 4.51472 3.5 7C3.5 9.48528 5.51472 11.5 8 11.5C9.3261 11.5 10.5979 10.8869 11.5354 9.94939C11.9261 9.55866 12.5593 9.55866 12.95 9.94939C13.3408 10.3401 13.3408 10.9733 12.95 11.364C11.5979 12.7161 9.3261 13.5 8 13.5C4.41015 13.5 1.5 10.5899 1.5 7C1.5 3.41015 4.41015 0.5 8 0.5C9.3261 0.5 10.5979 1.28393 12.95 2.636Z" fill="currentColor"/>
+                </svg>
+                Shutdown Server
+            </button>
+        </div>
+
+    <div class="container">
+        <div class="dashboard">
+            <!-- System Status -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>📊 System Status</h3>
+                </div>
+                <div class="status-grid">
+                    <div class="status-item">
+                        <div class="status-number" id="deviceCount">0</div>
+                        <div class="status-label">Connected Devices</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-number" id="mixerCount">0</div>
+                        <div class="status-label">Video Mixers</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mixer Configuration -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>⚙️ Mixer Configuration</h3>
+                </div>
+                <p class="config-description">
+                    Add video mixers dynamically through the web interface. Changes are saved in memory and will be lost on restart unless added to the .env file.
+                </p>
+                
+                <div class="mixer-config-form">
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label class="form-label" for="mixerName">Name</label>
+                            <input type="text" id="mixerName" class="form-input" placeholder="My OBS Studio">
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label" for="mixerType">Type</label>
+                            <select id="mixerType" class="form-select">
+                                <option value="obs">OBS Studio</option>
+                                <option value="vmix">vMix</option>
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label" for="mixerHost">Host</label>
+                            <input type="text" id="mixerHost" class="form-input" placeholder="localhost" value="localhost">
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label" for="mixerPort">Port</label>
+                            <input type="number" id="mixerPort" class="form-input" placeholder="4455" value="4455">
+                        </div>
+                        <div class="form-field" id="obsPasswordField">
+                            <label class="form-label" for="mixerPassword">Password (OBS)</label>
+                            <input type="password" id="mixerPassword" class="form-input" placeholder="Optional">
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button onclick="addMixer()" class="form-btn">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M8 0C8.55228 0 9 0.447715 9 1V7H15C15.5523 7 16 7.44772 16 8C16 8.55228 15.5523 9 15 9H9V15C9 15.5523 8.55228 16 8 16C7.44772 16 7 15.5523 7 15V9H1C0.447715 9 0 8.55228 0 8C0 7.44772 0.447715 7 1 7H7V1C7 0.447715 7.44772 0 8 0Z" fill="currentColor"/>
+                            </svg>
+                            Add Mixer
+                        </button>
+                        <button onclick="clearForm()" class="form-btn secondary">Clear</button>
+                        <button onclick="saveConfigurations()" class="form-btn success">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M2 0C0.895431 0 0 0.895431 0 2V14C0 15.1046 0.895431 16 2 16H14C15.1046 16 16 15.1046 16 14V4.58579C16 4.05287 15.7893 3.54183 15.4142 3.16670L12.8333 0.585786C12.4582 0.210714 11.9471 0 11.4142 0H2ZM2 2H10V6H14V14H2V2ZM12 2.41421L13.5858 4H12V2.41421ZM4 8C4 7.44772 4.44772 7 5 7H11C11.5523 7 12 7.44772 12 8C12 8.55228 11.5523 9 11 9H5C4.44772 9 4 8.55228 4 8ZM4 11C4 10.4477 4.44772 10 5 10H11C11.5523 10 12 10.4477 12 11C12 11.5523 11.5523 12 11 12H5C4.44772 12 4 11.5523 4 11Z" fill="currentColor"/>
+                            </svg>
+                            Save
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Connected Devices -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>📱 Connected Devices</h3>
+                </div>
+                <div class="device-list" id="deviceList">
+                    <div class="device-item">
+                        <div class="device-info">
+                            <div class="device-name">No devices connected</div>
+                            <div class="device-type">-</div>
+                        </div>
+                        <div class="device-status disconnected"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Video Mixers -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>🎬 Video Mixers</h3>
+                </div>
+                <div class="mixer-list" id="mixerList">
+                    <div class="mixer-item">
+                        <div class="mixer-info">
+                            <h4>No mixers configured</h4>
+                            <div class="mixer-details">Check your .env configuration</div>
+                        </div>
+                        <div class="mixer-actions">
+                            <div class="mixer-status disconnected">Disconnected</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        <!-- System Logs -->
+        <div class="card">
+            <div class="card-header">
+                <h3>📋 System Logs</h3>
+            </div>
+            <div class="logs" id="systemLogs">
+                <div class="log-entry log-info">[INFO] System started successfully</div>
+                <div class="log-entry log-info">[INFO] Waiting for mixer connections...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class AdminPanel {
+            constructor() {
+                console.log('AdminPanel initializing...');
+                this.devices = []; // Store devices data locally
+                this.mixers = []; // Store mixers data locally
+                this.recentlyUpdatedDevices = new Set(); // Track recently updated devices
+                this.ws = null; // WebSocket connection for real-time updates
+                this.notificationCount = 0; // Track notifications for unique IDs
+                this.refreshData();
+                this.startAutoRefresh();
+                this.connectWebSocket();
+                this.checkNotificationSupport();
+            }
+
+            async refreshData() {
+                console.log('Refreshing data...');
+                try {
+                    const response = await fetch('/api/status');
+                    const data = await response.json();
+                    console.log('Status data received:', data);
+                    
+                    // Check for mixer connection issues before updating
+                    this.checkMixerConnectionIssues(data.mixers);
+                    
+                    this.devices = data.devices; // Store devices locally
+                    this.mixers = data.mixers; // Store mixers locally
+                    this.updateSystemStatus(data);
+                    this.updateDeviceList(data.devices);
+                    this.updateMixerList(data.mixers);
+                    
+                } catch (error) {
+                    console.error('Failed to refresh data:', error);
+                    this.addLog(`Failed to refresh data: ${error.message}`, 'error');
+                }
+            }
+
+            checkNotificationSupport() {
+                if ('Notification' in window) {
+                    if (Notification.permission === 'default') {
+                        Notification.requestPermission().then(permission => {
+                            if (permission === 'granted') {
+                                this.addLog('[INFO] Browser notifications enabled', 'success');
+                            } else {
+                                this.addLog('[WARN] Browser notifications denied', 'error');
+                            }
+                        });
+                    }
+                } else {
+                    this.addLog('[WARN] Browser does not support notifications', 'error');
+                }
+            }
+
+            checkMixerConnectionIssues(currentMixers) {
+                // Compare with previous state to detect new disconnections
+                if (!this.previousMixers) {
+                    this.previousMixers = [];
+                    this.notifiedMixers = new Set(); // Track which mixers we've already notified about
+                }
+
+                currentMixers.forEach(mixer => {
+                    const previousMixer = this.previousMixers.find(m => m.id === mixer.id);
+                    const notificationKey = `${mixer.id}-disconnected`;
+                    
+                    // Check if mixer just disconnected (only notify once per disconnection)
+                    if (previousMixer && previousMixer.connected && !mixer.connected && !this.notifiedMixers.has(notificationKey)) {
+                        this.showMixerDisconnectedNotification(mixer);
+                        this.notifiedMixers.add(notificationKey);
+                    }
+                    
+                    // If mixer reconnects, remove it from the notified set
+                    if (mixer.connected && this.notifiedMixers.has(notificationKey)) {
+                        this.notifiedMixers.delete(notificationKey);
+                    }
+                    
+                    // Check if mixer has been disconnected for a while (show periodic reminders)
+                    if (!mixer.connected && mixer.lastError) {
+                        const reminderKey = `${mixer.id}-reminder`;
+                        const timeSinceLastReminder = Date.now() - (this.lastReminderTimes?.[mixer.id] || 0);
+                        
+                        // Show reminder every 2 minutes for persistent disconnections
+                        if (timeSinceLastReminder > 120000) {
+                            this.showMixerConnectionReminderNotification(mixer);
+                            if (!this.lastReminderTimes) this.lastReminderTimes = {};
+                            this.lastReminderTimes[mixer.id] = Date.now();
+                        }
+                    }
+                });
+
+                this.previousMixers = [...currentMixers];
+            }
+
+            showMixerDisconnectedNotification(mixer) {
+                const title = `🔴 ${mixer.name} Disconnected`;
+                const message = `${mixer.type.toUpperCase()} mixer at ${mixer.host}:${mixer.port} has lost connection`;
+                
+                this.showNotification(title, message, 'error');
+                this.addLog(`[ALERT] ${mixer.name} (${mixer.type}) disconnected from ${mixer.host}:${mixer.port}`, 'error');
+            }
+
+            showMixerConnectionReminderNotification(mixer) {
+                const title = `⚠️ Mixer Still Disconnected`;
+                const message = `${mixer.name} remains disconnected. Click to troubleshoot.`;
+                
+                this.showNotification(title, message, 'warning', () => {
+                    showConnectionHelp(mixer.type, mixer.host, mixer.port);
+                });
+            }
+
+            showNotification(title, message, type = 'info', clickHandler = null) {
+                // Only show one type of notification to prevent duplicates
+                // Prioritize toast notifications for better user experience
+                this.showToastNotification(title, message, type, clickHandler);
+                
+                // Only show browser notification for critical errors and if user explicitly enabled them
+                if (type === 'error' && 'Notification' in window && Notification.permission === 'granted') {
+                    const notification = new Notification(title, {
+                        body: message,
+                        icon: this.getNotificationIcon(type),
+                        tag: `tally-hub-${type}-${Date.now()}`, // Use timestamp for unique tags
+                        requireInteraction: true // Keep error notifications until user dismisses
+                    });
+
+                    if (clickHandler) {
+                        notification.onclick = () => {
+                            clickHandler();
+                            notification.close();
+                        };
+                    }
+                }
+            }
+
+            getNotificationIcon(type) {
+                switch (type) {
+                    case 'error': return 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23FF3B30"><circle cx="12" cy="12" r="10"/><text x="12" y="16" text-anchor="middle" fill="white" font-size="12">!</text></svg>';
+                    case 'warning': return 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23FF9500"><circle cx="12" cy="12" r="10"/><text x="12" y="16" text-anchor="middle" fill="white" font-size="12">⚠</text></svg>';
+                    case 'success': return 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2334C759"><circle cx="12" cy="12" r="10"/><text x="12" y="16" text-anchor="middle" fill="white" font-size="12">✓</text></svg>';
+                    default: return 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23007AFF"><circle cx="12" cy="12" r="10"/><text x="12" y="16" text-anchor="middle" fill="white" font-size="12">i</text></svg>';
+                }
+            }
+
+            showToastNotification(title, message, type, clickHandler) {
+                const toast = document.createElement('div');
+                toast.className = `toast-notification toast-${type}`;
+                toast.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    z-index: 10001;
+                    background: ${this.getToastBackground(type)};
+                    border: 1px solid ${this.getToastBorder(type)};
+                    border-radius: 12px;
+                    padding: 1rem 1.5rem;
+                    max-width: 400px;
+                    backdrop-filter: blur(10px);
+                    transform: translateX(450px);
+                    transition: transform 0.3s ease;
+                    cursor: ${clickHandler ? 'pointer' : 'default'};
+                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+                `;
+
+                toast.innerHTML = `
+                    <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
+                        <div style="font-size: 1.2rem; flex-shrink: 0; margin-top: 2px;">
+                            ${this.getToastIcon(type)}
+                        </div>
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-weight: 600; color: white; margin-bottom: 0.25rem; font-size: 14px;">
+                                ${title}
+                            </div>
+                            <div style="color: rgba(255, 255, 255, 0.8); font-size: 13px; line-height: 1.4;">
+                                ${message}
+                            </div>
+                        </div>
+                        <button onclick="this.parentElement.parentElement.remove()" style="
+                            background: none;
+                            border: none;
+                            color: rgba(255, 255, 255, 0.6);
+                            cursor: pointer;
+                            font-size: 1.2rem;
+                            padding: 0;
+                            line-height: 1;
+                            flex-shrink: 0;
+                        ">×</button>
+                    </div>
+                `;
+
+                if (clickHandler) {
+                    toast.addEventListener('click', (e) => {
+                        if (e.target.tagName !== 'BUTTON') {
+                            clickHandler();
+                            toast.remove();
+                        }
+                    });
+                }
+
+                document.body.appendChild(toast);
+
+                // Animate in
+                setTimeout(() => {
+                    toast.style.transform = 'translateX(0)';
+                }, 100);
+
+                // Auto-remove after delay (except errors which require manual dismissal)
+                if (type !== 'error') {
+                    setTimeout(() => {
+                        if (toast.parentElement) {
+                            toast.style.transform = 'translateX(450px)';
+                            setTimeout(() => toast.remove(), 300);
+                        }
+                    }, type === 'warning' ? 8000 : 5000);
+                }
+            }
+
+            getToastBackground(type) {
+                switch (type) {
+                    case 'error': return 'rgba(255, 59, 48, 0.15)';
+                    case 'warning': return 'rgba(255, 149, 0, 0.15)';
+                    case 'success': return 'rgba(52, 199, 89, 0.15)';
+                    default: return 'rgba(0, 122, 255, 0.15)';
+                }
+            }
+
+            getToastBorder(type) {
+                switch (type) {
+                    case 'error': return 'rgba(255, 59, 48, 0.3)';
+                    case 'warning': return 'rgba(255, 149, 0, 0.3)';
+                    case 'success': return 'rgba(52, 199, 89, 0.3)';
+                    default: return 'rgba(0, 122, 255, 0.3)';
+                }
+            }
+
+            getToastIcon(type) {
+                switch (type) {
+                    case 'error': return '🔴';
+                    case 'warning': return '⚠️';
+                    case 'success': return '✅';
+                    default: return 'ℹ️';
+                }
+            }
+
+            // Update a single device's assignment without refreshing the entire list
+            updateSingleDeviceAssignment(deviceId, assignedSource, assignmentMode) {
+                console.log(`Updating single device assignment: ${deviceId} -> ${assignedSource} (${assignmentMode})`);
+                
+                // Mark this device as recently updated to prevent auto-refresh overwrites
+                this.recentlyUpdatedDevices.add(deviceId);
+                
+                // Clear the flag after 10 seconds
+                setTimeout(() => {
+                    this.recentlyUpdatedDevices.delete(deviceId);
+                }, 10000);
+                
+                // Update the local device data
+                const deviceIndex = this.devices.findIndex(d => d.id === deviceId);
+                if (deviceIndex !== -1) {
+                    this.devices[deviceIndex].assignedSource = assignedSource;
+                    this.devices[deviceIndex].assignmentMode = assignmentMode;
+                }
+                
+                // Update only the specific DOM elements
+                const assignmentModeElement = document.querySelector(`[data-assignment-mode="${deviceId}"]`);
+                const sourceSelect = document.getElementById(`source-select-${deviceId}`);
+                const unassignBtn = document.querySelector(`[data-unassign-btn="${deviceId}"]`);
+                
+                if (!assignmentModeElement) {
+                    console.error(`Could not find assignment mode element for ${deviceId}`);
+                    return false;
+                }
+                
+                // Update the assignment mode display
+                if (assignmentMode === 'assigned' && assignedSource) {
+                    const cleanSourceName = this.cleanSourceName(assignedSource, assignedSource);
+                    const typeIcon = this.getSourceTypeIcon(assignedSource);
+                    
+                    assignmentModeElement.className = 'assignment-mode assigned';
+                    assignmentModeElement.innerHTML = `📌 Connected to ${typeIcon} ${cleanSourceName}`;
+                    
+                    // Show unassign button
+                    if (unassignBtn) {
+                        unassignBtn.style.display = '';
+                    }
+                    
+                    // Reset the source select to default
+                    if (sourceSelect) {
+                        sourceSelect.value = '';
+                    }
+                } else {
+                    assignmentModeElement.className = 'assignment-mode auto';
+                    assignmentModeElement.innerHTML = '🔄 Unassigned';
+                    
+                    // Hide unassign button
+                    if (unassignBtn) {
+                        unassignBtn.style.display = 'none';
+                    }
+                }
+                
+                return true;
+            }
+
+            updateSystemStatus(data) {
+                document.getElementById('deviceCount').textContent = data.devices.length;
+                document.getElementById('mixerCount').textContent = data.mixers.length;
+            }
+
+            updateDeviceList(devices) {
+                console.log('Updating device list with:', devices);
+                const deviceList = document.getElementById('deviceList');
+                
+                if (!deviceList) {
+                    console.error('deviceList element not found!');
+                    return;
+                }
+                
+                if (devices.length === 0) {
+                    deviceList.innerHTML = `
+                        <div class="device-item">
+                            <div class="device-info">
+                                <div class="device-name">No devices connected</div>
+                                <div class="device-type">-</div>
+                            </div>
+                            <div class="device-status disconnected"></div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Check if we need to rebuild the list or just update existing items
+                const existingDevices = Array.from(deviceList.querySelectorAll('[data-device-id]')).map(el => el.getAttribute('data-device-id'));
+                const newDeviceIds = devices.map(d => d.id);
+                
+                // If device list structure changed, rebuild it
+                const devicesChanged = existingDevices.length !== newDeviceIds.length || 
+                                     !existingDevices.every(id => newDeviceIds.includes(id));
+                
+                if (devicesChanged) {
+                    console.log('Device list structure changed, rebuilding...');
+                    this.rebuildDeviceList(devices);
+                } else {
+                    console.log('Device list structure unchanged, updating individual devices...');
+                    this.updateExistingDevices(devices);
+                }
+
+                // Populate source dropdowns
+                this.populateSourceSelects();
+            }
+
+            rebuildDeviceList(devices) {
+                const deviceList = document.getElementById('deviceList');
+                
+                deviceList.innerHTML = devices.map(device => {
+                    let assignmentDisplay = '';
+                    let assignmentText = '';
+                    
+                    if (device.assignmentMode === 'assigned' && device.assignedSource) {
+                        const cleanSourceName = this.cleanSourceName(device.assignedSource, device.assignedSource);
+                        const typeIcon = this.getSourceTypeIcon(device.assignedSource);
+                        assignmentText = `Connected to ${typeIcon} ${cleanSourceName}`;
+                    } else {
+                        assignmentText = 'Unassigned';
+                    }
+                    
+                    return `
+                    <div class="device-item" data-device-id="${device.id}">
+                        <div class="device-info">
+                            <div class="device-name">${device.name}</div>
+                            <div class="device-type">${device.type.toUpperCase()} • ${device.id}</div>
+                            <div class="device-assignment" data-assignment-container="${device.id}">
+                                <div class="assignment-mode ${device.assignmentMode || 'auto'}" data-assignment-mode="${device.id}">
+                                    ${device.assignmentMode === 'assigned' ? '📌' : '🔄'} 
+                                    ${assignmentText}
+                                </div>
+                                <div class="assignment-controls">
+                                    <select class="assignment-select" id="source-select-${device.id}">
+                                        <option value="">Select source...</option>
+                                    </select>
+                                    <button type="button" class="assignment-btn assign" onclick="assignDevice('${device.id}', event); return false;">Assign</button>
+                                    <button type="button" class="assignment-btn unassign" onclick="unassignDevice('${device.id}', event); return false;" 
+                                            data-unassign-btn="${device.id}" ${device.assignmentMode !== 'assigned' ? 'style="display:none"' : ''}>
+                                        Unassign
+                                    </button>
+                                    ${(device.connected && (device.type === 'ESP32' || device.type === 'm5stick')) ? `
+                                        <button type="button" class="assignment-btn web-portal" onclick="openDeviceWebPortal('${device.id}', '${device.ipAddress || device.lastKnownIP || 'device.local'}')">
+                                            🌐 Web Portal
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="device-status ${device.connected ? '' : 'disconnected'}"></div>
+                    </div>
+                    `;
+                }).join('');
+            }
+
+            updateExistingDevices(devices) {
+                devices.forEach(device => {
+                    // Skip devices that were recently updated by user actions
+                    if (this.recentlyUpdatedDevices.has(device.id)) {
+                        console.log(`Skipping update for recently modified device: ${device.id}`);
+                        return;
+                    }
+                    
+                    // Update device name if changed
+                    const nameElement = document.querySelector(`[data-device-id="${device.id}"] .device-name`);
+                    if (nameElement && nameElement.textContent !== device.name) {
+                        nameElement.textContent = device.name;
+                    }
+                    
+                    // Update connection status
+                    const statusElement = document.querySelector(`[data-device-id="${device.id}"] .device-status`);
+                    if (statusElement) {
+                        statusElement.className = `device-status ${device.connected ? '' : 'disconnected'}`;
+                    }
+                    
+                    // Update assignment display if it has changed
+                    const assignmentModeElement = document.querySelector(`[data-assignment-mode="${device.id}"]`);
+                    const unassignBtn = document.querySelector(`[data-unassign-btn="${device.id}"]`);
+                    
+                    if (assignmentModeElement) {
+                        let expectedContent = '';
+                        let expectedClass = 'assignment-mode ';
+                        let expectedUnassignDisplay = 'none';
+                        
+                        if (device.assignmentMode === 'assigned' && device.assignedSource) {
+                            const cleanSourceName = this.cleanSourceName(device.assignedSource, device.assignedSource);
+                            const typeIcon = this.getSourceTypeIcon(device.assignedSource);
+                            expectedContent = `📌 Connected to ${typeIcon} ${cleanSourceName}`;
+                            expectedClass += 'assigned';
+                            expectedUnassignDisplay = '';
+                        } else {
+                            expectedContent = '🔄 Unassigned';
+                            expectedClass += 'auto';
+                        }
+                        
+                        // Update if content or class has changed
+                        if (assignmentModeElement.innerHTML !== expectedContent) {
+                            assignmentModeElement.innerHTML = expectedContent;
+                        }
+                        if (assignmentModeElement.className !== expectedClass) {
+                            assignmentModeElement.className = expectedClass;
+                        }
+                        
+                        // Update unassign button visibility
+                        if (unassignBtn && unassignBtn.style.display !== expectedUnassignDisplay) {
+                            unassignBtn.style.display = expectedUnassignDisplay;
+                        }
+                    }
+                });
+            }
+
+            updateMixerList(mixers) {
+                const mixerList = document.getElementById('mixerList');
+                
+                if (mixers.length === 0) {
+                    mixerList.innerHTML = `
+                        <div class="mixer-item">
+                            <div class="mixer-info">
+                                <h4>No mixers configured</h4>
+                                <div class="mixer-details">Add mixers using the configuration form above or check your .env file</div>
+                            </div>
+                            <div class="mixer-actions">
+                                <div class="mixer-status disconnected">Disconnected</div>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                mixerList.innerHTML = mixers.map(mixer => {
+                    let errorDisplay = '';
+                    if (mixer.lastError && !mixer.connected) {
+                        // Create a more user-friendly error message
+                        let friendlyError = this.getFriendlyErrorMessage(mixer.lastError, mixer.type);
+                        errorDisplay = `
+                            <div class="mixer-error-container">
+                                <div class="mixer-error-icon">⚠️</div>
+                                <div class="mixer-error-content">
+                                    <div class="mixer-error-title">Connection Issue</div>
+                                    <div class="mixer-error-message">${friendlyError}</div>
+                                    <div class="mixer-error-actions">
+                                        <button onclick="showConnectionHelp('${mixer.type}', '${mixer.host}', '${mixer.port}')" class="mixer-help-btn">
+                                            🔧 Show Help
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    return `
+                    <div class="mixer-item ${!mixer.connected ? 'mixer-disconnected' : ''}">
+                        <div class="mixer-card">
+                            <div class="mixer-header">
+                                <h4 class="mixer-title">${mixer.name}</h4>
+                                <div class="mixer-status ${mixer.connected ? 'connected' : 'disconnected'}">
+                                    ${mixer.connected ? 'Connected' : 'Disconnected'}
+                                </div>
+                            </div>
+                            <div class="mixer-connection-info">
+                                ${mixer.type.toUpperCase()} • ${mixer.host}:${mixer.port}
+                            </div>
+                            ${errorDisplay}
+                            <div class="mixer-actions">
+                                <button onclick="testMixer('${mixer.id}')" class="mixer-btn test">
+                                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M6.5 1C6.5 0.447715 6.94772 0 7.5 0H8.5C9.05228 0 9.5 0.447715 9.5 1V2.05002C11.0456 2.2816 12.4248 3.04996 13.4497 4.16872C14.4746 5.28748 15.0789 6.69142 15.1667 8.16547C15.2544 9.63952 14.8204 11.1022 13.9375 12.3125C13.0546 13.5228 11.7728 14.407 10.3125 14.8125V15C10.3125 15.5523 9.86478 16 9.3125 16H6.6875C6.13522 16 5.6875 15.5523 5.6875 15V14.8125C4.22718 14.407 2.94544 13.5228 2.06251 12.3125C1.17957 11.1022 0.745612 9.63952 0.833345 8.16547C0.921077 6.69142 1.52544 5.28748 2.55031 4.16872C3.57519 3.04996 4.95441 2.2816 6.5 2.05002V1ZM8 4C6.4087 4 4.88258 4.63214 3.75736 5.75736C2.63214 6.88258 2 8.4087 2 10C2 11.5913 2.63214 13.1174 3.75736 14.2426C4.88258 15.3679 6.4087 16 8 16C9.5913 16 11.1174 15.3679 12.2426 14.2426C13.3679 13.1174 14 11.5913 14 10C14 8.4087 13.3679 6.88258 12.2426 5.75736C11.1174 4.63214 9.5913 4 8 4Z" fill="currentColor"/>
+                                    </svg>
+                                    Test
+                                </button>
+                                <button onclick="reconnectMixer('${mixer.id}')" class="mixer-btn reconnect">
+                                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M13.65 2.35C12.2 0.9 10.2 0 8 0C3.58 0 0 3.58 0 8C0 12.42 3.58 16 8 16C11.73 16 14.84 13.45 15.73 10H13.65C12.83 12.33 10.61 14 8 14C4.69 14 2 11.31 2 8C2 4.69 4.69 2 8 2C9.66 2 11.14 2.69 12.22 3.78L9 7H16V0L13.65 2.35Z" fill="currentColor"/>
+                                    </svg>
+                                    Reconnect
+                                </button>
+                                ${mixer.id.includes('env') ? '' : `
+                                    <button onclick="removeMixer('${mixer.id}')" class="mixer-btn remove">
+                                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M6 2V1C6 0.447715 6.44772 0 7 0H9C9.55228 0 10 0.447715 10 1V2H14C14.5523 2 15 2.44772 15 3C15 3.55228 14.5523 4 14 4H13V13C13 14.1046 12.1046 15 11 15H5C3.89543 15 3 14.1046 3 13V4H2C1.44772 4 1 3.55228 1 3C1 2.44772 1.44772 2 2 2H6ZM4 4V13H12V4H4ZM6 6C6.55228 6 7 6.44772 7 7V11C7 11.5523 6.55228 12 6 12C5.44772 12 5 11.5523 5 11V7C5 6.44772 5.44772 6 6 6ZM10 6C10.5523 6 11 6.44772 11 7V11C11 11.5523 10.5523 12 10 12C9.44772 12 9 11.5523 9 11V7C9 6.44772 9.44772 6 10 6Z" fill="currentColor"/>
+                                        </svg>
+                                        Remove
+                                    </button>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+                    `;
+                }).join('');
+            }
+
+            addLog(message, type = 'info') {
+                const logs = document.getElementById('systemLogs');
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = document.createElement('div');
+                logEntry.className = `log-entry log-${type}`;
+                logEntry.textContent = `[${timestamp}] ${message}`;
+                
+                logs.appendChild(logEntry);
+                logs.scrollTop = logs.scrollHeight;
+                
+                // Keep only last 50 log entries
+                while (logs.children.length > 50) {
+                    logs.removeChild(logs.firstChild);
+                }
+            }
+
+            startAutoRefresh() {
+                // Refresh data every 5 seconds, but be smart about it
+                setInterval(() => {
+                    this.refreshData();
+                }, 5000);
+            }
+
+            // Alias for refreshData to maintain compatibility
+            fetchData() {
+                return this.refreshData();
+            }
+
+            // Helper function to clean up source names for display
+            cleanSourceName(sourceId, sourceName) {
+                // Use the same cleaning logic as tally.html
+                let cleanName = sourceName || sourceId;
+                
+                if (cleanName.startsWith('Source obs-source-')) {
+                    cleanName = cleanName.replace('Source obs-source-', '');
+                } else if (cleanName.startsWith('Source obs-scene-')) {
+                    cleanName = cleanName.replace('Source obs-scene-', '');
+                } else {
+                    // Remove other common prefixes
+                    cleanName = cleanName.replace(/^(Source |Scene |Source-|Scene-|obs-source-|obs-scene-|vmix-input-|vmix-scene-)/i, '');
+                }
+                
+                // If the name is still the same as the ID, try to clean the ID too
+                if (cleanName === sourceId) {
+                    cleanName = sourceId.replace(/^(Source |Scene |Source-|Scene-|obs-source-|obs-scene-|vmix-input-|vmix-scene-)/i, '');
+                }
+                
+                return cleanName;
+            }
+
+            // Helper function to get source type for display
+            getSourceTypeIcon(sourceId) {
+                // Use the same logic as tally.html
+                if (sourceId.startsWith('obs-scene-')) {
+                    return '🎬';
+                } else if (sourceId.startsWith('obs-source-')) {
+                    return '📹';
+                } else {
+                    // Fallback to more specific icons based on content
+                    const id = sourceId.toLowerCase();
+                    
+                    if (id.includes('scene')) {
+                        return '🎬';
+                    } else if (id.includes('camera') || id.includes('ndi')) {
+                        return '📹'; // Camera/NDI
+                    } else if (id.includes('audio') || id.includes('mixer')) {
+                        return '🔊'; // Audio
+                    } else if (id.includes('text') || id.includes('lower') || id.includes('third')) {
+                        return '📝'; // Text/Graphics
+                    } else if (id.includes('timer') || id.includes('clock') || id.includes('time')) {
+                        return '⏰'; // Timer/Clock
+                    } else if (id.includes('video') || id.includes('stream') || id.includes('intro')) {
+                        return '🎥'; // Video
+                    } else if (id.includes('capture') || id.includes('window') || id.includes('screen')) {
+                        return '🖥️'; // Screen capture
+                    } else if (id.includes('zoom')) {
+                        return '💻'; // Video conferencing
+                    } else if (id.includes('logo') || id.includes('mgc')) {
+                        return '🏷️'; // Logo/Branding
+                    } else if (id.includes('verse') || id.includes('bible')) {
+                        return '📖'; // Religious/Text content
+                    } else if (id.includes('iphone') || id.includes('sony')) {
+                        return '📱'; // Mobile/Device input
+                    } else {
+                        return '📺'; // Generic source
+                    }
+                }
+            }
+
+            // Helper function to create user-friendly error messages
+            getFriendlyErrorMessage(errorMessage, mixerType) {
+                const lowerError = errorMessage.toLowerCase();
+                
+                if (lowerError.includes('connection failed') || lowerError.includes('connection refused') || lowerError.includes('econnrefused')) {
+                    if (mixerType === 'obs') {
+                        return `OBS Studio is not running or WebSocket server is disabled. Please start OBS and enable WebSocket server in Tools → WebSocket Server Settings.`;
+                    } else if (mixerType === 'vmix') {
+                        return `vMix is not running or Web Controller is disabled. Please start vMix and enable Web Controller in Settings → Web Controller.`;
+                    }
+                    return `${mixerType.toUpperCase()} software is not running or network connection is blocked.`;
+                }
+                
+                if (lowerError.includes('timeout') || lowerError.includes('timed out')) {
+                    return `Connection timeout - ${mixerType.toUpperCase()} is taking too long to respond. Check if the software is running and network is accessible.`;
+                }
+                
+                if (lowerError.includes('authentication failed') || lowerError.includes('unauthorized')) {
+                    return `Authentication failed - please check the password in your ${mixerType.toUpperCase()} settings.`;
+                }
+                
+                if (lowerError.includes('port') && lowerError.includes('accessible')) {
+                    return `Port is not accessible - please check firewall settings and ensure ${mixerType.toUpperCase()} is configured correctly.`;
+                }
+                
+                if (lowerError.includes('network') || lowerError.includes('host')) {
+                    return `Network issue - please check the IP address and ensure ${mixerType.toUpperCase()} is on the same network.`;
+                }
+                
+                // Fallback to a cleaned up version of the original error (truncate if too long)
+                let cleanedError = errorMessage.replace(/^(.*Error:|Error:)\s*/, '').trim();
+                if (cleanedError.length > 120) {
+                    cleanedError = cleanedError.substring(0, 117) + '...';
+                }
+                return cleanedError;
+            }
+
+            populateSourceSelects() {
+                // Get all available sources from tallies
+                fetch('/api/tallies')
+                    .then(response => response.json())
+                    .then(tallies => {
+                        // Find all source select dropdowns
+                        const sourceSelects = document.querySelectorAll('.assignment-select');
+                        
+                        // Separate scenes and sources (matching tally.html logic)
+                        const scenes = [];
+                        const sources = [];
+                        
+                        tallies.forEach(tally => {
+                            if (tally.id.startsWith('obs-scene-')) {
+                                scenes.push(tally);
+                            } else if (tally.id.startsWith('obs-source-')) {
+                                sources.push(tally);
+                            }
+                        });
+
+                        // Sort scenes alphabetically (matching tally.html logic)
+                        const sortedScenes = scenes.sort((a, b) => {
+                            const nameA = this.cleanSourceName(a.id, a.name);
+                            const nameB = this.cleanSourceName(b.id, b.name);
+                            return nameA.localeCompare(nameB);
+                        });
+
+                        // Sort sources alphabetically (matching tally.html logic)
+                        const sortedSources = sources.sort((a, b) => {
+                            const nameA = this.cleanSourceName(a.id, a.name);
+                            const nameB = this.cleanSourceName(b.id, b.name);
+                            return nameA.localeCompare(nameB);
+                        });
+                        
+                        // Populate each dropdown with available sources
+                        sourceSelects.forEach(select => {
+                            const currentValue = select.value;
+                            const isOpen = select === document.activeElement;
+                            
+                            // Don't update dropdowns that are currently open/focused
+                            if (isOpen) {
+                                console.log(`Skipping dropdown update for ${select.id} - currently in use`);
+                                return;
+                            }
+                            
+                            // Clear existing options except the first one
+                            select.innerHTML = '<option value="">Select source...</option>';
+                            
+                            // Add Scenes section (matching tally.html structure)
+                            if (sortedScenes.length > 0) {
+                                const scenesGroup = document.createElement('optgroup');
+                                scenesGroup.label = '🎬 Scenes';
+                                
+                                sortedScenes.forEach(scene => {
+                                    const option = document.createElement('option');
+                                    option.value = scene.id;
+                                    
+                                    // Clean up scene name (matching tally.html logic)
+                                    let displayName = this.cleanSourceName(scene.id, scene.name);
+                                    option.textContent = displayName;
+                                    
+                                    // Add status indicator (matching tally.html logic)
+                                    if (scene.program) {
+                                        option.textContent += ' (LIVE)';
+                                        option.style.color = '#ff4444';
+                                        option.style.fontWeight = 'bold';
+                                    } else if (scene.preview) {
+                                        option.textContent += ' (PVW)';
+                                        option.style.color = '#44ff44';
+                                    }
+                                    
+                                    if (scene.id === currentValue) {
+                                        option.selected = true;
+                                    }
+                                    scenesGroup.appendChild(option);
+                                });
+                                
+                                select.appendChild(scenesGroup);
+                            }
+
+                            // Add Sources section (matching tally.html structure)
+                            if (sortedSources.length > 0) {
+                                const sourcesGroup = document.createElement('optgroup');
+                                sourcesGroup.label = '📹 Sources';
+                                
+                                sortedSources.forEach(source => {
+                                    const option = document.createElement('option');
+                                    option.value = source.id;
+                                    
+                                    // Clean up source name (matching tally.html logic)
+                                    let displayName = this.cleanSourceName(source.id, source.name);
+                                    option.textContent = displayName;
+                                    
+                                    // Add status indicator (matching tally.html logic)
+                                    if (source.program) {
+                                        option.textContent += ' (LIVE)';
+                                        option.style.color = '#ff4444';
+                                        option.style.fontWeight = 'bold';
+                                    } else if (source.preview) {
+                                        option.textContent += ' (PVW)';
+                                        option.style.color = '#44ff44';
+                                    }
+                                    
+                                    if (source.id === currentValue) {
+                                        option.selected = true;
+                                    }
+                                    sourcesGroup.appendChild(option);
+                                });
+                                
+                                select.appendChild(sourcesGroup);
+                            }
+                            
+                            // Add event listeners to track when dropdowns are being used
+                            if (!select.hasAttribute('data-listeners-added')) {
+                                select.addEventListener('focus', () => {
+                                    this.recentlyUpdatedDevices.add(select.id.replace('source-select-', ''));
+                                });
+                                
+                                select.addEventListener('blur', () => {
+                                    setTimeout(() => {
+                                        this.recentlyUpdatedDevices.delete(select.id.replace('source-select-', ''));
+                                    }, 2000);
+                                });
+                                
+                                select.setAttribute('data-listeners-added', 'true');
+                            }
+                        });
+                        
+                        console.log(`Populated source selects with ${sortedScenes.length} scenes and ${sortedSources.length} sources`);
+                    })
+                    .catch(error => {
+                        console.error('Failed to load sources for assignment:', error);
+                    });
+            }
+
+            connectWebSocket() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}?deviceId=admin-panel&deviceName=Admin%20Panel`;
+                
+                this.ws = new WebSocket(wsUrl);
+                
+                this.ws.onopen = () => {
+                    console.log('Admin WebSocket connected');
+                    this.addLog('[INFO] Real-time connection established');
+                };
+
+                this.ws.onmessage = (event) => {
+                    const message = JSON.parse(event.data);
+                    this.handleWebSocketMessage(message);
+                };
+
+                this.ws.onclose = () => {
+                    console.log('Admin WebSocket disconnected');
+                    this.addLog('[WARN] Real-time connection lost, attempting to reconnect...');
+                    // Attempt to reconnect after 3 seconds
+                    setTimeout(() => this.connectWebSocket(), 3000);
+                };
+
+                this.ws.onerror = (error) => {
+                    console.error('Admin WebSocket error:', error);
+                };
+
+                // Send heartbeat every 30 seconds
+                setInterval(() => {
+                    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                        this.ws.send(JSON.stringify({ type: 'ping' }));
+                    }
+                }, 30000);
+            }
+
+            handleWebSocketMessage(message) {
+                switch (message.type) {
+                    case 'connection:established':
+                        console.log('Admin connection established:', message.data);
+                        break;
+
+                    case 'device:assignment_changed':
+                        // Real-time device assignment update
+                        this.handleDeviceAssignmentChange(message.data);
+                        break;
+
+                    case 'device:registered':
+                        // New device connected
+                        this.addLog(`[INFO] Device connected: ${message.data.name}`);
+                        this.refreshData(); // Refresh to show new device
+                        break;
+
+                    case 'device:disconnected':
+                        // Device disconnected
+                        this.addLog(`[INFO] Device disconnected: ${message.data.name}`);
+                        this.refreshData(); // Refresh to remove device
+                        break;
+
+                    case 'pong':
+                        // Heartbeat response
+                        break;
+
+                    default:
+                        console.log('Unknown admin message type:', message.type);
+                }
+            }
+
+            handleDeviceAssignmentChange(data) {
+                console.log('Device assignment changed:', data);
+                this.addLog(`[INFO] ${data.deviceName} ${data.assigned ? 'assigned to' : 'unassigned from'} ${data.sourceName || 'source'}`);
+                
+                // Update the device assignment in real-time
+                if (data.assigned) {
+                    this.updateSingleDeviceAssignment(data.deviceId, data.sourceId, 'assigned');
+                } else {
+                    this.updateSingleDeviceAssignment(data.deviceId, null, 'assigned');
+                }
+            }
+
+            // ...existing code...
+        }
+
+        // Global function for refresh button
+        function refreshData() {
+            adminPanel.refreshData();
+        }
+
+        // Mixer configuration functions
+        function addMixer() {
+            const name = document.getElementById('mixerName').value;
+            const type = document.getElementById('mixerType').value;
+            const host = document.getElementById('mixerHost').value;
+            const port = document.getElementById('mixerPort').value;
+            const password = document.getElementById('mixerPassword').value;
+
+            if (!name || !host || !port) {
+                alert('Please fill in all required fields (Name, Host, Port)');
+                return;
+            }
+
+            const mixerData = { name, type, host, port };
+            if (type === 'obs' && password) {
+                mixerData.password = password;
+            }
+
+            adminPanel.addLog(`[INFO] Adding mixer: ${name} (${type})`);
+            
+            fetch('/api/mixers', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(mixerData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    adminPanel.addLog(`[SUCCESS] Mixer added: ${name}`);
+                    clearForm();
+                    setTimeout(() => refreshData(), 1000);
+                } else {
+                    adminPanel.addLog(`[ERROR] Failed to add mixer: ${data.error}`);
+                    alert('Failed to add mixer: ' + data.error);
+                }
+            })
+            .catch(error => {
+                adminPanel.addLog(`[ERROR] Network error: ${error.message}`);
+                alert('Network error: ' + error.message);
+            });
+        }
+
+        function removeMixer(mixerId) {
+            if (!confirm('Are you sure you want to remove this mixer?')) {
+                return;
+            }
+
+            adminPanel.addLog(`[INFO] Removing mixer: ${mixerId}`);
+            
+            fetch(`/api/mixers/${mixerId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    adminPanel.addLog(`[SUCCESS] Mixer removed: ${mixerId}`);
+                    setTimeout(() => refreshData(), 1000);
+                } else {
+                    adminPanel.addLog(`[ERROR] Failed to remove mixer: ${data.error}`);
+                    alert('Failed to remove mixer: ' + data.error);
+                }
+            })
+            .catch(error => {
+                adminPanel.addLog(`[ERROR] Network error: ${error.message}`);
+                alert('Network error: ' + error.message);
+            });
+        }
+
+        function testMixer(mixerId) {
+            adminPanel.addLog(`[INFO] Testing mixer connection: ${mixerId}`);
+            
+            fetch(`/api/mixers/${mixerId}/test`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    adminPanel.addLog(`[SUCCESS] Mixer test successful: ${data.message}`);
+                    alert('Connection test successful!');
+                } else {
+                    adminPanel.addLog(`[ERROR] Mixer test failed: ${data.message} - ${data.error || ''}`);
+                    alert('Connection test failed: ' + data.message + (data.error ? '\nError: ' + data.error : ''));
+                }
+                setTimeout(() => refreshData(), 1000);
+            })
+            .catch(error => {
+                adminPanel.addLog(`[ERROR] Network error during test: ${error.message}`);
+                alert('Network error during test: ' + error.message);
+            });
+        }
+
+        function reconnectMixer(mixerId) {
+            adminPanel.addLog(`[INFO] Resetting reconnection attempts for mixer: ${mixerId}`);
+            
+            fetch(`/api/mixers/${mixerId}/reconnect`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    adminPanel.addLog(`[SUCCESS] Reconnection reset successful: ${data.message}`);
+                    alert('✅ Reconnection attempts have been reset. The mixer will attempt to reconnect immediately if disconnected.');
+                } else {
+                    adminPanel.addLog(`[ERROR] Reconnection reset failed: ${data.error || 'Unknown error'}`);
+                    alert('❌ Failed to reset reconnection: ' + (data.error || 'Unknown error'));
+                }
+                setTimeout(() => refreshData(), 1000);
+            })
+            .catch(error => {
+                adminPanel.addLog(`[ERROR] Network error during reconnection reset: ${error.message}`);
+                alert('❌ Network error during reconnection reset: ' + error.message);
+            });
+        }
+
+        function clearForm() {
+            document.getElementById('mixerName').value = '';
+            document.getElementById('mixerType').value = 'obs';
+            document.getElementById('mixerHost').value = 'localhost';
+            document.getElementById('mixerPort').value = '4455';
+            document.getElementById('mixerPassword').value = '';
+            updateFormForMixerType();
+        }
+
+        function saveConfigurations() {
+            fetch('/api/mixers/save', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    adminPanel.addLog('[SUCCESS] Mixer configurations saved');
+                    alert('✅ Mixer configurations saved successfully!');
+                } else {
+                    adminPanel.addLog(`[ERROR] Failed to save configurations: ${data.error}`);
+                    alert('❌ Failed to save configurations: ' + data.error);
+                }
+            })
+            .catch(error => {
+                adminPanel.addLog(`[ERROR] Network error while saving: ${error.message}`);
+                alert('❌ Network error while saving: ' + error.message);
+            });
+        }
+
+        function updateFormForMixerType() {
+            const type = document.getElementById('mixerType').value;
+            const passwordField = document.getElementById('obsPasswordField');
+            const portField = document.getElementById('mixerPort');
+            
+            if (type === 'obs') {
+                passwordField.style.display = 'block';
+                portField.value = '4455';
+            } else if (type === 'vmix') {
+                passwordField.style.display = 'none';
+                portField.value = '8088';
+            }
+        }
+
+        // Add event listener for mixer type changes
+        document.addEventListener('DOMContentLoaded', function() {
+            const mixerTypeSelect = document.getElementById('mixerType');
+            if (mixerTypeSelect) {
+                mixerTypeSelect.addEventListener('change', updateFormForMixerType);
+                updateFormForMixerType(); // Set initial state
+           
+            }
+        });
+
+        // Device assignment functions
+        function assignDevice(deviceId, event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            
+            const sourceSelect = document.getElementById(`source-select-${deviceId}`);
+            const sourceId = sourceSelect.value;
+            
+            if (!sourceId) {
+                alert('Please select a source to assign');
+                return false;
+            }
+            
+            console.log(`Assigning device ${deviceId} to source ${sourceId}`);
+            
+            fetch(`/api/devices/${deviceId}/assign`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    sourceId: sourceId,
+                    assignedBy: 'admin'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    adminPanel.addLog(`[INFO] Device ${deviceId} assigned to ${sourceId}`);
+                    // Use the new single device update method
+                    const success = adminPanel.updateSingleDeviceAssignment(deviceId, sourceId, 'assigned');
+                    if (!success) {
+                        // Fallback to old method if new method fails
+                        updateDeviceAssignmentDisplay(deviceId, sourceId, 'assigned');
+                    }
+                } else {
+                    adminPanel.addLog(`[ERROR] Failed to assign device: ${data.error}`);
+                    alert('❌ Failed to assign device: ' + data.error);
+                }
+            })
+            .catch(error => {
+                adminPanel.addLog(`[ERROR] Network error while assigning device: ${error.message}`);
+                alert('❌ Network error while assigning device: ' + error.message);
+            });
+            
+            return false;
+        }
+
+        function unassignDevice(deviceId, event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            
+            console.log(`Unassigning device ${deviceId}`);
+            
+            fetch(`/api/devices/${deviceId}/assign`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    sourceId: '', // Empty sourceId to trigger unassignment
+                    assignedBy: 'admin'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    adminPanel.addLog(`[INFO] Device ${deviceId} unassigned`);
+                    // Use the new single device update method
+                    const success = adminPanel.updateSingleDeviceAssignment(deviceId, null, 'unassigned');
+                    if (!success) {
+                        // Fallback to old method if new method fails
+                        updateDeviceAssignmentDisplay(deviceId, null, 'unassigned');
+                    }
+                } else {
+                    adminPanel.addLog(`[ERROR] Failed to unassign device: ${data.error}`);
+                    alert('❌ Failed to unassign device: ' + data.error);
+                }
+            })
+            .catch(error => {
+                adminPanel.addLog(`[ERROR] Network error while unassigning device: ${error.message}`);
+                alert('❌ Network error while unassigning device: ' + error.message);
+            });
+            
+            return false;
+        }
+
+        // Update only a specific device's assignment display without refreshing the entire list
+        function updateDeviceAssignmentDisplay(deviceId, assignedSource, assignmentMode) {
+            console.log(`Updating assignment display for device ${deviceId}: ${assignmentMode} -> ${assignedSource}`);
+            
+            // Find the device elements using data attributes
+            const assignmentModeElement = document.querySelector(`[data-assignment-mode="${deviceId}"]`);
+            const sourceSelect = document.getElementById(`source-select-${deviceId}`);
+            const unassignBtn = document.querySelector(`[data-unassign-btn="${deviceId}"]`);
+            
+            if (!assignmentModeElement) {
+                console.error(`Could not find assignment mode element for ${deviceId}`);
+                return;
+            }
+            
+            // Update the assignment mode display
+            if (assignmentMode === 'assigned' && assignedSource) {
+                const cleanSourceName = adminPanel.cleanSourceName(assignedSource, assignedSource);
+                const typeIcon = adminPanel.getSourceTypeIcon(assignedSource);
+                
+                assignmentModeElement.className = 'assignment-mode assigned';
+                assignmentModeElement.innerHTML = `📌 Assigned → ${typeIcon} ${cleanSourceName}`;
+                
+                // Show unassign button
+                if (unassignBtn) {
+                    unassignBtn.style.display = '';
+                }
+                
+                // Reset the source select to default
+                if (sourceSelect) {
+                    sourceSelect.value = '';
+                }
+            } else {
+                assignmentModeElement.className = 'assignment-mode auto';
+                assignmentModeElement.innerHTML = '🔄 Unassigned';
+                
+                // Hide unassign button
+                if (unassignBtn) {
+                    unassignBtn.style.display = 'none';
+                }
+            }
+        }
+
+        // Function to open device web portal
+        function openDeviceWebPortal(deviceId, deviceIP) {
+            // Try different possible URLs for the ESP32 device
+            const possibleUrls = [
+                `http://${deviceIP}`,
+                `http://${deviceIP}.local`,
+                `http://${deviceId}.local`,
+                `http://esp32-${deviceId}.local`
+            ];
+            
+            // If we have a specific IP, try that first
+            let primaryUrl = possibleUrls[0];
+            if (deviceIP && deviceIP !== 'device.local') {
+                primaryUrl = `http://${deviceIP}`;
+            } else {
+                // Use the device ID as fallback
+                primaryUrl = `http://${deviceId}.local`;
+            }
+            
+            // Try to open the primary URL
+            const newWindow = window.open(primaryUrl, '_blank');
+            
+            // Show a helpful modal if the window might be blocked or if connection fails
+            setTimeout(() => {
+                showDeviceWebPortalHelp(deviceId, possibleUrls);
+            }, 1000);
+        }
+
+        function showDeviceWebPortalHelp(deviceId, possibleUrls) {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.8);
+                backdrop-filter: blur(8px);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            `;
+            
+            modal.innerHTML = `
+                <div style="
+                    background: rgba(255, 255, 255, 0.95);
+                    backdrop-filter: blur(20px);
+                    border-radius: 16px;
+                    padding: 2rem;
+                    max-width: 600px;
+                    margin: 1rem;
+                    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    text-align: center;
+                    color: #2d3748;
+                ">
+                    <div style="
+                        width: 60px;
+                        height: 60px;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        border-radius: 50%;
+                        margin: 0 auto 1.5rem;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 24px;
+                        color: white;
+                    ">🌐</div>
+                    
+                    <h3 style="
+                        margin: 0 0 1rem;
+                        color: #2d3748;
+                        font-size: 1.5rem;
+                        font-weight: 600;
+                    ">ESP32 Device Web Portal</h3>
+                    
+                    <p style="
+                        margin: 0 0 1.5rem;
+                        color: #4a5568;
+                        line-height: 1.6;
+                        font-size: 1rem;
+                    ">
+                        The ESP32 device (${deviceId}) should open in a new tab.<br>
+                        If it doesn't load, try these alternative URLs:
+                    </p>
+                    
+                    <div style="
+                        background: #f7fafc;
+                        border: 2px dashed #cbd5e0;
+                        border-radius: 8px;
+                        padding: 1rem;
+                        margin: 1.5rem 0;
+                        text-align: left;
+                    ">
+                        ${possibleUrls.map(url => `
+                            <div style="
+                                display: flex;
+                                justify-content: space-between;
+                                align-items: center;
+                                padding: 0.5rem;
+                                margin: 0.25rem 0;
+                                background: white;
+                                border-radius: 4px;
+                                font-family: 'Monaco', 'Menlo', monospace;
+                                font-size: 12px;
+                            ">
+                                <span>${url}</span>
+                                <button onclick="window.open('${url}', '_blank')" style="
+                                    background: #4285f4;
+                                    color: white;
+                                    border: none;
+                                    padding: 0.25rem 0.5rem;
+                                    border-radius: 4px;
+                                    cursor: pointer;
+                                    font-size: 10px;
+                                ">Open</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div style="
+                        background: #e6fffa;
+                        border: 1px solid #81e6d9;
+                        border-radius: 8px;
+                        padding: 1rem;
+                        margin: 1rem 0;
+                        text-align: left;
+                        font-size: 13px;
+                        color: #2d3748;
+                    ">
+                        <strong>💡 Tips:</strong><br>
+                        • Make sure your device and computer are on the same network<br>
+                        • The device must be powered on and connected to WiFi<br>
+                        • Some networks may block device discovery
+                    </div>
+                    
+                    <button onclick="this.closest('[style*=fixed]').remove()" style="
+                        background: #4285f4;
+                        color: white;
+                        border: none;
+                        padding: 0.75rem 1.5rem;
+                        border-radius: 8px;
+                        font-weight: 500;
+                        cursor: pointer;
+                        transition: all 0.2s;
+                    ">
+                        Close
+                    </button>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Close modal when clicking outside
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+            
+            // Close modal with Escape key
+            const handleEscape = (e) => {
+                if (e.key === 'Escape') {
+                    modal.remove();
+                    document.removeEventListener('keydown', handleEscape);
+                }
+            };
+            document.addEventListener('keydown', handleEscape);
+        }
+
+        // Browser compatibility check for ESP32 flasher
+        function openFlasherInSupportedBrowser() {
+            // Check if the browser supports Web Serial API (required for ESP32 flashing)
+            if ('serial' in navigator) {
+                // Browser supports Web Serial API - open the flasher
+                window.open('/flash.html', '_blank');
+            } else {
+                // Browser doesn't support Web Serial API
+                const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+                const isEdge = /Edge/.test(navigator.userAgent) || /Edg/.test(navigator.userAgent);
+                const isOpera = /OPR/.test(navigator.userAgent);
+                const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                
+                let supportedBrowser = 'Google Chrome';
+                let browserName = 'this browser';
+                if (isEdge) supportedBrowser = 'Microsoft Edge';
+                if (isOpera) supportedBrowser = 'Opera';
+                if (isSafari) browserName = 'Safari';
+                
+                // Show informative modal
+                const modal = document.createElement('div');
+                modal.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.8);
+                    backdrop-filter: blur(8px);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 10000;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+                `;
+                
+                modal.innerHTML = `
+                    <div style="
+                        background: rgba(255, 255, 255, 0.95);
+                        backdrop-filter: blur(20px);
+                        border-radius: 16px;
+                        padding: 2rem;
+                        max-width: 500px;
+                        margin: 1rem;
+                        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+                        border: 1px solid rgba(255, 255, 255, 0.2);
+                        text-align: center;
+                    ">
+                        <div style="
+                            width: 60px;
+                            height: 60px;
+                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            border-radius: 50%;
+                            margin: 0 auto 1.5rem;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-size: 24px;
+                            color: white;
+                        ">⚠️</div>
+                        
+                        <h3 style="
+                            margin: 0 0 1rem;
+                            color: #2d3748;
+                            font-size: 1.5rem;
+                            font-weight: 600;
+                        ">Browser Not Supported</h3>
+                        
+                        <p style="
+                            margin: 0 0 1.5rem;
+                            color: #4a5568;
+                            line-height: 1.6;
+                            font-size: 1rem;
+                        ">
+                            ${isSafari ? 
+                            'Safari does not support the Web Serial API required for ESP32 flashing.' : 
+                            'The ESP32 flasher requires the Web Serial API, which is not supported by ' + browserName + '.'}
+                            <br><br>
+                            <strong>Please use one of these browsers instead:</strong><br>
+                            • Google Chrome (recommended)<br>
+                            • Microsoft Edge<br>
+                            • Opera<br>
+                            • Brave
+                        </p>
+                        
+                        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                            <button onclick="this.parentElement.parentElement.parentElement.remove()" style="
+                                background: #e2e8f0;
+                                color: #4a5568;
+                                border: none;
+                                padding: 0.75rem 1.5rem;
+                                border-radius: 8px;
+                                font-weight: 500;
+                                cursor: pointer;
+                                transition: all 0.2s;
+                            " onmouseover="this.style.background='#cbd5e0'" onmouseout="this.style.background='#e2e8f0'">
+                                Close
+                            </button>
+                            <button onclick="openInChrome()" style="
+                                background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+                                color: white;
+                                border: none;
+                                padding: 0.75rem 1.5rem;
+                                border-radius: 8px;
+                                font-weight: 500;
+                                cursor: pointer;
+                                transition: all 0.2s;
+                            " onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">
+                                📋 Copy Chrome URL
+                            </button>
+                            <button onclick="window.open('https://www.google.com/chrome/', '_blank')" style="
+                                background: #718096;
+                                color: white;
+                                border: none;
+                                padding: 0.75rem 1.5rem;
+                                border-radius: 8px;
+                                font-weight: 500;
+                                cursor: pointer;
+                                transition: all 0.2s;
+                            " onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">
+                                📥 Download Chrome
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                // Close modal when clicking outside
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        modal.remove();
+                    }
+                });
+                
+                // Close modal with Escape key
+                const handleEscape = (e) => {
+                    if (e.key === 'Escape') {
+                        modal.remove();
+                        document.removeEventListener('keydown', handleEscape);
+                    }
+                };
+                document.addEventListener('keydown', handleEscape);
+            }
+        }
+
+        // Function to attempt opening the flasher in Chrome specifically
+        function openInChrome() {
+            const flasherUrl = window.location.origin + '/flash.html';
+            
+            // Instead of trying protocol handlers, directly show instructions
+            // This is more reliable across different operating systems
+            showChromeInstructions(flasherUrl);
+        }
+        
+        // Function to show manual instructions for opening in Chrome
+        function showChromeInstructions(flasherUrl) {
+            const instructionsModal = document.createElement('div');
+            instructionsModal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.9);
+                backdrop-filter: blur(8px);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10001;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            `;
+            
+            instructionsModal.innerHTML = `
+                <div style="
+                    background: rgba(255, 255, 255, 0.95);
+                    backdrop-filter: blur(20px);
+                    border-radius: 16px;
+                    padding: 2rem;
+                    max-width: 600px;
+                    margin: 1rem;
+                    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    text-align: center;
+                ">
+                    <div style="
+                        width: 60px;
+                        height: 60px;
+                        background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+                        border-radius: 50%;
+                        margin: 0 auto 1.5rem;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 24px;
+                        color: white;
+                    ">🌐</div>
+                    
+                    <h3 style="
+                        margin: 0 0 1rem;
+                        color: #2d3748;
+                        font-size: 1.5rem;
+                        font-weight: 600;
+                    ">Open ESP32 Flasher in Chrome</h3>
+                    
+                    <p style="
+                        margin: 0 0 1.5rem;
+                        color: #4a5568;
+                        line-height: 1.6;
+                        font-size: 1rem;
+                    ">
+                        The URL below will open the ESP32 flasher in Chrome.<br>
+                        <strong>Quick steps:</strong><br>
+                        1️⃣ Copy the URL (click the box below)<br>
+                        2️⃣ Open Google Chrome<br>
+                        3️⃣ Paste the URL in Chrome's address bar
+                    </p>
+                    
+                    <div style="
+                        background: #f7fafc;
+                        border: 2px dashed #cbd5e0;
+                        border-radius: 8px;
+                        padding: 1rem;
+                        margin: 1.5rem 0;
+                        font-family: 'Monaco', 'Menlo', monospace;
+                        font-size: 14px;
+                        word-break: break-all;
+                        color: #2d3748;
+                        cursor: pointer;
+                    " onclick="copyToClipboard('${flasherUrl}')" title="Click to copy">
+                        ${flasherUrl}
+                        <div style="
+                            font-size: 12px;
+                            color: #718096;
+                            margin-top: 0.5rem;
+                            font-family: system-ui;
+                        ">👆 Click to copy URL</div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 1rem; justify-content: center;">
+                        <button onclick="this.closest('[style*=fixed]').remove()" style="
+                            background: #e2e8f0;
+                            color: #4a5568;
+                            border: none;
+                            padding: 0.75rem 1.5rem;
+                            border-radius: 8px;
+                            font-weight: 500;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        ">
+                            Close
+                        </button>
+                        <button onclick="copyToClipboard('${flasherUrl}')" style="
+                            background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+                            color: white;
+                            border: none;
+                            padding: 0.75rem 1.5rem;
+                            border-radius: 8px;
+                            font-weight: 500;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        ">
+                            📋 Copy URL
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // Remove any existing modals first
+            const existingModal = document.querySelector('[style*="position: fixed"]');
+            if (existingModal) existingModal.remove();
+            
+            document.body.appendChild(instructionsModal);
+            
+            // Automatically copy the URL when modal opens
+            setTimeout(() => {
+                copyToClipboard(flasherUrl);
+            }, 500);
+            
+            // Close modal when clicking outside
+            instructionsModal.addEventListener('click', (e) => {
+                if (e.target === instructionsModal) {
+                    instructionsModal.remove();
+                }
+            });
+        }
+        
+        // Function to copy text to clipboard
+        function copyToClipboard(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showCopySuccess();
+                }).catch(err => {
+                    fallbackCopyToClipboard(text);
+                });
+            } else {
+                fallbackCopyToClipboard(text);
+            }
+        }
+        
+        // Fallback copy method for older browsers
+        function fallbackCopyToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            textArea.style.top = "-999999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                document.execCommand('copy');
+                showCopySuccess();
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+                alert('Unable to copy automatically. Please manually select and copy the URL.');
+            }
+            
+            document.body.removeChild(textArea);
+        }
+        
+        // Show copy success message
+        function showCopySuccess() {
+            const successMsg = document.createElement('div');
+            successMsg.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #48bb78;
+                color: white;
+                padding: 1rem 1.5rem;
+                border-radius: 8px;
+                z-index: 10002;
+                font-weight: 500;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                transform: translateX(400px);
+                transition: transform 0.3s ease;
+            `;
+            successMsg.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span>✅</span>
+                    <div>
+                        <div style="font-weight: 600;">URL Copied!</div>
+                        <div style="font-size: 0.8rem; opacity: 0.9;">Now open Chrome and paste it</div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(successMsg);
+            
+            // Animate in
+            setTimeout(() => {
+                successMsg.style.transform = 'translateX(0)';
+            }, 100);
+            
+            // Remove after 4 seconds
+            setTimeout(() => {
+                successMsg.style.transform = 'translateX(400px)';
+                setTimeout(() => {
+                    if (successMsg.parentNode) {
+                        successMsg.parentNode.removeChild(successMsg);
+                    }
+                }, 300);
+            }, 4000);
+        }
+
+        function shutdownServer() {
+            if (!confirm('Are you sure you want to shutdown the Tally Hub server?\n\nThis will stop the server and disconnect all devices. You will need to restart it manually.')) {
+                return;
+            }
+
+            adminPanel.addLog('[WARNING] Server shutdown initiated by admin', 'error');
+            
+            // Show a final confirmation with more details
+            if (!confirm('Final confirmation: This will:\n\n• Disconnect all tally devices\n• Stop all mixer connections\n• Shutdown the server completely\n\nProceed with shutdown?')) {
+                adminPanel.addLog('[INFO] Server shutdown cancelled', 'info');
+                return;
+            }
+
+            fetch('/api/shutdown', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    adminPanel.addLog('[INFO] Server shutdown request sent successfully', 'success');
+                    
+                    // Show a message to the user
+                    setTimeout(() => {
+                        alert('Server shutdown initiated. The page will become unresponsive shortly.\n\nTo restart the server, run it manually from the terminal or use the startup scripts.');
+                    }, 1000);
+                    
+                    // Close WebSocket connection
+                    if (adminPanel.ws) {
+                        adminPanel.ws.close();
+                    }
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            })
+            .catch(error => {
+                adminPanel.addLog(`[ERROR] Failed to shutdown server: ${error.message}`, 'error');
+                alert('Failed to shutdown server: ' + error.message);
+            });
+        }
+
+        function showConnectionHelp(mixerType, host, port) {
+            const helpContent = getConnectionHelpContent(mixerType, host, port);
+            
+            // Create modal overlay
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.8);
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                backdrop-filter: blur(5px);
+            `;
+            
+            modal.innerHTML = `
+                <div style="
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    border: 2px solid rgba(255, 255, 255, 0.3);
+                    border-radius: 16px;
+                    padding: 2rem;
+                    max-width: 600px;
+                    max-height: 80vh;
+                    overflow-y: auto;
+                    backdrop-filter: blur(10px);
+                    color: white;
+                    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+                ">
+                    <div style="
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        margin-bottom: 1.5rem;
+                        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+                        padding-bottom: 1rem;
+                    ">
+                        <h3 style="
+                            margin: 0;
+                            font-size: 1.5rem;
+                            font-weight: 600;
+                        ">🔧 Connection Troubleshooting</h3>
+                        <button onclick="this.closest('[style*=fixed]').remove()" style="
+                            background: rgba(255, 255, 255, 0.1);
+                            border: 1px solid rgba(255, 255, 255, 0.2);
+                            border-radius: 6px;
+                            color: white;
+                            padding: 0.5rem;
+                            cursor: pointer;
+                            font-size: 1.2rem;
+                            width: 2rem;
+                            height: 2rem;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                        ">×</button>
+                    </div>
+                    ${helpContent}
+                    <div style="
+                        margin-top: 2rem;
+                        padding-top: 1rem;
+                        border-top: 1px solid rgba(255, 255, 255, 0.2);
+                        display: flex;
+                        gap: 1rem;
+                        flex-wrap: wrap;
+                    ">
+                        <button onclick="testMixer('${getActiveMixerId(mixerType, host, port)}')" style="
+                            background: var(--system-green);
+                            border: 1px solid var(--system-green);
+                            border-radius: 8px;
+                            color: white;
+                            padding: 0.75rem 1.5rem;
+                            cursor: pointer;
+                            font-weight: 600;
+                            flex: 1;
+                            min-width: 120px;
+                        ">🧪 Test Connection</button>
+                        <button onclick="this.closest('[style*=fixed]').remove()" style="
+                            background: rgba(255, 255, 255, 0.1);
+                            border: 1px solid rgba(255, 255, 255, 0.2);
+                            border-radius: 8px;
+                            color: white;
+                            padding: 0.75rem 1.5rem;
+                            cursor: pointer;
+                            font-weight: 600;
+                            flex: 1;
+                            min-width: 120px;
+                        ">Close</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Close modal when clicking outside
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+            
+            // Close modal with Escape key
+            const handleEscape = (e) => {
+                if (e.key === 'Escape') {
+                    modal.remove();
+                    document.removeEventListener('keydown', handleEscape);
+                }
+            };
+            document.addEventListener('keydown', handleEscape);
+        }
+
+        function getConnectionHelpContent(mixerType, host, port) {
+            if (mixerType === 'obs') {
+                return `
+                    <div style="font-size: 14px; line-height: 1.6;">
+                        <div style="
+                            background: rgba(255, 149, 0, 0.1);
+                            border: 1px solid rgba(255, 149, 0, 0.2);
+                            border-radius: 8px;
+                            padding: 1rem;
+                            margin-bottom: 1.5rem;
+                        ">
+                            <strong>📺 OBS Studio Connection Issue</strong><br>
+                            <span style="opacity: 0.8;">Trying to connect to ${host}:${port}</span>
+                        </div>
+                        
+                        <h4 style="color: var(--system-blue); margin-bottom: 0.5rem;">✅ Quick Checklist:</h4>
+                        <ol style="margin-left: 1.5rem; margin-bottom: 1.5rem;">
+                            <li style="margin-bottom: 0.5rem;"><strong>Is OBS Studio running?</strong><br>
+                                <span style="opacity: 0.8;">Make sure OBS Studio is open and fully loaded.</span></li>
+                            <li style="margin-bottom: 0.5rem;"><strong>Enable WebSocket Server:</strong><br>
+                                <span style="opacity: 0.8;">Go to <code style="background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">Tools → WebSocket Server Settings</code></span></li>
+                            <li style="margin-bottom: 0.5rem;"><strong>Check Port Settings:</strong><br>
+                                <span style="opacity: 0.8;">Default port is 4455. Make sure it matches your Tally Hub configuration.</span></li>
+                            <li style="margin-bottom: 0.5rem;"><strong>Password (if required):</strong><br>
+                                <span style="opacity: 0.8;">If you set a password in OBS, make sure it's configured in Tally Hub.</span></li>
+                        </ol>
+                        
+                        <h4 style="color: var(--system-orange); margin-bottom: 0.5rem;">🔍 Troubleshooting Steps:</h4>
+                        <ul style="margin-left: 1.5rem; margin-bottom: 1.5rem;">
+                            <li style="margin-bottom: 0.5rem;">Restart OBS Studio</li>
+                            <li style="margin-bottom: 0.5rem;">Check if another application is using port ${port}</li>
+                            <li style="margin-bottom: 0.5rem;">Verify firewall settings allow port ${port}</li>
+                            <li style="margin-bottom: 0.5rem;">Try connecting from the same computer first (localhost)</li>
+                        </ul>
+                        
+                        <div style="
+                            background: rgba(52, 199, 89, 0.1);
+                            border: 1px solid rgba(52, 199, 89, 0.2);
+                            border-radius: 8px;
+                            padding: 1rem;
+                        ">
+                            <strong>💡 Pro Tip:</strong> You can test the WebSocket connection by opening 
+                            <code style="background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">ws://${host}:${port}</code> 
+                            in a WebSocket testing tool.
+                        </div>
+                    </div>
+                `;
+            } else if (mixerType === 'vmix') {
+                return `
+                    <div style="font-size: 14px; line-height: 1.6;">
+                        <div style="
+                            background: rgba(255, 149, 0, 0.1);
+                            border: 1px solid rgba(255, 149, 0, 0.2);
+                            border-radius: 8px;
+                            padding: 1rem;
+                            margin-bottom: 1.5rem;
+                        ">
+                            <strong>🎬 vMix Connection Issue</strong><br>
+                            <span style="opacity: 0.8;">Trying to connect to ${host}:${port}</span>
+                        </div>
+                        
+                        <h4 style="color: var(--system-blue); margin-bottom: 0.5rem;">✅ Quick Checklist:</h4>
+                        <ol style="margin-left: 1.5rem; margin-bottom: 1.5rem;">
+                            <li style="margin-bottom: 0.5rem;"><strong>Is vMix running?</strong><br>
+                                <span style="opacity: 0.8;">Make sure vMix is open and fully loaded.</span></li>
+                            <li style="margin-bottom: 0.5rem;"><strong>Enable Web Controller:</strong><br>
+                                <span style="opacity: 0.8;">Go to <code style="background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">Settings → Web Controller</code></span></li>
+                            <li style="margin-bottom: 0.5rem;"><strong>Check Port Settings:</strong><br>
+                                <span style="opacity: 0.8;">Default port is 8088. Make sure it matches your Tally Hub configuration.</span></li>
+                            <li style="margin-bottom: 0.5rem;"><strong>Network Access:</strong><br>
+                                <span style="opacity: 0.8;">Ensure "Enable" is checked in Web Controller settings.</span></li>
+                        </ol>
+                        
+                        <h4 style="color: var(--system-orange); margin-bottom: 0.5rem;">🔍 Troubleshooting Steps:</h4>
+                        <ul style="margin-left: 1.5rem; margin-bottom: 1.5rem;">
+                            <li style="margin-bottom: 0.5rem;">Restart vMix</li>
+                            <li style="margin-bottom: 0.5rem;">Check if another application is using port ${port}</li>
+                            <li style="margin-bottom: 0.5rem;">Verify firewall settings allow port ${port}</li>
+                            <li style="margin-bottom: 0.5rem;">Try accessing the vMix web interface at <code style="background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">http://${host}:${port}</code></li>
+                        </ul>
+                        
+                        <div style="
+                            background: rgba(52, 199, 89, 0.1);
+                            border: 1px solid rgba(52, 199, 89, 0.2);
+                            border-radius: 8px;
+                            padding: 1rem;
+                        ">
+                            <strong>💡 Pro Tip:</strong> You can test the connection by opening 
+                            <code style="background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">http://${host}:${port}/api</code> 
+                            in your browser - it should show vMix API information.
+                        </div>
+                    </div>
+                `;
+            } else {
+                return `
+                    <div style="font-size: 14px; line-height: 1.6;">
+                        <div style="
+                            background: rgba(255, 149, 0, 0.1);
+                            border: 1px solid rgba(255, 149, 0, 0.2);
+                            border-radius: 8px;
+                            padding: 1rem;
+                            margin-bottom: 1.5rem;
+                        ">
+                            <strong>🎛️ Mixer Connection Issue</strong><br>
+                            <span style="opacity: 0.8;">Trying to connect to ${mixerType.toUpperCase()} at ${host}:${port}</span>
+                        </div>
+                        
+                        <h4 style="color: var(--system-orange); margin-bottom: 0.5rem;">🔍 General Troubleshooting:</h4>
+                        <ul style="margin-left: 1.5rem;">
+                            <li style="margin-bottom: 0.5rem;">Verify the mixer software is running</li>
+                            <li style="margin-bottom: 0.5rem;">Check network connectivity to ${host}</li>
+                            <li style="margin-bottom: 0.5rem;">Ensure port ${port} is accessible</li>
+                            <li style="margin-bottom: 0.5rem;">Check firewall settings</li>
+                            <li style="margin-bottom: 0.5rem;">Verify the mixer's API/remote control is enabled</li>
+                        </ul>
+                    </div>
+                `;
+            }
+        }
+
+        function getActiveMixerId(mixerType, host, port) {
+            // Find the mixer ID that matches the type, host, and port
+            const mixers = adminPanel.mixers || [];
+            const mixer = mixers.find(m => 
+                m.type === mixerType && 
+                m.host === host && 
+                m.port.toString() === port.toString()
+            );
+            return mixer ? mixer.id : '';
+        }
+
+        // Initialize admin panel
+        const adminPanel = new AdminPanel();
+    </script>
+</body>
+</html>

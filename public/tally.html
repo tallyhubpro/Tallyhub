@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Tally - Tally Hub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: white;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        .tally-display {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.3s ease;
+        }
+
+        .tally-display.preview {
+            background: #4CAF50; /* Green for preview */
+        }
+
+        .tally-display.program {
+            background: #f44336; /* Red for program */
+        }
+
+        .tally-display.both {
+            background: #FF9800; /* Orange for both preview and program */
+        }
+
+        .tally-display.idle {
+            background: #424242; /* Dark gray for idle */
+        }
+
+        .tally-info {
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+        }
+
+        .tally-label {
+            font-size: 4rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+
+        .tally-source {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            opacity: 0.9;
+        }
+
+        .tally-status {
+            font-size: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .mixer-status {
+            font-size: 1.2rem;
+            margin-top: 1rem;
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .status-indicator.recording {
+            background: rgba(244, 67, 54, 0.3);
+            border: 2px solid #f44336;
+        }
+
+        .status-indicator.streaming {
+            background: rgba(76, 175, 80, 0.3);
+            border: 2px solid #4CAF50;
+        }
+
+        .status-icon {
+            font-size: 1.1em;
+        }
+
+        .controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 8px;
+            padding: 1rem;
+            backdrop-filter: blur(10px);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            min-width: 200px;
+        }
+
+        .controls.visible {
+            opacity: 1;
+        }
+
+        .control-section {
+            margin-bottom: 1rem;
+        }
+
+        .control-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .control-label {
+            font-size: 0.8rem;
+            color: #ccc;
+            margin-bottom: 0.5rem;
+        }
+
+        .control-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            color: white;
+            padding: 0.5rem 1rem;
+            margin: 0.25rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            width: 100%;
+            text-align: left;
+        }
+
+        .control-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .source-select {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            color: white;
+            padding: 0.5rem;
+            font-size: 0.9rem;
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+
+        .source-select option {
+            background: #333;
+            color: white;
+        }
+
+        .source-select optgroup {
+            background: #222;
+            color: #ddd;
+            font-weight: bold;
+            font-style: normal;
+        }
+
+        .selected-source {
+            font-size: 0.8rem;
+            color: #4CAF50;
+            margin-top: 0.5rem;
+        }
+
+        .device-info {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 8px;
+            padding: 1rem;
+            backdrop-filter: blur(10px);
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .device-info.visible {
+            opacity: 1;
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #4CAF50;
+            transition: background-color 0.3s ease;
+        }
+
+        .connection-status.disconnected {
+            background: #f44336;
+        }
+
+        @media (max-width: 768px) {
+            .tally-label {
+                font-size: 3rem;
+            }
+            
+            .tally-source {
+                font-size: 1.5rem;
+            }
+            
+            .tally-status {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="tally-display" id="tallyDisplay">
+        <div class="tally-info">
+            <div class="tally-label" id="tallyLabel">TALLY</div>
+            <div class="tally-source" id="tallySource">Select a source above</div>
+            <div class="tally-status" id="tallyStatus">STANDBY</div>
+            <div class="mixer-status" id="mixerStatus"></div>
+        </div>
+    </div>
+
+    <div class="connection-status" id="connectionStatus"></div>
+
+    <div class="controls" id="controls">
+        <div class="control-section">
+            <div class="control-label">Source Selection (Required)</div>
+            <select class="source-select" id="sourceSelect" onchange="selectSource()">
+                <option value="">Select a source...</option>
+            </select>
+            <button class="control-button" onclick="refreshSources()" style="margin-top: 0.5rem; padding: 0.3rem 0.5rem; font-size: 0.8rem;">🔄 Refresh Sources</button>
+            <div class="selected-source" id="selectedSource">Monitoring: All sources</div>
+        </div>
+        
+        <div class="control-section">
+            <button class="control-button" onclick="toggleFullscreen()">Toggle Fullscreen</button>
+            <button class="control-button" onclick="showDeviceInfo()">Device Info</button>
+            <button class="control-button" onclick="reconnect()">Reconnect</button>
+        </div>
+    </div>
+
+    <div class="device-info" id="deviceInfo">
+        <div>Device ID: <span id="deviceId">-</span></div>
+        <div>Device Name: <span id="deviceName">-</span></div>
+        <div>Connection: <span id="connectionInfo">Connecting...</span></div>
+        <div>Selected Source: <span id="selectedSourceInfo">All sources</span></div>
+        <div>Last Update: <span id="lastUpdate">-</span></div>
+    </div>
+
+    <script>
+        class TallyClient {
+            constructor() {
+                this.ws = null;
+                this.deviceId = this.getDeviceId();
+                this.deviceName = this.getDeviceName();
+                this.reconnectAttempts = 0;
+                this.maxReconnectAttempts = 10;
+                this.isFullscreen = false;
+                this.showControls = false;
+                this.selectedSource = localStorage.getItem('selectedSource') || '';
+                this.availableSources = [];
+                
+                this.setupEventListeners();
+                this.connect();
+                this.setupUI();
+                this.loadAvailableSources();
+                
+                // Refresh sources every 10 seconds
+                setInterval(() => {
+                    this.loadAvailableSources();
+                }, 10000);
+            }
+
+            getDeviceId() {
+                let deviceId = localStorage.getItem('deviceId');
+                if (!deviceId) {
+                    deviceId = 'web-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+                    localStorage.setItem('deviceId', deviceId);
+                }
+                return deviceId;
+            }
+
+            getDeviceName() {
+                let deviceName = localStorage.getItem('deviceName');
+                if (!deviceName) {
+                    deviceName = 'Web Tally ' + this.deviceId.split('-')[2];
+                    localStorage.setItem('deviceName', deviceName);
+                }
+                return deviceName;
+            }
+
+            setupEventListeners() {
+                // Touch/click events to show controls
+                document.addEventListener('click', () => this.toggleControls());
+                document.addEventListener('touchstart', () => this.toggleControls());
+                
+                // Prevent screen from sleeping
+                document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+            }
+
+            setupUI() {
+                document.getElementById('deviceId').textContent = this.deviceId;
+                document.getElementById('deviceName').textContent = this.deviceName;
+                this.updateSelectedSourceUI();
+            }
+
+            async loadAvailableSources() {
+                try {
+                    const response = await fetch('/api/tallies');
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    const sources = await response.json();
+                    this.availableSources = sources;
+
+                    // Ensure assigned source is always present
+                    if (this.selectedSource && this.selectedSource !== '') {
+                        let assigned = this.availableSources.find(s => s.id === this.selectedSource);
+                        if (!assigned) {
+                            // Try to get name from localStorage or fallback
+                            let assignedName = localStorage.getItem('assignedSourceName') || 'Assigned Source';
+                            this.availableSources.push({
+                                id: this.selectedSource,
+                                name: assignedName,
+                                preview: false,
+                                program: false
+                            });
+                        }
+                    }
+
+                    this.populateSourceSelect();
+                    this.updateSelectedSourceUI();
+                    console.log(`Loaded ${sources.length} available sources`);
+                    console.log(`IDLE sources:`, sources.filter(s => !s.preview && !s.program).map(s => s.name));
+                    console.log(`Active sources:`, sources.filter(s => s.preview || s.program).map(s => s.name));
+                } catch (error) {
+                    console.error('Failed to load available sources:', error);
+                    // Retry after 5 seconds
+                    setTimeout(() => this.loadAvailableSources(), 5000);
+                }
+            }
+
+            populateSourceSelect() {
+                const select = document.getElementById('sourceSelect');
+                
+                // Clear existing options except the first one
+                while (select.children.length > 1) {
+                    select.removeChild(select.lastChild);
+                }
+
+                // Separate scenes and sources
+                const scenes = [];
+                const sources = [];
+                
+                this.availableSources.forEach(source => {
+                    if (source.id.startsWith('obs-scene-')) {
+                        scenes.push(source);
+                    } else if (source.id.startsWith('obs-source-')) {
+                        sources.push(source);
+                    }
+                });
+
+                // Sort scenes alphabetically
+                const sortedScenes = scenes.sort((a, b) => {
+                    const nameA = a.name.replace('Source obs-scene-', '');
+                    const nameB = b.name.replace('Source obs-scene-', '');
+                    return nameA.localeCompare(nameB);
+                });
+
+                // Sort sources alphabetically
+                const sortedSources = sources.sort((a, b) => {
+                    const nameA = a.name.replace('Source obs-source-', '');
+                    const nameB = b.name.replace('Source obs-source-', '');
+                    return nameA.localeCompare(nameB);
+                });
+
+                // Add Scenes section
+                if (sortedScenes.length > 0) {
+                    const scenesGroup = document.createElement('optgroup');
+                    scenesGroup.label = '🎬 Scenes';
+                    
+                    sortedScenes.forEach(scene => {
+                        const option = document.createElement('option');
+                        option.value = scene.id;
+                        
+                        // Clean up scene name
+                        let displayName = scene.name.replace('Source obs-scene-', '');
+                        option.textContent = displayName;
+                        
+                        // Add status indicator
+                        if (scene.program) {
+                            option.textContent += ' (LIVE)';
+                            option.style.color = '#ff4444';
+                            option.style.fontWeight = 'bold';
+                        } else if (scene.preview) {
+                            option.textContent += ' (PVW)';
+                            option.style.color = '#44ff44';
+                        }
+                        
+                        scenesGroup.appendChild(option);
+                    });
+                    
+                    select.appendChild(scenesGroup);
+                }
+
+                // Add Sources section
+                if (sortedSources.length > 0) {
+                    const sourcesGroup = document.createElement('optgroup');
+                    sourcesGroup.label = '📹 Sources';
+                    
+                    sortedSources.forEach(source => {
+                        const option = document.createElement('option');
+                        option.value = source.id;
+                        
+                        // Clean up source name
+                        let displayName = source.name.replace('Source obs-source-', '');
+                        option.textContent = displayName;
+                        
+                        // Add status indicator
+                        if (source.program) {
+                            option.textContent += ' (LIVE)';
+                            option.style.color = '#ff4444';
+                            option.style.fontWeight = 'bold';
+                        } else if (source.preview) {
+                            option.textContent += ' (PVW)';
+                            option.style.color = '#44ff44';
+                        }
+                        
+                        sourcesGroup.appendChild(option);
+                    });
+                    
+                    select.appendChild(sourcesGroup);
+                }
+
+                // Set selected value
+                select.value = this.selectedSource;
+                
+                console.log(`Populated source select with ${sortedScenes.length} scenes and ${sortedSources.length} sources`);
+            }
+
+            updateSelectedSourceUI() {
+                const selectedSourceDiv = document.getElementById('selectedSource');
+                const selectedSourceInfo = document.getElementById('selectedSourceInfo');
+                
+                if (this.selectedSource && this.selectedSource !== '') {
+                    const source = this.availableSources.find(s => s.id === this.selectedSource);
+                    let sourceName = 'Unknown';
+                    
+                    if (source && source.name) {
+                        if (source.name.startsWith('Source obs-source-')) {
+                            sourceName = '📹 ' + source.name.replace('Source obs-source-', '');
+                        } else if (source.name.startsWith('Source obs-scene-')) {
+                            sourceName = '🎬 ' + source.name.replace('Source obs-scene-', '');
+                        } else {
+                            sourceName = source.name;
+                        }
+                    }
+                    
+                    selectedSourceDiv.textContent = `Monitoring: ${sourceName}`;
+                    selectedSourceInfo.textContent = sourceName;
+                } else {
+                    selectedSourceDiv.textContent = 'Monitoring: Scene changes';
+                    selectedSourceInfo.textContent = 'Scene changes only';
+                }
+            }
+
+            connect() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}?deviceId=${this.deviceId}&deviceName=${encodeURIComponent(this.deviceName)}`;
+                
+                this.ws = new WebSocket(wsUrl);
+                
+                this.ws.onopen = () => {
+                    console.log('WebSocket connected');
+                    this.updateConnectionStatus(true);
+                    this.reconnectAttempts = 0;
+                    document.getElementById('connectionInfo').textContent = 'Connected';
+                    
+                    // Refresh sources when connected
+                    this.loadAvailableSources();
+                };
+
+                this.ws.onmessage = (event) => {
+                    const message = JSON.parse(event.data);
+                    this.handleMessage(message);
+                };
+
+                this.ws.onclose = () => {
+                    console.log('WebSocket disconnected');
+                    this.updateConnectionStatus(false);
+                    document.getElementById('connectionInfo').textContent = 'Disconnected';
+                    this.attemptReconnect();
+                };
+
+                this.ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    this.updateConnectionStatus(false);
+                };
+
+                // Send heartbeat every 30 seconds
+                setInterval(() => {
+                    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                        this.ws.send(JSON.stringify({ type: 'ping' }));
+                    }
+                }, 30000);
+            }
+
+            handleMessage(message) {
+                switch (message.type) {
+                    case 'connection:established':
+                        console.log('Connection established:', message.data);
+                        break;
+
+                    case 'tally:update':
+                        this.updateTally(message.data);
+                        break;
+
+                    case 'status:update':
+                        this.updateStatus(message.data);
+                        break;
+
+                    case 'assignment:changed':
+                        this.handleAssignmentChange(message.data);
+                        break;
+
+                    case 'pong':
+                        // Heartbeat response
+                        break;
+
+                    default:
+                        console.log('Unknown message type:', message.type);
+                }
+            }
+
+            updateTally(tallyData) {
+                console.log('Received tally update:', tallyData);
+                
+                // Update our internal sources list
+                const existingIndex = this.availableSources.findIndex(s => s.id === tallyData.id);
+                if (existingIndex >= 0) {
+                    this.availableSources[existingIndex] = { ...this.availableSources[existingIndex], ...tallyData };
+                } else {
+                    this.availableSources.push(tallyData);
+                }
+                
+                // Only update display for the selected source
+                if (!this.selectedSource || this.selectedSource === '' || tallyData.id !== this.selectedSource) {
+                    console.log(`Ignoring display update for ${tallyData.id}, selected source is ${this.selectedSource || 'none'}`);
+                    // Still update the sources list but don't update display
+                    this.updateSourceSelectionDisplay();
+                    return;
+                }
+                
+                console.log(`Processing tally update for selected source: ${tallyData.id}`);
+                this.updateTallyDisplay(tallyData);
+            }
+
+            updateTallyDisplay(tallyData) {
+                const display = document.getElementById('tallyDisplay');
+                const label = document.getElementById('tallyLabel');
+                const source = document.getElementById('tallySource');
+                const status = document.getElementById('tallyStatus');
+
+                // Update source name
+                let cleanSourceName = 'Unknown Source';
+                if (tallyData.name) {
+                    if (tallyData.name.startsWith('Source obs-source-')) {
+                        cleanSourceName = '📹 ' + tallyData.name.replace('Source obs-source-', '');
+                    } else if (tallyData.name.startsWith('Source obs-scene-')) {
+                        cleanSourceName = '🎬 ' + tallyData.name.replace('Source obs-scene-', '');
+                    } else {
+                        cleanSourceName = tallyData.name;
+                    }
+                }
+                source.textContent = cleanSourceName;
+
+                // Update tally state
+                display.className = 'tally-display';
+                
+                if (tallyData.program && tallyData.preview) {
+                    display.classList.add('both');
+                    label.textContent = 'ON AIR + PVW';
+                    status.textContent = 'PROGRAM + PREVIEW';
+                } else if (tallyData.program) {
+                    display.classList.add('program');
+                    label.textContent = 'ON AIR';
+                    status.textContent = 'PROGRAM';
+                } else if (tallyData.preview) {
+                    display.classList.add('preview');
+                    label.textContent = 'PREVIEW';
+                    status.textContent = 'PREVIEW';
+                } else {
+                    // Show different status based on whether a specific source is selected
+                    if (this.selectedSource && this.selectedSource !== '') {
+                        // Specific source selected - show IDLE
+                        display.classList.add('idle');
+                        label.textContent = 'IDLE';
+                        status.textContent = 'IDLE';
+                    } else {
+                        // Auto mode - show STANDBY
+                        label.textContent = 'STANDBY';
+                        status.textContent = 'STANDBY';
+                    }
+                }
+
+                document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+                this.updateSourceSelectionDisplay();
+                
+                // Update recording/streaming status from tally data
+                this.updateStatus({
+                    recording: tallyData.recording || false,
+                    streaming: tallyData.streaming || false
+                });
+            }
+
+            updateSourceSelectionDisplay() {
+            }
+
+            updateStatus(statusData) {
+                const mixerStatus = document.getElementById('mixerStatus');
+                
+                let statusHtml = '';
+                
+                if (statusData.recording) {
+                    statusHtml += '<div class="status-indicator recording"><span class="status-icon">🔴</span><span>RECORDING</span></div>';
+                }
+                
+                if (statusData.streaming) {
+                    statusHtml += '<div class="status-indicator streaming"><span class="status-icon">📡</span><span>STREAMING</span></div>';
+                }
+                
+                mixerStatus.innerHTML = statusHtml;
+                
+                console.log('Status updated:', statusData);
+            }
+
+            updateConnectionStatus(connected) {
+                const status = document.getElementById('connectionStatus');
+                status.className = connected ? 'connection-status' : 'connection-status disconnected';
+            }
+
+            attemptReconnect() {
+                if (this.reconnectAttempts < this.maxReconnectAttempts) {
+                    this.reconnectAttempts++;
+                    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
+                    
+                    console.log(`Connection lost. Reconnection attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay/1000} seconds...`);
+                    
+                    setTimeout(() => {
+                        console.log(`Reconnection attempt ${this.reconnectAttempts}`);
+                        this.connect();
+                    }, delay);
+                } else {
+                    console.error('Maximum reconnection attempts reached. Please refresh the page.');
+                    document.getElementById('connectionInfo').textContent = 'Connection Failed - Refresh Page';
+                }
+            }
+
+            toggleControls() {
+                this.showControls = !this.showControls;
+                document.getElementById('controls').className = this.showControls ? 'controls visible' : 'controls';
+                document.getElementById('deviceInfo').className = this.showControls ? 'device-info visible' : 'device-info';
+
+                // Auto-hide after 5 seconds
+                if (this.showControls) {
+                    setTimeout(() => {
+                        if (this.showControls) {
+                            this.showControls = false;
+                            document.getElementById('controls').className = 'controls';
+                            document.getElementById('deviceInfo').className = 'device-info';
+                        }
+                    }, 5000);
+                }
+            }
+
+            handleAssignmentChange(assignmentData) {
+                console.log('Received assignment change:', assignmentData);
+                
+                if (assignmentData.assigned) {
+                    this.selectedSource = assignmentData.sourceId;
+                    localStorage.setItem('selectedSource', assignmentData.sourceId);
+                    
+                    console.log(`📍 Admin assigned this device to: ${assignmentData.sourceName}`);
+
+                    // Ensure the assigned source is in our list so the name is available
+                    let existingSource = this.availableSources.find(s => s.id === assignmentData.sourceId);
+                    if (!existingSource && assignmentData.sourceId) {
+                        // Try to reload sources from backend to get full info
+                        this.loadAvailableSources().then(() => {
+                            existingSource = this.availableSources.find(s => s.id === assignmentData.sourceId);
+                            if (!existingSource) {
+                                // Still not found, add minimal info
+                                this.availableSources.push({
+                                    id: assignmentData.sourceId,
+                                    name: assignmentData.sourceName || 'Unnamed Source',
+                                    preview: false,
+                                    program: false
+                                });
+                                this.populateSourceSelect();
+                            }
+                            this.updateSelectedSourceUI();
+                        });
+                    } else {
+                        this.updateSelectedSourceUI();
+                    }
+                    
+                    // Update dropdown to show the assigned source
+                    const select = document.getElementById('sourceSelect');
+                    select.value = assignmentData.sourceId;
+                    
+                    // Reset tally display and wait for tally updates
+                    const display = document.getElementById('tallyDisplay');
+                    const label = document.getElementById('tallyLabel');
+                    const source = document.getElementById('tallySource');
+                    const status = document.getElementById('tallyStatus');
+                    
+                    display.className = 'tally-display idle';
+                    label.textContent = 'ASSIGNED';
+                    source.textContent = assignmentData.sourceName;
+                    status.textContent = 'WAITING...';
+                    
+                } else {
+                    // Device was unassigned
+                    this.selectedSource = '';
+                    localStorage.setItem('selectedSource', '');
+                    
+                    console.log('📍 Admin unassigned this device');
+                    
+                    // Update UI to reflect the unassignment
+                    this.updateSelectedSourceUI();
+                    
+                    // Update dropdown to show no selection
+                    const select = document.getElementById('sourceSelect');
+                    select.value = '';
+                    
+                    // Reset tally display to unassigned state
+                    const display = document.getElementById('tallyDisplay');
+                    const label = document.getElementById('tallyLabel');
+                    const source = document.getElementById('tallySource');
+                    const status = document.getElementById('tallyStatus');
+                    
+                    display.className = 'tally-display';
+                    label.textContent = 'UNASSIGNED';
+                    source.textContent = 'Select a source above';
+                    status.textContent = 'UNASSIGNED';
+                }
+                
+                document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+            }
+        }
+
+        // Global functions for buttons
+        async function selectSource() {
+            const select = document.getElementById('sourceSelect');
+            const previousSource = tallyClient.selectedSource;
+            tallyClient.selectedSource = select.value;
+            localStorage.setItem('selectedSource', select.value);
+            tallyClient.updateSelectedSourceUI();
+            
+            // Sync with backend to update admin panel
+            try {
+                const response = await fetch(`/api/devices/${tallyClient.deviceId}/assign`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sourceId: tallyClient.selectedSource || '',
+                        assignedBy: 'user'
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log(`✅ Backend sync successful:`, result.message);
+                } else {
+                    console.error('❌ Failed to sync with backend:', response.statusText);
+                    // Revert the change if backend sync failed
+                    tallyClient.selectedSource = previousSource;
+                    localStorage.setItem('selectedSource', previousSource);
+                    select.value = previousSource;
+                    tallyClient.updateSelectedSourceUI();
+                }
+            } catch (error) {
+                console.error('❌ Error syncing with backend:', error);
+                // Revert the change if backend sync failed
+                tallyClient.selectedSource = previousSource;
+                localStorage.setItem('selectedSource', previousSource);
+                select.value = previousSource;
+                tallyClient.updateSelectedSourceUI();
+            }
+            
+            // Reset tally display when changing source
+            const display = document.getElementById('tallyDisplay');
+            const label = document.getElementById('tallyLabel');
+            const source = document.getElementById('tallySource');
+            const status = document.getElementById('tallyStatus');
+            
+            display.className = 'tally-display';
+            
+            if (tallyClient.selectedSource && tallyClient.selectedSource !== '') {
+                // Specific source selected - show IDLE initially
+                display.classList.add('idle');
+                label.textContent = 'ASSIGNED';
+                status.textContent = 'WAITING...';
+                
+                // Update source name
+                const selectedSourceObj = tallyClient.availableSources.find(s => s.id === tallyClient.selectedSource);
+                if (selectedSourceObj) {
+                    let cleanSourceName = selectedSourceObj.name;
+                    if (selectedSourceObj.name.startsWith('Source obs-source-')) {
+                        cleanSourceName = '📹 ' + selectedSourceObj.name.replace('Source obs-source-', '');
+                    } else if (selectedSourceObj.name.startsWith('Source obs-scene-')) {
+                        cleanSourceName = '🎬 ' + selectedSourceObj.name.replace('Source obs-scene-', '');
+                    }
+                    source.textContent = cleanSourceName;
+                } else {
+                    source.textContent = 'Selected Source';
+                }
+                
+                // Request current status for this source by checking if we have recent data
+                const existingTally = tallyClient.availableSources.find(s => s.id === tallyClient.selectedSource);
+                if (existingTally && (existingTally.preview || existingTally.program)) {
+                    // Source is currently active, update display immediately
+                    tallyClient.updateTally({
+                        id: tallyClient.selectedSource,
+                        name: existingTally.name,
+                        preview: existingTally.preview || false,
+                        program: existingTally.program || false,
+                        timestamp: new Date()
+                    });
+                } else {
+                    // Source is IDLE, show IDLE state
+                    setTimeout(() => {
+                        const display = document.getElementById('tallyDisplay');
+                        if (display.classList.contains('idle')) {
+                            label.textContent = 'IDLE';
+                            status.textContent = 'IDLE';
+                        }
+                    }, 1000);
+                    
+                    console.log(`Source ${tallyClient.selectedSource} is IDLE`);
+                }
+            } else {
+                // No source selected - show unassigned
+                display.className = 'tally-display';
+                label.textContent = 'UNASSIGNED';
+                source.textContent = 'Select a source above';
+                status.textContent = 'UNASSIGNED';
+            }
+        }
+
+        function refreshSources() {
+            console.log('Manually refreshing sources...');
+            tallyClient.loadAvailableSources();
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        function showDeviceInfo() {
+            // Info is already shown when controls are visible
+        }
+
+        function reconnect() {
+            window.location.reload();
+        }
+
+        // Initialize the tally client
+        const tallyClient = new TallyClient();
+    </script>
+</body>
+</html>
