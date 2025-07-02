@@ -7,13 +7,13 @@
 ![Tally Hub Hero](docs/assets/tally-hub-hero.svg)
 
 [![GitHub Release](https://img.shields.io/github/v/release/tallyhubpro/Tallyhub?style=for-the-badge)](https://github.com/tallyhubpro/Tallyhub/releases)
-[![Documentation](https://img.shields.io/badge/docs-live-brightgreen?style=for-the-badge)](https://tallyhubpro.github.io/Tallyhub)
+[![Documentation](https://img.shields.io/badge/docs-live-brightgreen?style=for-the-badge)](https://tallyhubpro.github.io)
 [![License](https://img.shields.io/github/license/tallyhubpro/Tallyhub?style=for-the-badge)](LICENSE)
 [![Community](https://img.shields.io/badge/community-discord-7289da?style=for-the-badge)](https://discord.gg/tallyhub)
 
 *Transform your video production with professional tally lights at a fraction of traditional costs*
 
-**[📖 Documentation](https://tallyhubpro.github.io/Tallyhub)** | **[⬇️ Download](https://tallyhubpro.github.io/Tallyhub/download/)** | **[🚀 Quick Start](https://tallyhubpro.github.io/Tallyhub/getting-started/)**
+**[📖 Documentation](https://tallyhubpro.github.io)** | **[⬇️ Download](https://tallyhubpro.github.io/download/)** | **[🚀 Quick Start](https://tallyhubpro.github.io/getting-started/)**
 
 </div>
 
@@ -120,14 +120,14 @@ graph TB
 
 ## 📚 Documentation
 
-Comprehensive documentation is available at **[tallyhubpro.github.io](https://tallyhubpro.github.io/Tallyhub)**:
+Comprehensive documentation is available at **[tallyhubpro.github.io](https://tallyhubpro.github.io)**:
 
-- **[🚀 Getting Started](https://tallyhubpro.github.io/Tallyhub/getting-started/)** - Setup in 5 minutes
-- **[💡 Features](https://tallyhubpro.github.io/Tallyhub/features/)** - Complete feature overview  
-- **[🔧 Hardware Guide](https://tallyhubpro.github.io/Tallyhub/hardware/)** - Device selection and setup
-- **[🎥 Video Mixers](https://tallyhubpro.github.io/Tallyhub/mixers/supported-mixers/)** - OBS, vMix, and more
-- **[⚙️ Admin Panel](https://tallyhubpro.github.io/Tallyhub/admin-panel/)** - Web interface guide
-- **[🔍 Troubleshooting](https://tallyhubpro.github.io/Tallyhub/troubleshooting/)** - Common issues and solutions
+- **[🚀 Getting Started](https://tallyhubpro.github.io/getting-started/)** - Setup in 5 minutes
+- **[💡 Features](https://tallyhubpro.github.io/features/)** - Complete feature overview  
+- **[🔧 Hardware Guide](https://tallyhubpro.github.io/hardware/)** - Device selection and setup
+- **[🎥 Video Mixers](https://tallyhubpro.github.io/mixers/supported-mixers/)** - OBS, vMix, and more
+- **[⚙️ Admin Panel](https://tallyhubpro.github.io/admin-panel/)** - Web interface guide
+- **[🔍 Troubleshooting](https://tallyhubpro.github.io/troubleshooting/)** - Common issues and solutions
 
 ## 🤝 Community & Support
 
@@ -180,6 +180,6 @@ If Tally Hub helps your production workflow, please:
 
 *Professional tally lights shouldn't cost thousands of dollars*
 
-**[Get Started Today →](https://tallyhubpro.github.io/Tallyhub/getting-started/)**
+**[Get Started Today →](https://tallyhubpro.github.io/getting-started/)**
 
 </div>

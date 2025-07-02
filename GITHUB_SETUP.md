@@ -59,7 +59,7 @@ If you own `tallyhub.pro` domain:
 
 After setup, your documentation will be available at:
 
-- **GitHub Pages**: `https://tallyhubpro.github.io/Tallyhub`
+- **GitHub Pages**: `https://tallyhubpro.github.io`
 - **Custom Domain**: `https://tallyhub.pro` (if configured)
 
 ## 📝 **GitHub Actions Workflow**
