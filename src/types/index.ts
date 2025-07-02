@@ -25,7 +25,7 @@ export interface MixerConnection {
 export interface TallyDevice {
   id: string;
   name: string;
-  type: 'web' | 'm5stick' | 'hardware';
+  type: 'web' | 'm5stick' | 'hardware' | 'ESP32';
   lastSeen: Date;
   connected: boolean;
   ipAddress?: string;

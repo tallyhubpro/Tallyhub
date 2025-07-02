@@ -37,18 +37,22 @@ unsigned long lastWiFiCheck = 0;
 unsigned long lastUDPRestart = 0;
 unsigned long configModeTimeout = 0;
 const unsigned long HEARTBEAT_INTERVAL = 30000;  // 30 seconds
-const unsigned long WIFI_CHECK_INTERVAL = 10000; // 10 seconds
+const unsigned long WIFI_CHECK_INTERVAL = 5000; // 5 seconds (improved from 10s)
 const unsigned long UDP_RESTART_INTERVAL = 300000; // 5 minutes
 const unsigned long CONFIG_MODE_TIMEOUT = 300000; // 5 minutes
+const unsigned long HUB_TIMEOUT = 60000; // 60 seconds timeout for hub connection (increased from 15s)
+const unsigned long CONNECTION_CHECK_INTERVAL = 2000; // Check connection every 2 seconds
 
 // Tally state
 bool isProgram = false;
 bool isPreview = false;
 bool isConnected = false;
+bool isRegisteredWithHub = false;
 bool isRecording = false;   // Recording status from mixer
 bool isStreaming = false;   // Streaming status from mixer
 String currentSource = "";
 String assignedSource = ""; // The source this device is assigned to
+String assignedSourceName = ""; // The human-readable name of the assigned source
 String customDisplayName = ""; // Custom display name set via web portal
 bool isAssigned = false;    // Whether device has an assignment
 unsigned long lastTallyUpdate = 0;
@@ -56,8 +60,9 @@ unsigned long lastTallyUpdate = 0;
 // Hub connection tracking
 unsigned long lastHubResponse = 0;
 unsigned long hubConnectionAttempts = 0;
-const unsigned long HUB_TIMEOUT = 60000; // 60 seconds timeout
+unsigned long lastReconnectionAttempt = 0;
 const unsigned long MAX_HUB_RECONNECT_ATTEMPTS = 5;
+const unsigned long MIN_RECONNECTION_INTERVAL = 15000; // 15 seconds between attempts
 
 // Assignment confirmation display state
 bool showingAssignmentConfirmation = false;
@@ -173,6 +178,40 @@ void setup() {
   }
 }
 
+// Fast connection monitoring function
+void monitorConnectionStatus() {
+  static unsigned long lastConnectionCheck = 0;
+  
+  if (millis() - lastConnectionCheck > CONNECTION_CHECK_INTERVAL) {
+    // Quick WiFi check
+    if (WiFi.status() != WL_CONNECTED) {
+      if (isConnected) {
+        Serial.println("WiFi disconnected - immediate detection!");
+        isConnected = false;
+        isRegisteredWithHub = false;
+        currentSource = "";
+        // Force immediate display update to show NO WIFI
+        showStatus("NO WIFI", RED);
+      }
+    }
+    
+    // Quick hub connection check
+    if (WiFi.status() == WL_CONNECTED && isRegisteredWithHub) {
+      unsigned long timeSinceLastResponse = millis() - lastHubResponse;
+      if (timeSinceLastResponse > HUB_TIMEOUT && lastHubResponse > 0) {
+        Serial.println("Hub timeout detected in monitor - immediate response!");
+        isConnected = false;
+        isRegisteredWithHub = false;
+        currentSource = "";
+        // Force immediate display update to show HUB LOST
+        showStatus("HUB LOST", RED);
+      }
+    }
+    
+    lastConnectionCheck = millis();
+  }
+}
+
 void loop() {
   M5.update();
   
@@ -181,6 +220,9 @@ void loop() {
     handleConfigMode();
     return;
   }
+  
+  // FAST connection monitoring - every 2 seconds
+  monitorConnectionStatus();
   
   // Handle web server requests when connected to WiFi
   server.handleClient();
@@ -252,6 +294,7 @@ void reconnectWiFi() {
     // Restart UDP and re-register with hub
     restartUDP();
     isConnected = false;
+    isRegisteredWithHub = false;
   } else {
     Serial.println("\nWiFi reconnection failed");
     
@@ -269,7 +312,7 @@ void restartUDP() {
   udp.stop();
   delay(100);
   
-  if (udp.begin(7412)) {
+  if (udp.begin(hub_port + 1)) { // Use consistent port 7413
     Serial.println("UDP restarted successfully");
   } else {
     Serial.println("Failed to restart UDP");
@@ -323,6 +366,7 @@ void connectToWiFi() {
 void checkWiFiConnection() {
   if (WiFi.status() != WL_CONNECTED) {
     isConnected = false;
+    isRegisteredWithHub = false;
     Serial.println("WiFi disconnected, attempting reconnection...");
     
     // Try to reconnect to saved WiFi
@@ -357,7 +401,7 @@ void checkWiFiConnection() {
 }
 
 void registerWithHub() {
-  if (!isConnected) return;
+  if (WiFi.status() != WL_CONNECTED) return;
   
   Serial.println("Registering with Tally Hub...");
   showStatus("Register", BLUE);
@@ -387,7 +431,7 @@ void registerWithHub() {
 }
 
 void sendHeartbeat() {
-  if (!isConnected) return;
+  if (!isRegisteredWithHub) return;
   
   JsonDocument doc;
   doc["type"] = "heartbeat";
@@ -405,38 +449,60 @@ void sendHeartbeat() {
 
 void checkHubConnection() {
   // Only check if we're connected to WiFi and were previously connected to hub
-  if (!isConnected) return;
+  if (!isRegisteredWithHub) return;
   
   unsigned long timeSinceLastResponse = millis() - lastHubResponse;
   
   // If we haven't heard from the hub in HUB_TIMEOUT milliseconds
   if (timeSinceLastResponse > HUB_TIMEOUT) {
+    // Check if enough time has passed since last reconnection attempt
+    if (millis() - lastReconnectionAttempt < MIN_RECONNECTION_INTERVAL) {
+      return; // Not enough time passed, skip this attempt
+    }
+    
     Serial.printf("Hub connection timeout (%lu ms since last response)\n", timeSinceLastResponse);
+    
+    // Immediately mark as not registered to show HUB LOST
+    isRegisteredWithHub = false;
     
     // Don't attempt reconnection too frequently or indefinitely
     if (hubConnectionAttempts < MAX_HUB_RECONNECT_ATTEMPTS) {
       hubConnectionAttempts++;
+      lastReconnectionAttempt = millis();
       Serial.printf("Attempting hub reconnection (attempt %lu/%lu)\n", hubConnectionAttempts, MAX_HUB_RECONNECT_ATTEMPTS);
+      
+      // Show HUB LOST status for a moment before attempting reconnection
+      showingRegistrationStatus = true;
+      registrationStatusStart = millis();
+      registrationStatusMessage = "Hub Lost";
+      registrationStatusColor = RED;
+      
+      // Wait 2 seconds to show HUB LOST status, then attempt reconnection
+      delay(2000);
       
       showingRegistrationStatus = true;
       registrationStatusStart = millis();
       registrationStatusMessage = "Reconnecting...";
       registrationStatusColor = YELLOW;
       
-      // Reset connection state
-      isConnected = false;
-      
-      // Attempt to re-register with the hub
+      // Attempt to re-register with the hub (don't restart UDP unnecessarily)
       delay(1000); // Brief delay before attempting reconnection
       
-      // Re-establish UDP connection
-      udp.begin(hub_port + 1); // Use different port for receiving
-      isConnected = true; // Set connected for registerWithHub to work
-      
       registerWithHub();
-      lastHubResponse = millis(); // Reset timeout for this attempt
+      // Don't reset lastHubResponse here - only reset when we get an actual response
     } else {
-      Serial.println("Max reconnection attempts reached, giving up");
+      Serial.println("Max quick reconnection attempts reached, switching to slow retry mode");
+      
+      // Reset attempt counter every 5 minutes to keep trying
+      static unsigned long lastAttemptReset = 0;
+      if (millis() - lastAttemptReset > 300000) { // 5 minutes
+        Serial.println("Resetting reconnection attempts - continuing to try...");
+        hubConnectionAttempts = 0;
+        lastAttemptReset = millis();
+        return; // Let the next call handle the reconnection
+      }
+      
+      lastReconnectionAttempt = millis();
       
       showingRegistrationStatus = true;
       registrationStatusStart = millis();
@@ -444,6 +510,13 @@ void checkHubConnection() {
       registrationStatusColor = RED;
       
       isConnected = false;
+      isRegisteredWithHub = false;
+      
+      // Continue trying with longer delays
+      delay(10000); // Wait 10 seconds before next attempt
+      Serial.println("Attempting slow reconnection...");
+      registerWithHub();
+      // Don't reset lastHubResponse here - only reset when we get an actual response
     }
   }
 }
@@ -473,7 +546,7 @@ void handleUDPMessages() {
     
     if (messageType == "registered") {
       Serial.println("Registration confirmed by hub");
-      isConnected = true;
+      isRegisteredWithHub = true;
       
       showingRegistrationStatus = true;
       registrationStatusStart = millis();
@@ -482,6 +555,7 @@ void handleUDPMessages() {
     }
     else if (messageType == "heartbeat_ack") {
       Serial.println("Heartbeat acknowledged");
+      hubConnectionAttempts = 0; // Reset reconnection attempts on successful communication
     }
     else if (messageType == "register_required") {
       Serial.println("Hub requesting registration - re-registering...");
@@ -506,6 +580,7 @@ void handleUDPMessages() {
       
       if (mode == "assigned") {
         assignedSource = newAssignedSource;
+        assignedSourceName = sourceName;
         isAssigned = true;
         
         // Only override custom display name if we don't have one set locally
@@ -532,6 +607,7 @@ void handleUDPMessages() {
         currentSource = "";
       } else {
         assignedSource = "";
+        assignedSourceName = "";
         customDisplayName = ""; // Clear custom display name on unassignment
         isAssigned = false;
         saveAssignment();
@@ -754,11 +830,18 @@ void updateDisplay() {
                      (isStreaming != lastStreamingState) ||
                      (currentSource != lastSource);
   
-  if (stateChanged || (millis() - lastDisplayUpdate > 5000)) {
-    if (!WiFi.isConnected()) {
-      showStatus("No WiFi", RED);
-    } else if (!isConnected) {
-      showStatus("Connecting...", BLUE);
+  if (stateChanged || (millis() - lastDisplayUpdate > 3000)) { // Faster updates - 3 seconds
+    if (WiFi.status() != WL_CONNECTED) {
+      showStatus("NO WIFI", RED);
+    } else if (!isRegisteredWithHub) {
+      // Check if we've been trying to connect for a while
+      unsigned long timeSinceLastResponse = millis() - lastHubResponse;
+      if ((timeSinceLastResponse > HUB_TIMEOUT && lastHubResponse > 0) || 
+          (lastHubResponse == 0 && millis() > 30000)) { // Show HUB LOST after 30 seconds if never connected
+        showStatus("HUB LOST", RED); // Clear indication that hub is unreachable
+      } else {
+        showStatus("Connecting...", BLUE);
+      }
     } else if (!isAssigned || assignedSource.length() == 0) {
       showStatus("UNASSIGNED", RED);
     } else if (isProgram) {
@@ -830,6 +913,8 @@ void showTallyState(String state, uint16_t color) {
       displaySource = "Source: " + customDisplayName;
     } else if (currentSource.length() > 0) {
       displaySource = "Source: " + currentSource;
+    } else if (assignedSourceName.length() > 0) {
+      displaySource = "Assigned: " + assignedSourceName;
     } else {
       displaySource = "Assigned: " + cleanSourceName(assignedSource);
     }
@@ -886,12 +971,16 @@ void saveConfiguration() {
 
 void loadAssignment() {
   assignedSource = preferences.getString("assigned_source", "");
+  assignedSourceName = preferences.getString("assigned_source_name", "");
   customDisplayName = preferences.getString("custom_display_name", "");
   isAssigned = preferences.getBool("is_assigned", false);
   
   Serial.println("Assignment loaded:");
   if (isAssigned && assignedSource.length() > 0) {
     Serial.printf("Assigned to: %s\n", assignedSource.c_str());
+    if (assignedSourceName.length() > 0) {
+      Serial.printf("Source name: %s\n", assignedSourceName.c_str());
+    }
     if (customDisplayName.length() > 0) {
       Serial.printf("Custom display name: %s\n", customDisplayName.c_str());
     }
@@ -902,12 +991,16 @@ void loadAssignment() {
 
 void saveAssignment() {
   preferences.putString("assigned_source", assignedSource);
+  preferences.putString("assigned_source_name", assignedSourceName);
   preferences.putString("custom_display_name", customDisplayName);
   preferences.putBool("is_assigned", isAssigned);
   
   Serial.println("Assignment saved:");
   if (isAssigned && assignedSource.length() > 0) {
     Serial.printf("Assigned to: %s\n", assignedSource.c_str());
+    if (assignedSourceName.length() > 0) {
+      Serial.printf("Source name: %s\n", assignedSourceName.c_str());
+    }
     if (customDisplayName.length() > 0) {
       Serial.printf("Custom display name: %s\n", customDisplayName.c_str());
     }
@@ -1241,6 +1334,10 @@ void handleSources() {
       displayName = customDisplayName;
       html += "<p style='margin-top:1rem;font-weight:600;'>Source: " + displayName + "</p>";
       html += "<p style='color:var(--text-secondary);font-size:12px;'>Custom Name (set via web portal)</p>";
+      html += "<p style='color:var(--text-secondary);font-size:14px;'>ID: " + assignedSource + "</p>";
+    } else if (assignedSourceName.length() > 0) {
+      displayName = assignedSourceName;
+      html += "<p style='margin-top:1rem;font-weight:600;'>Source: " + displayName + "</p>";
       html += "<p style='color:var(--text-secondary);font-size:14px;'>ID: " + assignedSource + "</p>";
     } else {
       displayName = cleanSourceName(assignedSource);

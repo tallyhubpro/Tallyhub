@@ -1,16 +1,16 @@
 [
   {
+    "id": "tally-f09e9e1079e8",
+    "name": "ESP32 Tally Light",
+    "type": "ESP32",
+    "ipAddress": "192.168.0.64",
+    "lastSeen": "2025-07-02T12:01:41.979Z"
+  },
+  {
     "id": "m5-tally-01",
     "name": "M5 Tally Light",
     "type": "m5stick",
     "ipAddress": "192.168.0.196",
-    "lastSeen": "2025-07-02T07:03:49.640Z"
-  },
-  {
-    "id": "tally-f09e9e1079e8",
-    "name": "ESP32 Tally Light",
-    "type": "m5stick",
-    "ipAddress": "192.168.0.64",
-    "lastSeen": "2025-07-02T07:03:28.699Z"
+    "lastSeen": "2025-07-02T12:01:29.403Z"
   }
 ]

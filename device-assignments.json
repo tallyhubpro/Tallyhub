@@ -22,10 +22,10 @@
   },
   {
     "deviceId": "m5-tally-01",
-    "sourceId": "obs-scene-Intro Video",
-    "sourceName": "Source obs-scene-Intro Video",
+    "sourceId": "obs-scene-Audience",
+    "sourceName": "Source obs-scene-Audience",
     "assignedBy": "admin",
-    "assignedAt": "2025-07-01T22:20:06.891Z"
+    "assignedAt": "2025-07-02T11:13:41.623Z"
   },
   {
     "deviceId": "web-1750894778141-r5s01nezo",
@@ -50,10 +50,10 @@
   },
   {
     "deviceId": "tally-f09e9e1079e8",
-    "sourceId": "obs-scene-Stage Projector",
-    "sourceName": "Source obs-scene-Stage Projector",
+    "sourceId": "obs-scene-Stage",
+    "sourceName": "Source obs-scene-Stage",
     "assignedBy": "admin",
-    "assignedAt": "2025-07-01T22:20:12.229Z"
+    "assignedAt": "2025-07-02T11:45:38.641Z"
   },
   {
     "deviceId": "web-1751380730111-zzape94cq",

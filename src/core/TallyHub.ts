@@ -317,7 +317,7 @@ export class TallyHub extends EventEmitter {
     this.emit('device:registered', device);
 
     // Save device storage for UDP devices
-    if ((device.type === 'm5stick' || device.type === 'hardware') && device.ipAddress) {
+    if ((device.type === 'm5stick' || device.type === 'ESP32' || device.type === 'hardware') && device.ipAddress) {
       this.scheduleDeviceStorageSave();
     }
 
@@ -341,7 +341,7 @@ export class TallyHub extends EventEmitter {
       this.emit('device:unregistered', device);
       
       // Update stored devices for UDP devices
-      if ((device.type === 'm5stick' || device.type === 'hardware') && device.ipAddress) {
+      if ((device.type === 'm5stick' || device.type === 'ESP32' || device.type === 'hardware') && device.ipAddress) {
         this.scheduleDeviceStorageSave();
       }
     }
@@ -598,8 +598,8 @@ export class TallyHub extends EventEmitter {
 
     console.log(`✅ Assigned source "${availableSource.name}" to device "${device.name}"`);
     
-    // Send assignment notification to M5 devices
-    if (device.type === 'm5stick' && this.udpServer) {
+    // Send assignment notification to UDP devices (M5Stick and ESP32)
+    if ((device.type === 'm5stick' || device.type === 'ESP32') && this.udpServer) {
       this.udpServer.sendAssignmentToDevice(deviceId, sourceId, availableSource.name);
     }
     
@@ -633,12 +633,12 @@ export class TallyHub extends EventEmitter {
     device.assignedBy = undefined;
     device.assignedAt = undefined;
 
-    if (device.type === 'm5stick') {
-      // M5 devices remain in assigned mode but with no assignment
+    if (device.type === 'm5stick' || device.type === 'ESP32') {
+      // UDP devices remain in assigned mode but with no assignment
       device.assignmentMode = 'assigned';
-      console.log(`✅ M5 device "${device.name}" unassigned - waiting for new assignment`);
+      console.log(`✅ Device "${device.name}" unassigned - waiting for new assignment`);
       
-      // Send unassignment notification to M5 device
+      // Send unassignment notification to UDP device
       if (this.udpServer) {
         this.udpServer.sendUnassignmentToDevice(deviceId);
       }
@@ -703,7 +703,7 @@ export class TallyHub extends EventEmitter {
         type: 'tally:update',
         data: tallyState
       });
-    } else if (device.type === 'm5stick' && this.udpServer) {
+    } else if ((device.type === 'm5stick' || device.type === 'ESP32') && this.udpServer) {
       this.udpServer.sendToDevice(deviceId, {
         type: 'tally',
         data: tallyState
@@ -726,7 +726,7 @@ export class TallyHub extends EventEmitter {
           type: 'tally:update',
           data: tallyState
         });
-      } else if (device.type === 'm5stick' && this.udpServer) {
+      } else if ((device.type === 'm5stick' || device.type === 'ESP32') && this.udpServer) {
         this.udpServer.sendToDevice(deviceId, {
           type: 'tally',
           data: tallyState
@@ -785,8 +785,8 @@ export class TallyHub extends EventEmitter {
       });
     }
 
-    // Send to UDP devices (M5Stick)
-    if ((device.type === 'm5stick' || device.type === 'hardware') && this.udpServer) {
+    // Send to UDP devices (M5Stick and ESP32)
+    if ((device.type === 'm5stick' || device.type === 'ESP32' || device.type === 'hardware') && this.udpServer) {
       this.emit('device:notify', { 
         device, 
         tallyState: { 
@@ -847,7 +847,7 @@ export class TallyHub extends EventEmitter {
   private saveStoredDevices(): void {
     try {
       const devicesToStore = Array.from(this.devices.values())
-        .filter(device => device.type === 'm5stick' || device.type === 'hardware')
+        .filter(device => device.type === 'm5stick' || device.type === 'ESP32' || device.type === 'hardware')
         .filter(device => device.ipAddress) // Only store devices with known IP addresses
         .map(device => ({
           id: device.id,
@@ -875,7 +875,7 @@ export class TallyHub extends EventEmitter {
       const storedDevices: TallyDevice[] = JSON.parse(data);
       
       const udpDevices = storedDevices.filter(device => 
-        (device.type === 'm5stick' || device.type === 'hardware') && device.ipAddress
+        (device.type === 'm5stick' || device.type === 'ESP32' || device.type === 'hardware') && device.ipAddress
       );
 
       if (udpDevices.length === 0) {
@@ -1000,7 +1000,7 @@ export class TallyHub extends EventEmitter {
     // Save device storage every 5 minutes to capture any changes
     this.periodicSaveInterval = setInterval(() => {
       const udpDeviceCount = Array.from(this.devices.values())
-        .filter(device => (device.type === 'm5stick' || device.type === 'hardware') && device.ipAddress)
+        .filter(device => (device.type === 'm5stick' || device.type === 'ESP32' || device.type === 'hardware') && device.ipAddress)
         .length;
       
       if (udpDeviceCount > 0) {

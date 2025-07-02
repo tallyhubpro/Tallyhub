@@ -26,19 +26,18 @@
 
         .header {
             text-align: center;
-            margin-bottom: 2rem;
+            margin-bottom: 3rem;
         }
 
-        h1 {
+        .header h1 {
             font-size: 2.5rem;
             margin-bottom: 0.5rem;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
         }
 
-        .subtitle {
+        .header p {
             font-size: 1.1rem;
             opacity: 0.9;
-            margin-bottom: 1rem;
         }
 
         .back-button {
@@ -59,130 +58,150 @@
             transform: translateY(-1px);
         }
 
-        .flasher-panel {
+        .card {
             background: rgba(255, 255, 255, 0.1);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
             padding: 2rem;
-            backdrop-filter: blur(10px);
+            margin-bottom: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .device-selector {
             margin-bottom: 2rem;
         }
 
-        .warning {
-            background: rgba(255, 193, 7, 0.2);
-            border: 2px solid rgba(255, 193, 7, 0.5);
-            border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 2rem;
-            text-align: center;
-            font-weight: 500;
+        .device-selector h3 {
+            margin-bottom: 1rem;
+            color: #fff;
+            font-size: 1.5rem;
         }
 
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-        }
-
-        select {
-            width: 100%;
-            padding: 0.75rem;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            font-size: 1rem;
-            backdrop-filter: blur(10px);
-        }
-
-        select option {
-            background: #4a5568;
-            color: white;
-        }
-
-        .firmware-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 2rem;
-        }
-
-        .firmware-table th,
-        .firmware-table td {
-            padding: 1rem;
-            text-align: left;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .firmware-table th {
-            background: rgba(255, 255, 255, 0.1);
-            font-weight: 600;
-        }
-
-        .controls {
-            display: flex;
+        .device-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 1rem;
-            margin-bottom: 2rem;
-            flex-wrap: wrap;
         }
 
-        button {
-            padding: 0.75rem 1.5rem;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
+        .device-option {
             background: rgba(255, 255, 255, 0.1);
-            color: white;
-            font-size: 1rem;
-            font-weight: 500;
+            border: 2px solid transparent;
+            border-radius: 10px;
+            padding: 1.5rem;
             cursor: pointer;
             transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-            flex: 1;
-            min-width: 120px;
+            text-align: center;
         }
 
-        button:hover:not(:disabled) {
+        .device-option:hover {
             background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-1px);
+            transform: translateY(-2px);
         }
 
-        button:disabled {
-            opacity: 0.5;
+        .device-option.selected {
+            border-color: #4CAF50;
+            background: rgba(76, 175, 80, 0.2);
+        }
+
+        .device-option h4 {
+            margin-bottom: 0.5rem;
+            font-size: 1.2rem;
+        }
+
+        .device-option p {
+            opacity: 0.8;
+            font-size: 0.9rem;
+        }
+        .connection-instructions {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            display: none;
+        }
+
+        .connection-instructions h4 {
+            color: #FFC107;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .connection-instructions ol {
+            margin-left: 1.5rem;
+        }
+
+        .connection-instructions li {
+            margin-bottom: 0.5rem;
+            line-height: 1.5;
+        }
+
+        .firmware-info {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+            display: none;
+        }
+
+        .firmware-info h4 {
+            margin-bottom: 0.5rem;
+            color: #4CAF50;
+        }
+
+        .flash-section {
+            text-align: center;
+            margin-top: 2rem;
+        }
+
+        .flash-button {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+            margin: 1rem 0;
+            min-width: 200px;
+        }
+
+        .flash-button:hover:not(:disabled) {
+            background: linear-gradient(45deg, #45a049, #4CAF50);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
+
+        .flash-button:disabled {
+            background: #666;
             cursor: not-allowed;
-        }
-
-        .connect-btn {
-            background: rgba(40, 167, 69, 0.3);
-            border-color: rgba(40, 167, 69, 0.5);
-        }
-
-        .flash-btn {
-            background: rgba(220, 53, 69, 0.3);
-            border-color: rgba(220, 53, 69, 0.5);
+            box-shadow: none;
+            opacity: 0.6;
         }
 
         .progress-container {
-            margin-bottom: 2rem;
+            margin: 1rem 0;
+            display: none;
         }
 
         .progress-bar {
-            width: 100%;
-            height: 20px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 10px;
             background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            height: 20px;
+            margin: 1rem 0;
             overflow: hidden;
         }
 
         .progress-fill {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
             height: 100%;
-            background: linear-gradient(90deg, #4CAF50, #45a049);
             width: 0%;
             transition: width 0.3s ease;
-            border-radius: 8px;
+            border-radius: 10px;
         }
 
         .progress-text {
@@ -191,42 +210,62 @@
             font-weight: 500;
         }
 
-        .log-area {
-            background: rgba(0, 0, 0, 0.3);
-            border: 2px solid rgba(255, 255, 255, 0.3);
+        .status {
+            margin: 1rem 0;
+            padding: 1rem;
+            border-radius: 8px;
+            font-weight: 500;
+            display: none;
+        }
+
+        .status.info {
+            background: rgba(33, 150, 243, 0.2);
+            border: 1px solid rgba(33, 150, 243, 0.3);
+            color: #2196F3;
+        }
+
+        .status.success {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            color: #4CAF50;
+        }
+
+        .status.error {
+            background: rgba(244, 67, 54, 0.2);
+            border: 1px solid rgba(244, 67, 54, 0.3);
+            color: #f44336;
+        }
+
+        .status.warning {
+            background: rgba(255, 193, 7, 0.2);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            color: #FFC107;
+        }
+
+        .note {
+            background: rgba(33, 150, 243, 0.1);
+            border: 1px solid rgba(33, 150, 243, 0.3);
             border-radius: 8px;
             padding: 1rem;
-            min-height: 200px;
-            max-height: 300px;
-            overflow-y: auto;
-            font-family: 'Monaco', 'Consolas', monospace;
-            font-size: 0.9rem;
-            line-height: 1.4;
+            margin: 1rem 0;
         }
 
-        .log-line {
-            margin-bottom: 0.25rem;
-        }
-
-        .log-error {
-            color: #ff6b6b;
-        }
-
-        .log-success {
-            color: #51cf66;
-        }
-
-        .log-info {
-            color: #74c0fc;
+        .note h4 {
+            color: #2196F3;
+            margin-bottom: 0.5rem;
         }
 
         @media (max-width: 768px) {
-            .controls {
-                flex-direction: column;
+            .device-grid {
+                grid-template-columns: 1fr;
             }
             
-            button {
-                min-width: 100%;
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            body {
+                padding: 1rem;
             }
         }
     </style>
@@ -235,71 +274,58 @@
     <div class="container">
         <div class="header">
             <a href="/" class="back-button">← Back to Hub</a>
-            <h1>ESP32 Flasher</h1>
-            <p class="subtitle">Flash firmware to M5Stick and ESP32 devices</p>
+            <h1>🔧 ESP32 Firmware Flasher</h1>
+            <p>Flash Tally Hub firmware to your ESP32 devices using your web browser</p>
         </div>
 
-        <div class="flasher-panel">
-            <div class="warning">
-                ⚠️ <strong>Warning:</strong> Flashing will completely erase your device. Make sure you have the correct device selected.
-            </div>
-
-            <div class="form-group">
-                <label for="deviceType">Device Type:</label>
-                <select id="deviceType">
-                    <option value="ESP32-1732S019">ESP32-1732S019</option>
-                    <option value="M5Stick_Tally">M5Stick CPlus 1.1</option>
-                </select>
-            </div>
-
-            <div id="firmwareInfo" class="firmware-info">
-                <table class="firmware-table">
-                    <thead>
-                        <tr>
-                            <th>File</th>
-                            <th>Offset</th>
-                            <th>Size</th>
-                            <th>Description</th>
-                        </tr>
-                    </thead>
-                    <tbody id="firmwareTableBody">
-                        <!-- Populated dynamically by JavaScript -->
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="device-instructions" id="deviceInstructions" style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px; margin: 1rem 0; display: none;">
-                <h4 style="margin: 0 0 0.5rem 0; color: #FFD700;">📋 Connection Instructions</h4>
-                <div id="instructionText"></div>
-            </div>
-
-            <div class="troubleshooting-guide" id="troubleshootingGuide" style="background: rgba(255,165,0,0.1); border: 1px solid rgba(255,165,0,0.3); padding: 1rem; border-radius: 8px; margin: 1rem 0; display: none;">
-                <h4 style="margin: 0 0 0.5rem 0; color: #FFA500;">⚠️ Connection Issues?</h4>
-                <div style="font-size: 14px; line-height: 1.4;">
-                    <strong>For M5Stick CPlus 1.1 devices:</strong><br>
-                    • Hold RESET button → Click "Retry Connection" → Release RESET<br>
-                    • Try different USB ports<br>
-                    • Ensure screen is on (device is powered)<br>
-                    • Use original or high-quality USB-C cable<br>
-                    • Some M5Stick devices need multiple connection attempts
+        <div class="card">
+            <div class="device-selector">
+                <h3>📱 Select Your Device Type</h3>
+                <div class="device-grid">
+                    <div class="device-option" onclick="selectDevice('ESP32-1732S019')">
+                        <h4>ESP32-1732S019</h4>
+                        <p>1.9" Display • Touch Screen • Budget-friendly</p>
+                    </div>
+                    <div class="device-option" onclick="selectDevice('M5Stick_Tally')">
+                        <h4>M5Stick C Plus 1.1</h4>
+                        <p>1.14" Display • Buttons • Premium Build</p>
+                    </div>
                 </div>
             </div>
 
-            <div class="controls">
-                <button id="connectBtn" class="connect-btn">Connect Device</button>
-                <button id="retryBtn" class="connect-btn" style="display: none; background: #ff6b35;">Retry Connection</button>
-                <button id="flashBtn" class="flash-btn" disabled>Flash Firmware</button>
+            <div id="connectionInstructions" class="connection-instructions">
+                <h4>🔌 Connection Instructions</h4>
+                <ol id="instructionsList">
+                    <!-- Instructions will be populated by JavaScript -->
+                </ol>
             </div>
 
-            <div class="progress-container" style="display: none;" id="progressContainer">
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progressFill"></div>
+            <div class="firmware-info" id="firmwareInfo">
+                <h4>📦 Firmware Information</h4>
+                <p><strong>Device:</strong> <span id="selectedDeviceName">None</span></p>
+                <p><strong>Firmware File:</strong> <span id="firmwareFile">firmware-merged.bin</span></p>
+                <p><strong>Flash Address:</strong> 0x0000 (Complete firmware)</p>
+                <p><strong>Size:</strong> <span id="firmwareSize">~1MB</span></p>
+            </div>
+
+            <div class="flash-section">
+                <button id="flashButton" class="flash-button" onclick="flashFirmware()" disabled>
+                    📲 Flash Firmware
+                </button>
+                
+                <div class="progress-container" id="progressContainer">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text" id="progressText">0%</div>
                 </div>
-                <div class="progress-text" id="progressText">0%</div>
+                
+                <div id="status" class="status"></div>
             </div>
 
-            <div class="log-area" id="logArea">
-                <div class="log-line log-info">Ready to flash. Select your device and click Connect.</div>
+            <div class="note">
+                <h4>💡 Browser Requirements</h4>
+                <p>This flasher requires a Chromium-based browser (Chrome, Edge, Opera) with Web Serial API support. Make sure your device is connected via USB and the appropriate drivers are installed.</p>
             </div>
         </div>
     </div>
@@ -307,670 +333,213 @@
     <script type="module">
         import { ESPLoader, Transport } from 'https://unpkg.com/esptool-js@0.4.6/bundle.js';
 
-        const deviceTypeSelect = document.getElementById('deviceType');
-        const connectBtn = document.getElementById('connectBtn');
-        const retryBtn = document.getElementById('retryBtn');
-        const flashBtn = document.getElementById('flashBtn');
-        const progressContainer = document.getElementById('progressContainer');
-        const progressFill = document.getElementById('progressFill');
-        const progressText = document.getElementById('progressText');
-        const logArea = document.getElementById('logArea');
-
+        let selectedDevice = null;
         let esploader = null;
         let transport = null;
-        let isConnected = false;
 
-        const FIRMWARE_CONFIG = {
+        // Device configurations - simplified to single file only
+        const deviceConfigs = {
             'ESP32-1732S019': {
-                files: [
-                    { name: 'bootloader.bin', offset: 0x0000 },   // ESP32-S3 bootloader at 0x0000 (differs from ESP32)
-                    { name: 'partitions.bin', offset: 0x8000 },   // Partition table at 0x8000 (32KB)
-                    { name: 'firmware.bin', offset: 0x10000 }     // Application at 0x10000 (64KB)
-                ],
-                flashSize: "8MB",   // ESP32-S3 with 8MB flash (corrected)
-                flashMode: "dio",   // DIO mode for ESP32-S3
-                flashFreq: "80m"    // 80MHz flash frequency
+                name: 'ESP32-1732S019',
+                firmware: '/firmware/ESP32-1732S019/firmware-merged.bin',
+                chip: 'esp32',
+                flashSize: '8MB',
+                instructions: [
+                    'Connect your ESP32-1732S019 to your computer via USB-C cable',
+                    'Hold the BOOT button while clicking "Flash Firmware"',
+                    'Release the BOOT button when flashing starts',
+                    'Wait for the process to complete (~2 minutes)'
+                ]
             },
             'M5Stick_Tally': {
-                files: [
-                    { name: 'bootloader.bin', offset: 0x1000 },  // ESP32 bootloader at 0x1000 (4KB)
-                    { name: 'partitions.bin', offset: 0x8000 },   // Partition table at 0x8000 (32KB)
-                    { name: 'firmware.bin', offset: 0x10000 }     // Application at 0x10000 (64KB)
-                ],
-                flashSize: "4MB",   // M5StickC Plus has 4MB flash
-                flashMode: "dio",   // DIO mode for M5Stick
-                flashFreq: "80m"    // 80MHz flash frequency
+                name: 'M5Stick C Plus 1.1',
+                firmware: '/firmware/M5Stick_Tally/firmware-merged.bin',
+                chip: 'esp32',
+                flashSize: '4MB',
+                instructions: [
+                    'Connect your M5Stick C Plus to your computer via USB-C cable',
+                    'Turn on the device by pressing the power button (if needed)',
+                    'Hold the HOME button (M5 button) while clicking "Flash Firmware"',
+                    'Release the HOME button when flashing starts',
+                    'Wait for the process to complete (~2 minutes)'
+                ]
             }
         };
 
-        function addLog(message, type = 'info') {
-            const logLine = document.createElement('div');
-            logLine.className = `log-line log-${type}`;
-            logLine.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-            logArea.appendChild(logLine);
-            logArea.scrollTop = logArea.scrollHeight;
+        window.selectDevice = function(deviceType) {
+            // Remove selection from all devices
+            document.querySelectorAll('.device-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            // Select the clicked device
+            event.target.closest('.device-option').classList.add('selected');
+            
+            selectedDevice = deviceType;
+            const config = deviceConfigs[deviceType];
+            
+            // Update device name and firmware info
+            document.getElementById('selectedDeviceName').textContent = config.name;
+            document.getElementById('firmwareInfo').style.display = 'block';
+            
+            // Update connection instructions
+            const instructionsList = document.getElementById('instructionsList');
+            instructionsList.innerHTML = '';
+            config.instructions.forEach(instruction => {
+                const li = document.createElement('li');
+                li.textContent = instruction;
+                instructionsList.appendChild(li);
+            });
+            document.getElementById('connectionInstructions').style.display = 'block';
+            
+            // Enable flash button
+            document.getElementById('flashButton').disabled = false;
+            
+            showStatus('Device selected: ' + config.name + '. Ready to flash!', 'info');
+        };
+
+        function showStatus(message, type) {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+            statusEl.style.display = 'block';
         }
 
         function updateProgress(percent) {
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const progressContainer = document.getElementById('progressContainer');
+            
+            progressContainer.style.display = 'block';
             progressFill.style.width = `${percent}%`;
             progressText.textContent = `${Math.round(percent)}%`;
         }
 
-        async function connectDevice() {
-            try {
-                addLog('Requesting serial port access...', 'info');
-                
-                if (!navigator.serial) {
-                    throw new Error('Web Serial API not supported. Please use Chrome, Edge, or Opera.');
-                }
-
-                const port = await navigator.serial.requestPort();
-                transport = new Transport(port, true);
-                
-                addLog('Connecting to device...', 'info');
-                
-                // Use standard connection settings for both devices
-                const deviceType = deviceTypeSelect.value;
-                let baudrate = 115200; // Standard baud rate for reliability
-                let resetMethod = 'default';
-                
-                if (deviceType === 'M5Stick_Tally') {
-                    addLog('Using M5Stick CPlus 1.1 optimized connection settings...', 'info');
-                    // M5Stick devices work better with standard settings
-                    resetMethod = 'no_reset'; // Try without reset first
-                }
-                
-                addLog(`Attempting connection at ${baudrate} baud...`, 'info');
-                
-                esploader = new ESPLoader({
-                    transport: transport,
-                    baudrate: baudrate,
-                    romBaudrate: 115200, // Always start ROM at 115200
-                    resetmethod: resetMethod,
-                    terminal: {
-                        clean: () => {},
-                        writeLine: (data) => addLog(data, 'info'),
-                        write: (data) => addLog(data, 'info')
-                    }
-                });
-
-                try {
-                    const chip = await esploader.main();
-                    addLog(`Connected to ${chip}`, 'success');
-                    
-                    isConnected = true;
-                    connectBtn.textContent = 'Connected';
-                    connectBtn.disabled = true;
-                    flashBtn.disabled = false;
-                    
-                } catch (resetError) {
-                    if (deviceType === 'M5Stick_Tally' && resetError.message.includes('reset sequence')) {
-                        addLog('Reset sequence failed, trying manual reset method...', 'info');
-                        addLog('Please hold the RESET button on your M5Stick and try again', 'info');
-                        
-                        // Try with a different reset approach
-                        esploader = new ESPLoader({
-                            transport: transport,
-                            baudrate: 115200,
-                            romBaudrate: 115200,
-                            resetmethod: 'hard_reset',
-                            terminal: {
-                                clean: () => {},
-                                writeLine: (data) => addLog(data, 'info'),
-                                write: (data) => addLog(data, 'info')
-                            }
-                        });
-                        
-                        const chip = await esploader.main();
-                        addLog(`Connected to ${chip} using hard reset`, 'success');
-                        
-                        isConnected = true;
-                        connectBtn.textContent = 'Connected';
-                        connectBtn.disabled = true;
-                        flashBtn.disabled = false;
-                    } else {
-                        throw resetError;
-                    }
-                }
-                
-            } catch (error) {
-                addLog(`Connection failed: ${error.message}`, 'error');
-                
-                // Provide specific troubleshooting for M5Stick devices
-                if (deviceTypeSelect.value === 'M5Stick_Tally') {
-                    addLog('M5Stick CPlus 1.1 troubleshooting:', 'info');
-                    addLog('1. Hold the RESET button while connecting', 'info');
-                    addLog('2. Try holding RESET + POWER button for 2 seconds', 'info');
-                    addLog('3. Make sure the device is powered on (screen should be lit)', 'info');
-                    addLog('4. Try a different USB cable', 'info');
-                    addLog('5. Press the reset button and immediately click Retry', 'info');
-                }
-                
-                isConnected = false;
-                showRetryOption(); // Show retry button instead of immediately resetting
-            }
-        }
-
-        async function flashFirmware() {
-            if (!isConnected) {
-                addLog('No device connected', 'error');
+        window.flashFirmware = async function() {
+            if (!selectedDevice) {
+                showStatus('Please select a device type first', 'error');
                 return;
             }
 
+            if (!navigator.serial) {
+                showStatus('Web Serial API not supported. Please use Chrome, Edge, or Opera browser.', 'error');
+                return;
+            }
+
+            const config = deviceConfigs[selectedDevice];
+            const flashButton = document.getElementById('flashButton');
+            
             try {
-                flashBtn.disabled = true;
-                connectBtn.disabled = true;
-                progressContainer.style.display = 'block';
+                // Disable button during flashing
+                flashButton.disabled = true;
+                flashButton.textContent = '🔄 Connecting...';
                 
-                const deviceType = deviceTypeSelect.value;
-                const config = FIRMWARE_CONFIG[deviceType];
+                showStatus('Requesting device connection...', 'info');
                 
-                addLog(`Starting flash process for ${deviceType}...`, 'info');
-                addLog(`Using firmware path: /firmware/${deviceType}/`, 'info');
-                addLog(`Flash layout configuration:`, 'info');
-                config.files.forEach(file => {
-                    addLog(`  ${file.name} → 0x${file.offset.toString(16).toUpperCase()}`, 'info');
+                // Request port access
+                const port = await navigator.serial.requestPort();
+                transport = new Transport(port, true);
+                
+                showStatus('Connecting to device...', 'info');
+                
+                // Create ESP loader
+                esploader = new ESPLoader({
+                    transport: transport,
+                    baudrate: 115200,
+                    romBaudrate: 115200,
+                    terminal: {
+                        clean: () => {},
+                        writeLine: (data) => console.log(data),
+                        write: (data) => console.log(data)
+                    }
                 });
-                addLog(`Flash settings: ${config.flashSize}, ${config.flashMode}, ${config.flashFreq}`, 'info');
-                updateProgress(0);
 
-                // For M5Stick, perform chip erase first to prevent bricking
-                if (deviceType === 'M5Stick_Tally') {
-                    addLog('Performing chip erase for M5Stick CPlus 1.1 (prevents bricking)...', 'info');
-                    try {
-                        await esploader.eraseFlash();
-                        addLog('Chip erase completed successfully', 'success');
-                    } catch (eraseError) {
-                        addLog(`Warning: Chip erase failed: ${eraseError.message}`, 'error');
-                        addLog('Continuing with flash operation...', 'info');
-                    }
-                }
+                // Connect to chip
+                const chip = await esploader.main();
+                showStatus(`Connected to ${chip}. Downloading firmware...`, 'info');
+                updateProgress(10);
 
-                // Download firmware files
-                addLog('Downloading firmware files...', 'info');
-                const fileArray = [];
-                
-                for (let i = 0; i < config.files.length; i++) {
-                    const file = config.files[i];
-                    // Add cache-busting timestamp to ensure fresh firmware files
-                    const url = `/firmware/${deviceType}/${file.name}?t=${Date.now()}`;
-                    
-                    addLog(`Downloading ${file.name} from ${url}...`, 'info');
-                    
-                    try {
-                        const response = await fetch(url);
-                        if (!response.ok) {
-                            throw new Error(`Failed to download ${file.name}: ${response.status}`);
-                        }
-                        
-                        const arrayBuffer = await response.arrayBuffer();
-                        // Convert ArrayBuffer to binary string (required by esptool-js)
-                        const uint8Array = new Uint8Array(arrayBuffer);
-                        const binaryString = Array.from(uint8Array, byte => String.fromCharCode(byte)).join('');
-                        
-                        fileArray.push({
-                            data: binaryString,  // Must be string, not ArrayBuffer
-                            address: file.offset
-                        });
-                        
-                        addLog(`Downloaded ${file.name} (${arrayBuffer.byteLength} bytes) to offset 0x${file.offset.toString(16).toUpperCase()}`, 'success');
-                        updateProgress((i + 1) / config.files.length * 30);
-                        
-                    } catch (error) {
-                        throw new Error(`Failed to download ${file.name}: ${error.message}`);
-                    }
-                }
-
-                // Flash the files using the correct API according to documentation
-                addLog('Starting flash operation...', 'info');
-                addLog(`Using flash settings: ${config.flashSize}, ${config.flashMode}, ${config.flashFreq}`, 'info');
-                
-                // For M5Stick, do a chip erase first to prevent bricking
-                if (deviceType === 'M5Stick_Tally') {
-                    addLog('Performing chip erase for M5Stick (prevents bricking)...', 'info');
-                    try {
-                        await esploader.eraseFlash();
-                        addLog('Chip erase completed successfully', 'success');
-                    } catch (eraseError) {
-                        addLog(`Chip erase failed: ${eraseError.message}`, 'error');
-                        addLog('Continuing with flash operation...', 'info');
-                    }
+                // Download firmware
+                flashButton.textContent = '⬇️ Downloading...';
+                const response = await fetch(config.firmware + '?t=' + Date.now());
+                if (!response.ok) {
+                    throw new Error(`Failed to download firmware: ${response.status}`);
                 }
                 
-                // Log device-specific flash layout
-                const bootloaderOffset = config.files.find(f => f.name === 'bootloader.bin').offset;
-                const partitionsOffset = config.files.find(f => f.name === 'partitions.bin').offset;
-                const firmwareOffset = config.files.find(f => f.name === 'firmware.bin').offset;
-                addLog(`Flash layout: Bootloader@0x${bootloaderOffset.toString(16).toUpperCase().padStart(4, '0')}, Partitions@0x${partitionsOffset.toString(16).toUpperCase()}, Firmware@0x${firmwareOffset.toString(16).toUpperCase()}`, 'info');
+                const firmwareData = await response.arrayBuffer();
+                const firmwareSize = (firmwareData.byteLength / 1024).toFixed(1);
+                document.getElementById('firmwareSize').textContent = `${firmwareSize} KB`;
+                
+                showStatus(`Firmware downloaded (${firmwareSize} KB). Starting flash...`, 'info');
                 updateProgress(30);
 
-                // Use the writeFlash method with device-specific FlashOptions
+                // Convert to binary string for esptool-js
+                const uint8Array = new Uint8Array(firmwareData);
+                const binaryString = Array.from(uint8Array, byte => String.fromCharCode(byte)).join('');
+
+                flashButton.textContent = '⚡ Flashing...';
+                showStatus('Flashing firmware... Please do not disconnect the device.', 'warning');
+
+                // Flash the firmware
                 await esploader.writeFlash({
-                    fileArray: fileArray,
+                    fileArray: [{
+                        data: binaryString,
+                        address: 0x0
+                    }],
                     flashSize: config.flashSize,
-                    flashMode: config.flashMode, 
-                    flashFreq: config.flashFreq,
+                    flashMode: 'dio',
+                    flashFreq: '80m',
                     eraseAll: false,
                     compress: true,
                     reportProgress: (fileIndex, written, total) => {
-                        const fileProgress = (written / total) * 100;
-                        const totalProgress = 30 + (fileIndex / fileArray.length * 60) + (fileProgress / fileArray.length * 0.6);
-                        updateProgress(Math.min(totalProgress, 95));
+                        const progress = 30 + (written / total) * 65; // 30-95%
+                        updateProgress(progress);
                         
                         if (written === total) {
-                            addLog(`Completed flashing ${config.files[fileIndex].name}`, 'success');
+                            updateProgress(100);
+                            showStatus('Firmware flashed successfully! 🎉', 'success');
                         }
                     }
                 });
 
-                updateProgress(100);
-                addLog('Firmware flashed successfully!', 'success');
+                // Success!
+                flashButton.textContent = '✅ Flash Complete';
+                showStatus(`✅ Firmware flashed successfully! You can now disconnect your ${config.name} and restart it.`, 'success');
                 
-                // Verify flash for M5Stick devices
-                if (deviceType === 'M5Stick_Tally') {
-                    addLog('Verifying flash integrity...', 'info');
-                    try {
-                        // Read back a small portion to verify flash worked
-                        const verifyData = await esploader.readFlash(0x0, 1024);
-                        if (verifyData && verifyData.length > 0) {
-                            addLog('Flash verification successful!', 'success');
-                        } else {
-                            addLog('Flash verification failed - device may be bricked', 'error');
-                        }
-                    } catch (verifyError) {
-                        addLog(`Flash verification failed: ${verifyError.message}`, 'error');
-                    }
-                }
-                
-                // Add specific post-flash instructions for M5Stick
-                if (deviceType === 'M5Stick_Tally') {
-                    addLog('M5Stick CPlus 1.1 Post-Flash Instructions:', 'info');
-                    addLog('1. Disconnect the USB cable', 'info');
-                    addLog('2. Wait 5 seconds', 'info');
-                    addLog('3. Press and hold the POWER button for 6 seconds to restart', 'info');
-                    addLog('4. The device should boot with new firmware', 'info');
-                    addLog('5. If screen stays black, try pressing RESET button', 'info');
-                } else {
-                    addLog('You can now disconnect your device and restart it.', 'info');
+                // Add device-specific post-flash instructions
+                if (selectedDevice === 'M5Stick_Tally') {
+                    setTimeout(() => {
+                        showStatus('📋 M5Stick Instructions: Disconnect USB, wait 5 seconds, then hold POWER button for 6 seconds to restart.', 'info');
+                    }, 3000);
                 }
 
             } catch (error) {
-                addLog(`Flash failed: ${error.message}`, 'error');
+                console.error('Flash error:', error);
+                showStatus(`Flash failed: ${error.message}`, 'error');
+                flashButton.textContent = '❌ Flash Failed';
                 updateProgress(0);
             } finally {
-                flashBtn.disabled = false;
-                connectBtn.disabled = false;
-                flashBtn.textContent = 'Flash Firmware';
-            }
-        }
-
-        function resetConnection() {
-            if (transport) {
-                transport.disconnect();
-            }
-            isConnected = false;
-            connectBtn.textContent = 'Connect Device';
-            connectBtn.disabled = false;
-            connectBtn.style.display = 'inline-block';
-            retryBtn.style.display = 'none';
-            flashBtn.disabled = true;
-            progressContainer.style.display = 'none';
-            updateProgress(0);
-            
-            // Hide troubleshooting guide
-            const troubleshootingGuide = document.getElementById('troubleshootingGuide');
-            troubleshootingGuide.style.display = 'none';
-        }
-
-        function showRetryOption() {
-            connectBtn.style.display = 'none';
-            retryBtn.style.display = 'inline-block';
-            retryBtn.disabled = false;
-            
-            // Show troubleshooting guide for connection issues
-            const troubleshootingGuide = document.getElementById('troubleshootingGuide');
-            if (deviceTypeSelect.value === 'M5Stick_Tally') {
-                troubleshootingGuide.style.display = 'block';
-            }
-        }
-
-        // Update the firmware table to show which files will be used
-        function updateFirmwareTable() {
-            const deviceType = deviceTypeSelect.value;
-            const instructionsDiv = document.getElementById('deviceInstructions');
-            const instructionText = document.getElementById('instructionText');
-            
-            // Update the table title to show device type
-            const tableTitle = document.querySelector('.firmware-table caption') || 
-                              document.createElement('caption');
-            if (!document.querySelector('.firmware-table caption')) {
-                tableTitle.style.captionSide = 'top';
-                tableTitle.style.fontWeight = 'bold';
-                tableTitle.style.marginBottom = '10px';
-                tableTitle.style.color = 'white';
-                document.getElementById('firmwareInfo').querySelector('.firmware-table').appendChild(tableTitle);
-            }
-            tableTitle.textContent = `Firmware Files for ${deviceType}`;
-            
-            // Update firmware info with file sizes
-            updateFirmwareInfo();
-            
-            // Show device-specific instructions
-            if (deviceType === 'M5Stick_Tally') {
-                instructionsDiv.style.display = 'block';
-                instructionText.innerHTML = `
-                    <strong>M5Stick CPlus 1.1 Connection Steps:</strong><br>
-                    1. Connect your M5Stick CPlus to USB<br>
-                    2. Make sure the screen is ON (press power button if needed)<br>
-                    3. If connection fails, hold the RESET button and click Connect<br>
-                    4. For stubborn devices: Hold RESET + POWER for 2 seconds, then try again<br>
-                    5. Use a high-quality USB cable (data transfer capable)
-                `;
-            } else {
-                instructionsDiv.style.display = 'block';
-                instructionText.innerHTML = `
-                    <strong>ESP32-1732S019 Connection Steps:</strong><br>
-                    1. Connect your ESP32-1732S019 device to USB<br>
-                    2. The device should auto-detect and enter flash mode<br>
-                    3. If connection fails, try holding the BOOT button while clicking Connect<br>
-                    4. Use a high-quality USB cable (data transfer capable)
-                `;
-            }
-            
-            addLog(`Selected device: ${deviceType}`, 'info');
-            addLog(`Will use firmware from: /firmware/${deviceType}/`, 'info');
-        }
-
-        // Fetch firmware file info and update display
-        async function updateFirmwareInfo() {
-            const deviceType = deviceTypeSelect.value;
-            const config = FIRMWARE_CONFIG[deviceType];
-            const tbody = document.getElementById('firmwareTableBody');
-            
-            addLog(`Fetching firmware info for ${deviceType}...`, 'info');
-            
-            // Clear existing table
-            tbody.innerHTML = '';
-            
-            for (const file of config.files) {
-                const row = document.createElement('tr');
-                
-                try {
-                    // Fetch file size
-                    const response = await fetch(`/firmware/${deviceType}/${file.name}`, { method: 'HEAD' });
-                    const fileSize = response.headers.get('content-length');
-                    const sizeFormatted = fileSize ? `${Math.round(fileSize / 1024)} KB` : 'Unknown';
-                    
-                    row.innerHTML = `
-                        <td>${file.name}</td>
-                        <td>0x${file.offset.toString(16).toUpperCase()}</td>
-                        <td>${sizeFormatted}</td>
-                        <td>${file.name === 'bootloader.bin' ? 'ESP32 Bootloader' : 
-                             file.name === 'partitions.bin' ? 'Partition Table' : 
-                             'Application Firmware'}</td>
-                    `;
-                    
-                    addLog(`Found ${file.name}: ${sizeFormatted} at offset 0x${file.offset.toString(16).toUpperCase()}`, 'success');
-                } catch (error) {
-                    row.innerHTML = `
-                        <td>${file.name}</td>
-                        <td>0x${file.offset.toString(16).toUpperCase()}</td>
-                        <td><span style="color: #ff6b6b;">Not found</span></td>
-                        <td>File missing</td>
-                    `;
-                    addLog(`Error fetching ${file.name}: ${error.message}`, 'error');
-                }
-                
-                tbody.appendChild(row);
-            }
-            
-            // Add device configuration info
-            addLog(`Flash configuration: ${config.flashSize}, ${config.flashMode}, ${config.flashFreq}`, 'info');
-        }
-
-        // Event listeners
-        connectBtn.addEventListener('click', connectDevice);
-        retryBtn.addEventListener('click', connectDevice);
-        flashBtn.addEventListener('click', flashFirmware);
-        
-        // Reset connection when device type changes
-        deviceTypeSelect.addEventListener('change', () => {
-            updateFirmwareTable();
-            if (isConnected) {
-                addLog('Device type changed. Please reconnect.', 'info');
-                resetConnection();
-            }
-        });
-
-        // Initialize firmware table on page load
-        updateFirmwareTable();
-
-        // Check Web Serial API support
-        if (!navigator.serial) {
-            addLog('Web Serial API not supported. Please use Chrome, Edge, or Opera browser.', 'error');
-            connectBtn.disabled = true;
-            showBrowserCompatibilityModal();
-        }
-
-        // Function to show browser compatibility modal
-        function showBrowserCompatibilityModal() {
-            const modal = document.createElement('div');
-            modal.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0, 0, 0, 0.9);
-                backdrop-filter: blur(8px);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 10000;
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-            `;
-            
-            const currentUrl = window.location.href;
-            
-            modal.innerHTML = `
-                <div style="
-                    background: rgba(255, 255, 255, 0.95);
-                    backdrop-filter: blur(20px);
-                    border-radius: 16px;
-                    padding: 2rem;
-                    max-width: 600px;
-                    margin: 1rem;
-                    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-                    border: 1px solid rgba(255, 255, 255, 0.2);
-                    text-align: center;
-                    color: #2d3748;
-                ">
-                    <div style="
-                        width: 60px;
-                        height: 60px;
-                        background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
-                        border-radius: 50%;
-                        margin: 0 auto 1.5rem;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        font-size: 24px;
-                        color: white;
-                    ">⚠️</div>
-                    
-                    <h3 style="
-                        margin: 0 0 1rem;
-                        color: #2d3748;
-                        font-size: 1.5rem;
-                        font-weight: 600;
-                    ">Unsupported Browser</h3>
-                    
-                    <p style="
-                        margin: 0 0 1.5rem;
-                        color: #4a5568;
-                        line-height: 1.6;
-                        font-size: 1rem;
-                    ">
-                        ESP32 flashing requires the Web Serial API, which is only available in:<br>
-                        <strong>Chrome, Edge, or Opera browsers</strong><br><br>
-                        To flash your ESP32 device, please:
-                    </p>
-                    
-                    <div style="
-                        background: #f7fafc;
-                        border: 2px dashed #cbd5e0;
-                        border-radius: 8px;
-                        padding: 1rem;
-                        margin: 1.5rem 0;
-                        font-family: 'Monaco', 'Menlo', monospace;
-                        font-size: 14px;
-                        word-break: break-all;
-                        color: #2d3748;
-                        cursor: pointer;
-                    " onclick="copyToClipboard('${currentUrl}')" title="Click to copy">
-                        ${currentUrl}
-                        <div style="
-                            font-size: 12px;
-                            color: #718096;
-                            margin-top: 0.5rem;
-                            font-family: system-ui;
-                        ">👆 Click to copy this URL</div>
-                    </div>
-                    
-                    <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                        <button onclick="this.closest('[style*=fixed]').remove()" style="
-                            background: #e2e8f0;
-                            color: #4a5568;
-                            border: none;
-                            padding: 0.75rem 1.5rem;
-                            border-radius: 8px;
-                            font-weight: 500;
-                            cursor: pointer;
-                            transition: all 0.2s;
-                        ">
-                            Close
-                        </button>
-                        <button onclick="copyToClipboard('${currentUrl}')" style="
-                            background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
-                            color: white;
-                            border: none;
-                            padding: 0.75rem 1.5rem;
-                            border-radius: 8px;
-                            font-weight: 500;
-                            cursor: pointer;
-                            transition: all 0.2s;
-                        ">
-                            📋 Copy URL
-                        </button>
-                        <button onclick="window.open('https://www.google.com/chrome/', '_blank')" style="
-                            background: linear-gradient(135deg, #ed8936 0%, #e53e3e 100%);
-                            color: white;
-                            border: none;
-                            padding: 0.75rem 1.5rem;
-                            border-radius: 8px;
-                            font-weight: 500;
-                            cursor: pointer;
-                            transition: all 0.2s;
-                        ">
-                            📥 Download Chrome
-                        </button>
-                    </div>
-                </div>
-            `;
-            
-            document.body.appendChild(modal);
-            
-            // Automatically copy the URL when modal opens
-            setTimeout(() => {
-                copyToClipboard(currentUrl);
-            }, 500);
-            
-            // Close modal when clicking outside
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    modal.remove();
-                }
-            });
-        }
-
-        // Function to copy text to clipboard
-        function copyToClipboard(text) {
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(text).then(() => {
-                    showCopySuccess();
-                }).catch(err => {
-                    fallbackCopyToClipboard(text);
-                });
-            } else {
-                fallbackCopyToClipboard(text);
-            }
-        }
-
-        // Fallback copy method for older browsers
-        function fallbackCopyToClipboard(text) {
-            const textArea = document.createElement("textarea");
-            textArea.value = text;
-            textArea.style.position = "fixed";
-            textArea.style.left = "-999999px";
-            textArea.style.top = "-999999px";
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            
-            try {
-                document.execCommand('copy');
-                showCopySuccess();
-            } catch (err) {
-                console.error('Fallback: Oops, unable to copy', err);
-                alert('Unable to copy automatically. Please manually select and copy the URL.');
-            }
-            
-            document.body.removeChild(textArea);
-        }
-
-        // Show copy success message
-        function showCopySuccess() {
-            const successMsg = document.createElement('div');
-            successMsg.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: #48bb78;
-                color: white;
-                padding: 1rem 1.5rem;
-                border-radius: 8px;
-                z-index: 10002;
-                font-weight: 500;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-                transform: translateX(400px);
-                transition: transform 0.3s ease;
-            `;
-            successMsg.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <span>✅</span>
-                    <div>
-                        <div style="font-weight: 600;">URL Copied!</div>
-                        <div style="font-size: 0.8rem; opacity: 0.9;">Open Chrome and paste it</div>
-                    </div>
-                </div>
-            `;
-            
-            document.body.appendChild(successMsg);
-            
-            // Animate in
-            setTimeout(() => {
-                successMsg.style.transform = 'translateX(0)';
-            }, 100);
-            
-            // Remove after 4 seconds
-            setTimeout(() => {
-                successMsg.style.transform = 'translateX(400px)';
+                // Re-enable button after some delay
                 setTimeout(() => {
-                    if (successMsg.parentNode) {
-                        successMsg.parentNode.removeChild(successMsg);
+                    flashButton.disabled = false;
+                    flashButton.textContent = '📲 Flash Firmware';
+                }, 3000);
+                
+                // Cleanup
+                if (transport) {
+                    try {
+                        await transport.disconnect();
+                    } catch (e) {
+                        console.warn('Error disconnecting transport:', e);
                     }
-                }, 300);
-            }, 4000);
+                }
+            }
+        };
+
+        // Check browser compatibility on load
+        if (!navigator.serial) {
+            showStatus('⚠️ Web Serial API not supported. Please use Chrome, Edge, or Opera browser.', 'error');
+            document.getElementById('flashButton').disabled = true;
         }
     </script>
 </body>

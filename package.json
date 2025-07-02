@@ -1,17 +1,35 @@
 {
   "name": "tally-hub",
   "version": "1.0.0",
+  "description": "Professional Tally Light System for Video Production",
   "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tallyhubpro/Tallyhub.git"
+  },
+  "homepage": "https://tallyhubpro.github.io",
+  "bugs": {
+    "url": "https://github.com/tallyhubpro/Tallyhub/issues"
+  },
+  "keywords": [
+    "tally",
+    "tally-light",
+    "video-production",
+    "obs",
+    "vmix",
+    "esp32",
+    "m5stick",
+    "broadcast",
+    "streaming"
+  ],
+  "author": "TallyHub Pro",
+  "license": "MIT",
   "scripts": {
     "start": "node dist/index.js",
     "dev": "nodemon --exec ts-node src/index.ts --ignore device-storage.json --ignore device-assignments.json --ignore logs/",
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
@@ -28,6 +46,6 @@
     "express": "^5.1.0",
     "multer": "^2.0.1",
     "obs-websocket-js": "^5.0.6",
-    "ws": "^8.18.2"
+    "ws": "^8.18.0"
   }
 }

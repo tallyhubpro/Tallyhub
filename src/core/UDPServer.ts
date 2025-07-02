@@ -49,7 +49,7 @@ export class UDPServer {
     });
 
     this.tallyHub.on('device:notify', ({ device, tallyState }: { device: TallyDevice, tallyState: TallyState }) => {
-      if (device.type === 'm5stick') {
+      if (device.type === 'm5stick' || device.type === 'ESP32') {
         this.sendToM5Device(device.id, tallyState);
       }
     });
@@ -120,6 +120,10 @@ export class UDPServer {
     const deviceName = message.deviceName || `M5 Stick ${deviceId}`;
     const deviceKey = `${rinfo.address}:${rinfo.port}`;
     
+    // Determine device type based on the deviceType field in the message
+    // ESP32-1732S019 sends "esp32-1732s019", M5Stick doesn't send this field
+    const deviceType = message.deviceType === 'esp32-1732s019' ? 'ESP32' : 'm5stick';
+    
     // Extract assignment information from registration message
     const deviceHasAssignment = message.isAssigned === true && message.assignedSource;
     const deviceAssignedSource = message.assignedSource || undefined;
@@ -133,10 +137,11 @@ export class UDPServer {
       existingByKey.lastSeen = new Date();
       existingByKey.device.lastSeen = new Date();
       existingByKey.device.connected = true;
+      existingByKey.device.type = deviceType as 'ESP32' | 'm5stick';
       
       // Update device ID if it has changed (device was reconfigured)
       if (existingByKey.id !== deviceId) {
-        console.log(`📡 M5 device ID changed from ${existingByKey.id} to ${deviceId}`);
+        console.log(`📡 Device ID changed from ${existingByKey.id} to ${deviceId}`);
         // Unregister old device ID
         this.tallyHub.unregisterDevice(existingByKey.id);
         // Update to new device ID
@@ -152,14 +157,14 @@ export class UDPServer {
         this.handleAssignmentSync(deviceId, deviceHasAssignment, deviceAssignedSource);
       }
 
-      console.log(`📡 M5 device re-registered: ${deviceName} (${rinfo.address}:${rinfo.port})`);
+      console.log(`📡 Device re-registered: ${deviceName} (${deviceType.toUpperCase()}) (${rinfo.address}:${rinfo.port})`);
     } else if (existingById) {
       // Device with same ID exists but from different IP:port - remove old entry
       const oldKey = Array.from(this.m5Devices.entries())
         .find(([_, device]) => device.id === deviceId)?.[0];
       
       if (oldKey) {
-        console.log(`📡 M5 device moved: ${deviceId} from ${oldKey} to ${deviceKey}`);
+        console.log(`📡 Device moved: ${deviceId} from ${oldKey} to ${deviceKey}`);
         this.m5Devices.delete(oldKey);
       }
       
@@ -167,7 +172,7 @@ export class UDPServer {
       const device: TallyDevice = {
         id: deviceId,
         name: deviceName,
-        type: 'm5stick',
+        type: deviceType as 'ESP32' | 'm5stick',
         ipAddress: rinfo.address,
         lastSeen: new Date(),
         connected: true,
@@ -185,13 +190,13 @@ export class UDPServer {
       this.m5Devices.set(deviceKey, m5Device);
       this.tallyHub.registerDevice(device);
       this.handleAssignmentSync(deviceId, deviceHasAssignment, deviceAssignedSource);
-      console.log(`📡 M5 device registered (moved): ${deviceName} (${rinfo.address}:${rinfo.port})`);
+      console.log(`📡 Device registered (moved): ${deviceName} (${deviceType.toUpperCase()}) (${rinfo.address}:${rinfo.port})`);
     } else {
       // Completely new device
       const device: TallyDevice = {
         id: deviceId,
         name: deviceName,
-        type: 'm5stick',
+        type: deviceType as 'ESP32' | 'm5stick',
         ipAddress: rinfo.address,
         lastSeen: new Date(),
         connected: true,
@@ -209,7 +214,7 @@ export class UDPServer {
       this.m5Devices.set(deviceKey, m5Device);
       this.tallyHub.registerDevice(device);
       this.handleAssignmentSync(deviceId, deviceHasAssignment, deviceAssignedSource);
-      console.log(`📡 M5 device registered: ${deviceName} (${rinfo.address}:${rinfo.port})`);
+      console.log(`📡 Device registered: ${deviceName} (${deviceType.toUpperCase()}) (${rinfo.address}:${rinfo.port})`);
     }
 
     // Send registration confirmation
