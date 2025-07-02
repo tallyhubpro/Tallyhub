@@ -448,46 +448,37 @@ void sendHeartbeat() {
 }
 
 void checkHubConnection() {
-  // Only check if we're connected to WiFi and were previously connected to hub
-  if (!isRegisteredWithHub) return;
+  // Only check if we're connected to WiFi
+  if (WiFi.status() != WL_CONNECTED) {
+    if (isConnected || isRegisteredWithHub) {
+      Serial.println("WiFi lost - marking as disconnected");
+      isConnected = false;
+      isRegisteredWithHub = false;
+    }
+    return;
+  }
   
-  unsigned long timeSinceLastResponse = millis() - lastHubResponse;
-  
-  // If we haven't heard from the hub in HUB_TIMEOUT milliseconds
-  if (timeSinceLastResponse > HUB_TIMEOUT) {
-    // Check if enough time has passed since last reconnection attempt
-    if (millis() - lastReconnectionAttempt < MIN_RECONNECTION_INTERVAL) {
+  // If we're not registered with hub, try to connect/reconnect
+  if (!isRegisteredWithHub) {
+    // Don't attempt reconnection too frequently
+    unsigned long timeSinceLastAttempt = millis() - lastReconnectionAttempt;
+    if (timeSinceLastAttempt < MIN_RECONNECTION_INTERVAL) {
       return; // Not enough time passed, skip this attempt
     }
-    
-    Serial.printf("Hub connection timeout (%lu ms since last response)\n", timeSinceLastResponse);
-    
-    // Immediately mark as not registered to show HUB LOST
-    isRegisteredWithHub = false;
     
     // Don't attempt reconnection too frequently or indefinitely
     if (hubConnectionAttempts < MAX_HUB_RECONNECT_ATTEMPTS) {
       hubConnectionAttempts++;
       lastReconnectionAttempt = millis();
-      Serial.printf("Attempting hub reconnection (attempt %lu/%lu)\n", hubConnectionAttempts, MAX_HUB_RECONNECT_ATTEMPTS);
-      
-      // Show HUB LOST status for a moment before attempting reconnection
-      showingRegistrationStatus = true;
-      registrationStatusStart = millis();
-      registrationStatusMessage = "Hub Lost";
-      registrationStatusColor = RED;
-      
-      // Wait 2 seconds to show HUB LOST status, then attempt reconnection
-      delay(2000);
+      Serial.printf("Attempting hub connection/reconnection (attempt %lu/%lu)\n", hubConnectionAttempts, MAX_HUB_RECONNECT_ATTEMPTS);
       
       showingRegistrationStatus = true;
       registrationStatusStart = millis();
-      registrationStatusMessage = "Reconnecting...";
+      registrationStatusMessage = "Connecting...";
       registrationStatusColor = YELLOW;
       
-      // Attempt to re-register with the hub (don't restart UDP unnecessarily)
-      delay(1000); // Brief delay before attempting reconnection
-      
+      // Attempt to register with the hub
+      delay(1000); // Brief delay before attempting connection
       registerWithHub();
       // Don't reset lastHubResponse here - only reset when we get an actual response
     } else {
@@ -518,6 +509,26 @@ void checkHubConnection() {
       registerWithHub();
       // Don't reset lastHubResponse here - only reset when we get an actual response
     }
+    return;
+  }
+  
+  // If we're registered, check for timeout
+  unsigned long timeSinceLastResponse = millis() - lastHubResponse;
+  if (timeSinceLastResponse > HUB_TIMEOUT) {
+    // Don't attempt reconnection too frequently
+    unsigned long timeSinceLastAttempt = millis() - lastReconnectionAttempt;
+    if (timeSinceLastAttempt < MIN_RECONNECTION_INTERVAL) {
+      return; // Not enough time passed, skip this attempt
+    }
+    
+    Serial.printf("Hub connection timeout (%lu ms since last response)\n", timeSinceLastResponse);
+    
+    // Immediately mark as not registered to trigger reconnection logic
+    isRegisteredWithHub = false;
+    isConnected = false;
+    
+    Serial.println("Hub timeout detected - will trigger reconnection attempts");
+    // The reconnection will be handled in the next call to checkHubConnection()
   }
 }
 
