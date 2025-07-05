@@ -1,0 +1,225 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Build Windows app
+        run: |
+          cd TallyHub-Windows
+          npm install
+          npm run build
+          
+      - name: Create Windows installer
+        run: |
+          cd TallyHub-Windows
+          npm run dist
+      
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tally-hub-windows
+          path: |
+            TallyHub-Windows/dist/*.exe
+            TallyHub-Windows/dist/*.zip
+          retention-days: 30
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Build macOS app
+        run: |
+          cd TallyHub-Mac
+          npm install
+          chmod +x build-app.sh
+          ./build-app.sh
+          
+      - name: Create macOS DMG
+        run: |
+          cd TallyHub-Mac
+          npm run dist
+      
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tally-hub-macos
+          path: |
+            TallyHub-Mac/dist/*.dmg
+            TallyHub-Mac/dist/*.zip
+          retention-days: 30
+
+  build-server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Build server
+        run: npm run build
+      
+      - name: Create server package
+        run: |
+          mkdir -p releases
+          tar -czf releases/tally-hub-server-linux.tar.gz \
+            --exclude=node_modules \
+            --exclude=.git \
+            --exclude=TallyHub-Windows \
+            --exclude=TallyHub-Mac \
+            --exclude=logs \
+            --exclude=.env \
+            .
+      
+      - name: Upload server artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tally-hub-server
+          path: releases/*.tar.gz
+          retention-days: 30
+
+  create-release:
+    needs: [build-windows, build-macos, build-server]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      
+      - name: Create release directory
+        run: |
+          mkdir -p release-files
+          find artifacts -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.zip" -o -name "*.tar.gz" \) -exec cp {} release-files/ \;
+          ls -la release-files/
+      
+      - name: Get version
+        id: version
+        run: |
+          if [[ $GITHUB_EVENT_NAME == 'workflow_dispatch' ]]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          release_name: Tally Hub ${{ steps.version.outputs.version }}
+          body: |
+            ## 🎉 Tally Hub ${{ steps.version.outputs.version }}
+            
+            Professional tally light system for video production.
+            
+            ### 📦 Downloads
+            
+            - **Windows**: Download `TallyHub-Setup.exe` for Windows 10/11
+            - **macOS**: Download `TallyHub.dmg` for macOS 10.15+
+            - **Linux/Server**: Download `tally-hub-server-linux.tar.gz` for server deployment
+            
+            ### ✨ Features
+            
+            - Real-time tally lights with sub-100ms latency
+            - Support for OBS Studio and vMix
+            - Cross-platform desktop applications
+            - Web-based admin interface
+            - ESP32 hardware device support
+            - Professional documentation
+            
+            ### 🚀 Quick Start
+            
+            1. Download the appropriate version for your platform
+            2. Install and run the application
+            3. Open the admin panel at `http://localhost:3000/admin.html`
+            4. Configure your mixer connection
+            5. Add tally devices
+            
+            ### 📚 Documentation
+            
+            Full documentation available at: https://tallyhubpro.github.io
+            
+            ### 💰 Cost Savings
+            
+            Save up to 95% compared to commercial tally systems:
+            - **Tally Hub**: $15-30 per device
+            - **Commercial**: $200-500+ per device
+          draft: false
+          prerelease: false
+      
+      - name: Upload Windows Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release-files/TallyHub-Setup.exe
+          asset_name: TallyHub-Windows-Setup.exe
+          asset_content_type: application/octet-stream
+        continue-on-error: true
+      
+      - name: Upload macOS Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release-files/TallyHub.dmg
+          asset_name: TallyHub-macOS.dmg
+          asset_content_type: application/octet-stream
+        continue-on-error: true
+      
+      - name: Upload Server Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release-files/tally-hub-server-linux.tar.gz
+          asset_name: TallyHub-Server-Linux.tar.gz
+          asset_content_type: application/gzip
+        continue-on-error: true

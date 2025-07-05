@@ -18,6 +18,15 @@ site/
 .env.test.local
 .env.production.local
 
+# Release artifacts
+releases/
+*.dmg
+*.exe
+*.zip
+*.tar.gz
+*.deb
+*.rpm
+
 # macOS system files
 .DS_Store
 .DS_Store?
