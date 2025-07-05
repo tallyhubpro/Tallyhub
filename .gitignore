@@ -146,9 +146,22 @@ Icon?
 .Trash-*
 
 # Logs
-logs
+logs/
 *.log
 
 # Temporary files
 tmp/
 temp/
+
+# Project-specific ignores
+.server.pid
+.venv/
+TallyHub-Windows.zip
+TallyHub-Mac.zip
+src/Archive.zip
+
+# Firmware build artifacts
+firmware/*/.pio/
+firmware/*/build/
+firmware/*/.vscode/
+firmware/*/.gitignore

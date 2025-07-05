@@ -1,0 +1,1962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* ws://localhost:*; connect-src 'self' http://localhost:* ws://localhost:*; img-src 'self' data:;">
+    <title>Tally Hub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            overflow: hidden;
+            -webkit-app-region: no-drag; /* Ensure content area isn't draggable */
+        }
+
+        .container {
+            height: 100vh; /* Use full viewport height */
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 33px; /* Space for status bar */
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 32px 40px 60px 40px; /* Add extra bottom padding */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start; /* Change from center to flex-start */
+            text-align: center;
+            overflow-y: auto; /* Allow scrolling if content is too tall */
+            min-height: 0; /* Allow flex child to shrink */
+        }
+
+        .welcome-text {
+            color: white;
+            margin-bottom: 40px;
+            margin-top: 40px; /* Add top margin to center content better */
+        }
+
+        .welcome-text h2 {
+            font-size: 36px;
+            font-weight: 300;
+            margin-bottom: 10px;
+        }
+
+        .welcome-text p {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+
+        .btn-primary {
+            background: #007AFF;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056CC;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: #FF3B30;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #D70015;
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .quick-links {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .link-btn {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .link-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .flash-buttons {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .chrome-btn {
+            background: rgba(66, 133, 244, 0.2) !important;
+            border-color: rgba(66, 133, 244, 0.4) !important;
+        }
+
+        .chrome-btn:hover {
+            background: rgba(66, 133, 244, 0.3) !important;
+        }
+
+        .version-info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+        }
+
+        /* Professional Status Bar */
+        .status-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, rgba(20, 20, 25, 0.98), rgba(30, 30, 35, 0.98));
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 16px;
+            height: 32px;
+            color: #e5e7eb;
+            font-size: 10px;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .status-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            flex-shrink: 0;
+            min-width: 0;
+        }
+
+        .status-indicator-small {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #6b7280;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .status-indicator-small.running {
+            background: linear-gradient(45deg, #10b981, #34d399);
+            box-shadow: 0 0 6px rgba(16, 185, 129, 0.4);
+        }
+
+        .status-indicator-small.restarting {
+            background: linear-gradient(45deg, #f59e0b, #fbbf24);
+            box-shadow: 0 0 6px rgba(245, 158, 11, 0.4);
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-indicator-small.stopped {
+            background: #6b7280;
+        }
+
+        .mixer-status-indicator {
+            font-size: 10px;
+            margin-right: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .mixer-status-indicator.connected {
+            color: #10b981;
+        }
+
+        .mixer-status-indicator.disconnected {
+            color: #ef4444;
+        }
+
+        .mixer-status-indicator.checking {
+            color: #f59e0b;
+        }
+
+        .status-info {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 9px;
+            flex-shrink: 0;
+            text-overflow: ellipsis;
+            overflow: hidden;
+        }
+
+        .status-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+            margin-left: 10px;
+        }
+
+        .logs-toggle {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: #e5e7eb;
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-size: 9px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            flex-shrink: 0;
+        }
+
+        .logs-toggle:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .logs-toggle.active {
+            background: rgba(59, 130, 246, 0.3);
+            color: #60a5fa;
+        }
+
+        /* Enhanced Logs Panel */
+        .logs-panel {
+            position: fixed;
+            bottom: 33px;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, rgba(15, 15, 20, 0.98), rgba(25, 25, 30, 0.98));
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            max-height: 300px;
+            display: none;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+            z-index: 999;
+        }
+
+        .logs-panel.visible {
+            display: block;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .logs-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logs-title {
+            font-weight: 600;
+            font-size: 13px;
+            color: #f3f4f6;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logs-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .log-control-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: #d1d5db;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .log-control-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: #f3f4f6;
+        }
+
+        .log-control-btn.danger:hover {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+        }
+
+        .logs-content {
+            padding: 15px 20px;
+            max-height: 240px;
+            overflow-y: auto;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+            position: relative;
+        }
+
+        .logs-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .logs-content::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+
+        .logs-content::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        .logs-content::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .log-entry {
+            margin-bottom: 6px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.02);
+            border-left: 3px solid transparent;
+            display: flex;
+            gap: 8px;
+            word-wrap: break-word;
+            transition: all 0.2s;
+        }
+
+        .log-entry:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .log-timestamp {
+            color: #6b7280;
+            font-size: 10px;
+            min-width: 60px;
+            opacity: 0.8;
+        }
+
+        .log-level {
+            font-weight: 600;
+            min-width: 50px;
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+
+        .log-message {
+            flex: 1;
+            color: #e5e7eb;
+        }
+
+        .log-entry.info {
+            border-left-color: #3b82f6;
+        }
+
+        .log-entry.info .log-level {
+            color: #60a5fa;
+        }
+
+        .log-entry.success {
+            border-left-color: #10b981;
+        }
+
+        .log-entry.success .log-level {
+            color: #34d399;
+        }
+
+        .log-entry.warning {
+            border-left-color: #f59e0b;
+        }
+
+        .log-entry.warning .log-level {
+            color: #fbbf24;
+        }
+
+        .log-entry.error {
+            border-left-color: #ef4444;
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .log-entry.error .log-level {
+            color: #f87171;
+        }
+
+        .logs-empty {
+            text-align: center;
+            color: #6b7280;
+            font-style: italic;
+            padding: 40px 20px;
+        }
+
+        /* Auto-scroll indicator */
+        .auto-scroll-indicator {
+            position: absolute;
+            bottom: 10px;
+            right: 20px;
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            padding: 2px 6px;
+            border-radius: 12px;
+            font-size: 10px;
+            display: none;
+        }
+
+        .auto-scroll-indicator.active {
+            display: block;
+        }
+
+        /* Connected Devices Section */
+        .devices-section {
+            margin-top: 40px;
+            margin-bottom: 40px; /* Add bottom margin to ensure spacing from footer */
+            max-width: 700px;
+            width: 100%;
+        }
+
+        .devices-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .devices-title {
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .devices-stats {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+            display: flex;
+            gap: 10px;
+        }
+
+        .device-count {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .device-count.connected {
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+        }
+
+        .devices-controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .device-search-input {
+            flex: 1;
+            min-width: 150px;
+            max-width: 200px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            padding: 6px 12px;
+            color: white;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .device-search-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .device-search-input:focus {
+            outline: none;
+            border-color: rgba(59, 130, 246, 0.5);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .device-controls-divider {
+            width: 1px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            margin: 0 4px;
+        }
+
+        .device-filter-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.8);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .device-filter-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .device-filter-btn.active {
+            background: rgba(59, 130, 246, 0.3);
+            border-color: rgba(59, 130, 246, 0.5);
+            color: #60a5fa;
+        }
+
+        .device-list {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 12px;
+            backdrop-filter: blur(10px);
+            max-height: 300px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .device-list.many-devices {
+            max-height: 400px;
+        }
+
+        .device-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .device-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        .device-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        .device-list::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .device-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 10px;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.2s ease;
+            min-height: 50px;
+        }
+
+        .device-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .device-item:hover:not(.empty) {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .device-item.empty {
+            opacity: 0.7;
+            font-style: italic;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .device-item.compact {
+            padding: 6px 8px;
+            min-height: 40px;
+        }
+
+        .device-info {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            justify-content: center; /* Center content vertically */
+        }
+
+        .device-header {
+            position: relative;
+            display: flex;
+            align-items: center;
+            margin-right: 30px; /* Add more margin to prevent overlap with status glow */
+            line-height: 1.2; /* Consistent line height */
+            min-height: 20px; /* Ensure consistent height */
+        }
+
+        .device-name {
+            font-weight: 600;
+            font-size: 13px;
+            color: white;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            width: 100%;
+            text-align: center; /* Center the device name horizontally */
+            line-height: 1.2; /* Match header line height */
+            padding-right: 80px; /* More room for the badge on the right */
+            padding-left: 10px; /* Add left padding for better balance */
+        }
+
+        .device-type-badge {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: absolute;
+            right: 12px; /* Position on the right with more margin */
+            top: 50%;
+            transform: translateY(-50%);
+            line-height: 1.2; /* Match header line height */
+            min-width: 40px; /* Ensure consistent width */
+            text-align: center; /* Center text in badge */
+        }
+
+        .device-type-badge.m5stick {
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+        }
+
+        .device-type-badge.web {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+        }
+
+        .device-details {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.6);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            line-height: 1.2; /* Match other elements */
+            text-align: center; /* Center the details like the device name */
+            padding-right: 80px; /* Match device name padding */
+            padding-left: 10px; /* Match device name padding */
+        }
+
+        .device-assignment {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.6);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            text-align: center; /* Center the assignment text */
+            padding-right: 80px; /* Match device name padding */
+            padding-left: 10px; /* Match device name padding */
+        }
+
+        .device-assignment.assigned {
+            color: #34d399;
+        }
+
+        .device-meta {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex-shrink: 0;
+            min-width: 24px; /* Ensure consistent width */
+        }
+
+        .device-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #34d399;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .device-status.disconnected {
+            background: #6b7280;
+        }
+
+        .device-status::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            border-radius: 50%;
+            background: inherit;
+            opacity: 0.3;
+            animation: devicePulse 2s infinite;
+        }
+
+        .devices-pagination {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .devices-pagination.visible {
+            display: flex;
+        }
+
+        .pagination-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.8);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .device-list-empty {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            font-style: italic;
+            padding: 30px 20px;
+        }
+
+        @keyframes devicePulse {
+            0% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.5); opacity: 0.1; }
+            100% { transform: scale(1); opacity: 0.3; }
+        }
+
+        /* Responsive improvements for very small screens */
+        @media (max-width: 600px) {
+            .devices-section {
+                max-width: 100%;
+                margin-left: -10px;
+                margin-right: -10px;
+            }
+            
+            .devices-controls {
+                flex-direction: column;
+                gap: 6px;
+            }
+            
+            .device-search-input {
+                max-width: 100%;
+                order: -1;
+            }
+        }
+
+        /* Show search results count when searching */
+        .search-results-info {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 8px;
+            padding: 4px 8px;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 4px;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            display: none;
+        }
+
+        .search-results-info.visible {
+            display: block;
+        }
+
+        /* Toast notifications */
+        .toast-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10001;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            opacity: 0.9;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+
+        .toast-notification.hide {
+            transform: translateY(-100%);
+            opacity: 0;
+        }
+
+        .toast-notification.error {
+            background: rgba(255, 0, 0, 0.8);
+        }
+
+        .toast-notification.warning {
+            background: rgba(255, 165, 0, 0.8);
+        }
+
+        .toast-notification.success {
+            background: rgba(0, 128, 0, 0.8);
+        }
+
+        .toast-notification.info {
+            background: rgba(0, 0, 255, 0.8);
+        }
+
+        .toast-notification button {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="main-content">
+            <div class="welcome-text">
+                <h2>Welcome to Tally Hub</h2>
+                <p>Your professional tally light control system for Mac</p>
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-primary" id="startBtn">Start Server</button>
+                <button class="btn btn-secondary" id="restartBtn">Restart</button>
+                <button class="btn btn-danger" id="stopBtn">Stop Server</button>
+            </div>
+
+            <div class="quick-links">
+                <a href="#" class="link-btn" id="webInterfaceBtn">Open Web Interface</a>
+                <a href="#" class="link-btn" id="adminPanelBtn">Admin Panel</a>
+                <a href="#" class="link-btn" id="tallyDisplayBtn">Web Tally</a>
+                <div class="flash-buttons">
+                    <a href="#" class="link-btn" id="flashFirmwareBtn">Flash Firmware</a>
+                    <a href="#" class="link-btn chrome-btn" id="flashFirmwareChromeBtn">Flash in Chrome</a>
+                </div>
+            </div>
+
+            <!-- Connected Devices Section -->
+            <div class="devices-section">
+                <div class="devices-header">
+                    <h3 class="devices-title">📱 Connected Devices</h3>
+                    <div class="devices-stats">
+                        <div class="device-count" id="totalDeviceCount">0 total</div>
+                        <div class="device-count connected" id="connectedDeviceCount">0 online</div>
+                    </div>
+                </div>
+                
+                <div class="devices-controls" id="devicesControls" style="display: none;">
+                    <input type="text" class="device-search-input" id="deviceSearchInput" placeholder="Search devices..." />
+                    <div class="device-controls-divider"></div>
+                    <button class="device-filter-btn active" data-filter="all">All</button>
+                    <button class="device-filter-btn" data-filter="connected">Connected</button>
+                    <button class="device-filter-btn" data-filter="ESP32">ESP32</button>
+                    <button class="device-filter-btn" data-filter="m5stick">M5Stick</button>
+                    <button class="device-filter-btn" data-filter="web">Web</button>
+                    <button class="device-filter-btn" data-filter="assigned">Assigned</button>
+                </div>
+                
+                <div class="search-results-info" id="searchResultsInfo">
+                    Found <span id="searchResultsCount">0</span> devices matching your search
+                </div>
+                
+                <div class="device-list" id="deviceList">
+                    <div class="device-list-empty">
+                        No devices connected<br>
+                        <small>Waiting for ESP devices...</small>
+                    </div>
+                </div>
+                
+                <div class="devices-pagination" id="devicesPagination">
+                    <button class="pagination-btn" id="prevPageBtn">← Prev</button>
+                    <span id="pageInfo">Page 1 of 1</span>
+                    <button class="pagination-btn" id="nextPageBtn">Next →</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Professional Status Bar -->
+    <div class="status-footer">
+        <div class="status-bar">
+            <div class="status-left">
+                <div class="status-item">
+                    <div class="status-indicator-small" id="footerStatusIndicator"></div>
+                    <span id="footerStatusText">Checking...</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-info">IP: <span id="statusIP">-</span>:<span id="statusPort">3000</span></span>
+                </div>
+                <div class="status-item">
+                    <span class="status-info">PID: <span id="statusPid">-</span></span>
+                </div>
+                <div class="status-item">
+                    <span class="status-info">Uptime: <span id="statusUptime">-</span></span>
+                </div>
+                <div class="status-item" id="mixerStatus">
+                    <div class="mixer-status-indicator" id="mixerStatusIndicator">⚪</div>
+                    <span class="status-info">Mixer: <span id="mixerStatusText">Checking...</span></span>
+                </div>
+            </div>
+            <div class="status-right">
+                <div class="status-item">
+                    <span class="status-info" id="versionInfo">Loading...</span>
+                </div>
+                <button class="logs-toggle" id="logsToggle">
+                    <span>📝</span>
+                    <span>Logs</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Logs Panel -->
+    <div class="logs-panel" id="logsPanel">
+        <div class="logs-header">
+            <div class="logs-title">
+                <span>📋</span>
+                <span>Server Output</span>
+                <span class="status-info">(<span id="logCount">0</span> entries)</span>
+            </div>
+            <div class="logs-controls">
+                <button class="log-control-btn" id="autoScrollBtn">Auto-scroll</button>
+                <button class="log-control-btn danger" id="clearLogsBtn">Clear</button>
+                <button class="log-control-btn" id="exportLogsBtn">Export</button>
+            </div>
+        </div>
+        <div class="logs-content" id="logsContent">
+            <div class="logs-empty">No server output yet. Start the server to see logs here.</div>
+            <div class="auto-scroll-indicator" id="autoScrollIndicator">Auto-scrolling</div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize the app in a self-executing function
+        (function() {
+            // Check if electronAPI is available
+            if (!window.electronAPI) {
+                console.error('Electron API not available');
+                return;
+            }
+            
+            // Use the Electron API directly from window
+            const electronAPI = window.electronAPI;
+
+        // DOM elements - Updated for new status bar structure
+        const statusBadge = document.getElementById('statusBadge'); // Keep for compatibility
+        const statusText = document.getElementById('statusText');
+        const serverIP = document.getElementById('serverIP');
+        const onlineStatus = document.getElementById('onlineStatus');
+        const statusIndicator = document.getElementById('statusIndicator');
+        
+        // Footer status bar elements
+        const footerStatusText = document.getElementById('footerStatusText');
+        const footerStatusIndicator = document.getElementById('footerStatusIndicator');
+        const statusIP = document.getElementById('statusIP');
+        const statusPort = document.getElementById('statusPort');
+        const statusPid = document.getElementById('statusPid');
+        const statusUptime = document.getElementById('statusUptime');
+        const startBtn = document.getElementById('startBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const versionInfo = document.getElementById('versionInfo');
+
+        // Logs elements
+        const logsToggle = document.getElementById('logsToggle');
+        const logsPanel = document.getElementById('logsPanel');
+        const logsContent = document.getElementById('logsContent');
+        const logCount = document.getElementById('logCount');
+        const autoScrollBtn = document.getElementById('autoScrollBtn');
+        const clearLogsBtn = document.getElementById('clearLogsBtn');
+        const exportLogsBtn = document.getElementById('exportLogsBtn');
+        const autoScrollIndicator = document.getElementById('autoScrollIndicator');
+
+        // Quick link buttons
+        const webInterfaceBtn = document.getElementById('webInterfaceBtn');
+        const adminPanelBtn = document.getElementById('adminPanelBtn');
+        const tallyDisplayBtn = document.getElementById('tallyDisplayBtn');
+        const flashFirmwareBtn = document.getElementById('flashFirmwareBtn');
+        const flashFirmwareChromeBtn = document.getElementById('flashFirmwareChromeBtn');
+
+        let serverStatus = 'stopped';
+        let serverStartTime = null;
+        let serverPort = 3000; // Default port
+        let logEntries = [];
+        let autoScroll = true;
+        let logsVisible = false;
+        let devices = []; // Store connected devices
+        let filteredDevices = []; // Store filtered devices
+        let currentFilter = 'all'; // Current filter
+        let currentSearchTerm = ''; // Current search term
+        let currentPage = 1; // Current page
+        const devicesPerPage = 8; // Devices per page
+        
+        // Mixer status tracking
+        let mixers = []; // Store mixer data
+        let previousMixers = []; // Previous mixer state for comparison
+        let notifiedMixers = new Set(); // Track which mixers we've already notified about
+        let lastReminderTimes = {}; // Track reminder notification times
+
+        // Initialize app
+        async function init() {
+            try {
+                // Get version info
+                const version = await electronAPI.getVersion();
+                versionInfo.textContent = `v${version}`;
+
+                // Get initial server status
+                updateServerStatus();
+
+                // Set up event listeners
+                setupEventListeners();
+
+                // Set up quick links
+                setupQuickLinks();
+
+                // Initialize logs functionality
+                setAutoScroll(true);
+                updateLogCount();
+
+                // Start uptime timer
+                setInterval(updateUptime, 1000);
+                
+                // Start periodic status checking
+                setInterval(updateServerStatus, 2000); // Check status every 2 seconds
+                
+                // Start periodic device checking
+                setInterval(updateDevices, 3000); // Check devices every 3 seconds
+                
+                // Start periodic mixer checking
+                setInterval(updateMixers, 4000); // Check mixers every 4 seconds
+                
+                // Initial status updates
+                updateServerStatus();
+                updateDevices();
+                updateMixers();
+                
+                // Set up device filter event listeners
+                setupDeviceFilters();
+            } catch (error) {
+                console.error('Initialization error:', error);
+            }
+        }
+
+        function setupDeviceFilters() {
+            // Filter buttons
+            document.querySelectorAll('.device-filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.device-filter-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentFilter = btn.dataset.filter;
+                    currentPage = 1;
+                    applyDeviceFilter();
+                });
+            });
+
+            // Search input
+            const searchInput = document.getElementById('deviceSearchInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    currentSearchTerm = e.target.value.toLowerCase().trim();
+                    currentPage = 1;
+                    applyDeviceFilter();
+                });
+            }
+
+            // Pagination buttons
+            document.getElementById('prevPageBtn').addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderDeviceList();
+                }
+            });
+
+            document.getElementById('nextPageBtn').addEventListener('click', () => {
+                const totalPages = Math.ceil(filteredDevices.length / devicesPerPage);
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderDeviceList();
+                }
+            });
+        }
+
+        function setupEventListeners() {
+            // Server control buttons
+            startBtn.addEventListener('click', async () => {
+                try {
+                    await electronAPI.startServer();
+                    updateServerStatus();
+                } catch (error) {
+                    console.error('Error starting server:', error);
+                }
+            });
+
+            restartBtn.addEventListener('click', async () => {
+                try {
+                    await electronAPI.restartServer();
+                    updateServerStatus();
+                } catch (error) {
+                    console.error('Error restarting server:', error);
+                }
+            });
+
+            stopBtn.addEventListener('click', async () => {
+                try {
+                    await electronAPI.stopServer();
+                    updateServerStatus();
+                } catch (error) {
+                    console.error('Error stopping server:', error);
+                }
+            });
+
+            // Listen for server status changes
+            electronAPI.onServerStatusChange((event, status) => {
+                serverStatus = status.status;
+                
+                // Update PID if available
+                if (status.pid) {
+                    statusPid.textContent = status.pid;
+                } else if (serverStatus === 'stopped') {
+                    statusPid.textContent = '-';
+                }
+                
+                updateUI();
+            });
+
+            // Listen for server logs
+            electronAPI.onServerLog((event, log) => {
+                // Detect log level from message content
+                let level = 'info';
+                const logLower = log.toLowerCase();
+                
+                if (logLower.includes('error') || logLower.includes('fail') || logLower.includes('exception')) {
+                    level = 'error';
+                } else if (logLower.includes('warn') || logLower.includes('warning')) {
+                    level = 'warning';
+                } else if (logLower.includes('success') || logLower.includes('started') || logLower.includes('connected')) {
+                    level = 'success';
+                }
+                
+                addLog(log, level);
+            });
+
+            // Logs panel event listeners
+            logsToggle.addEventListener('click', () => {
+                toggleLogsPanel();
+            });
+
+            clearLogsBtn.addEventListener('click', () => {
+                clearLogs();
+            });
+
+            autoScrollBtn.addEventListener('click', () => {
+                toggleAutoScroll();
+            });
+
+            exportLogsBtn.addEventListener('click', () => {
+                exportLogs();
+            });
+
+            // Monitor scroll to update auto-scroll
+            logsContent.addEventListener('scroll', () => {
+                const isAtBottom = logsContent.scrollTop + logsContent.clientHeight >= logsContent.scrollHeight - 5;
+                if (autoScroll && !isAtBottom) {
+                    setAutoScroll(false);
+                }
+            });
+        }
+
+        function setupQuickLinks() {
+            webInterfaceBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                electronAPI.openExternal('http://localhost:3000');
+            });
+
+            adminPanelBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                electronAPI.openExternal('http://localhost:3000/admin.html');
+            });
+
+            tallyDisplayBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                electronAPI.openExternal('http://localhost:3000/tally.html');
+            });
+
+            flashFirmwareBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                electronAPI.openExternal('http://localhost:3000/flash.html');
+            });
+
+            flashFirmwareChromeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                electronAPI.openInChrome('http://localhost:3000/flash.html');
+            });
+        }
+
+        async function updateServerStatus() {
+            try {
+                const status = await electronAPI.getServerStatus();
+                serverStatus = status.status;
+                
+                // Store server info for display
+                if (status.port) {
+                    serverPort = status.port;
+                    if (statusPort) {
+                        statusPort.textContent = status.port;
+                    }
+                }
+                
+                // Update IP if available
+                const statusIP = document.getElementById('statusIP');
+                if (statusIP && status.ip) {
+                    statusIP.textContent = status.ip;
+                } else if (statusIP) {
+                    statusIP.textContent = '127.0.0.1';
+                }
+                
+                // Update PID if available
+                if (statusPid) {
+                    if (status.pid) {
+                        statusPid.textContent = status.pid;
+                    } else {
+                        statusPid.textContent = '-';
+                    }
+                }
+                
+                updateUI();
+            } catch (error) {
+                console.error('Error getting server status:', error);
+                serverStatus = 'error';
+                if (statusPid) {
+                    statusPid.textContent = '-';
+                }
+                updateUI();
+            }
+        }
+
+        function updateUI() {
+            // Update status indicator
+            let statusClass = 'stopped';
+            let statusDisplay = serverStatus;
+            
+            if (serverStatus === 'running') {
+                statusClass = 'running';
+                statusDisplay = 'Running';
+                if (!serverStartTime) {
+                    serverStartTime = Date.now();
+                }
+            } else if (serverStatus === 'restarting') {
+                statusClass = 'restarting';
+                statusDisplay = 'Restarting...';
+            } else if (serverStatus === 'stopped') {
+                statusClass = 'stopped';
+                statusDisplay = 'Stopped';
+                serverStartTime = null;
+            } else if (serverStatus === 'error') {
+                statusClass = 'stopped';
+                statusDisplay = 'Error';
+                serverStartTime = null;
+            } else {
+                // Default/unknown status
+                statusClass = 'stopped';
+                statusDisplay = 'Unknown';
+                serverStartTime = null;
+            }
+            
+            // Update status indicator and text (header)
+            if (statusIndicator) {
+                statusIndicator.className = 'status-indicator-small ' + statusClass;
+            }
+            if (statusText) {
+                statusText.textContent = statusDisplay;
+            }
+
+            // Update footer status bar
+            if (footerStatusIndicator) {
+                footerStatusIndicator.className = 'status-indicator-small ' + statusClass;
+            }
+            if (footerStatusText) {
+                footerStatusText.textContent = statusDisplay;
+            }
+
+            // Update IP and online status
+            const isOnline = serverStatus === 'running';
+            if (serverIP) {
+                if (isOnline) {
+                    serverIP.textContent = `IP: 0.0.0.0:${serverPort}`;
+                } else {
+                    serverIP.textContent = 'IP: ---.---.---.---';
+                }
+            }
+            if (onlineStatus) {
+                onlineStatus.textContent = isOnline ? 'Online' : 'Offline';
+                onlineStatus.style.color = isOnline ? '#0f5132' : '#721c24';
+            }
+
+            // Update status badge (for compatibility with header)
+            if (statusBadge) {
+                statusBadge.className = 'status-badge ' + statusClass;
+            }
+
+            // Update button states
+            const isRunning = serverStatus === 'running';
+            const isRestarting = serverStatus === 'restarting';
+            
+            startBtn.disabled = isRunning || isRestarting;
+            stopBtn.disabled = serverStatus === 'stopped';
+            restartBtn.disabled = serverStatus === 'stopped' || isRestarting;
+
+            // Update quick links
+            webInterfaceBtn.style.opacity = isRunning ? '1' : '0.5';
+            adminPanelBtn.style.opacity = isRunning ? '1' : '0.5';
+            tallyDisplayBtn.style.opacity = isRunning ? '1' : '0.5';
+            flashFirmwareBtn.style.opacity = isRunning ? '1' : '0.5';
+            flashFirmwareChromeBtn.style.opacity = isRunning ? '1' : '0.5';
+
+            // Update uptime
+            updateUptime();
+        }
+
+        // Enhanced logs functionality
+        function toggleLogsPanel() {
+            logsVisible = !logsVisible;
+            logsPanel.classList.toggle('visible', logsVisible);
+            logsToggle.classList.toggle('active', logsVisible);
+        }
+
+        function addLog(message, level = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = { timestamp, level, message };
+            logEntries.push(logEntry);
+
+            // Remove empty message if this is the first log
+            const emptyDiv = logsContent.querySelector('.logs-empty');
+            if (emptyDiv) {
+                emptyDiv.remove();
+            }
+
+            // Create log element
+            const logElement = document.createElement('div');
+            logElement.className = `log-entry ${level}`;
+            logElement.innerHTML = `
+                <span class="log-timestamp">${timestamp}</span>
+                <span class="log-level">${level}</span>
+                <span class="log-message">${message}</span>
+            `;
+
+            logsContent.appendChild(logElement);
+            updateLogCount();
+
+            if (autoScroll) {
+                scrollToBottom();
+            }
+
+            // Show logs indicator if there are new logs
+            if (!logsVisible && logEntries.length > 0) {
+                logsToggle.style.background = 'rgba(59, 130, 246, 0.3)';
+            }
+        }
+
+        function clearLogs() {
+            logEntries = [];
+            logsContent.innerHTML = '<div class="logs-empty">No server output yet. Start the server to see logs here.</div>';
+            updateLogCount();
+        }
+
+        function toggleAutoScroll() {
+            setAutoScroll(!autoScroll);
+        }
+
+        function setAutoScroll(enabled) {
+            autoScroll = enabled;
+            autoScrollBtn.textContent = autoScroll ? 'Auto-scroll ✓' : 'Auto-scroll';
+            autoScrollBtn.style.background = autoScroll ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255, 255, 255, 0.1)';
+            autoScrollIndicator.classList.toggle('active', autoScroll);
+            
+            if (autoScroll) {
+                scrollToBottom();
+            }
+        }
+
+        function scrollToBottom() {
+            logsContent.scrollTop = logsContent.scrollHeight;
+        }
+
+        function updateLogCount() {
+            logCount.textContent = logEntries.length;
+        }
+
+        function exportLogs() {
+            if (logEntries.length === 0) {
+                alert('No logs to export');
+                return;
+            }
+
+            const logText = logEntries.map(entry => 
+                `[${entry.timestamp}] ${entry.level.toUpperCase()}: ${entry.message}`
+            ).join('\n');
+
+            const blob = new Blob([logText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tally-hub-logs-${new Date().toISOString().slice(0, 10)}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function updateUptime() {
+            if (serverStartTime && serverStatus === 'running') {
+                const uptime = Math.floor((Date.now() - serverStartTime) / 1000);
+                const hours = Math.floor(uptime / 3600);
+                const minutes = Math.floor((uptime % 3600) / 60);
+                const seconds = uptime % 60;
+                
+                let uptimeStr = '';
+                if (hours > 0) uptimeStr += `${hours}h `;
+                if (minutes > 0) uptimeStr += `${minutes}m `;
+                uptimeStr += `${seconds}s`;
+                
+                statusUptime.textContent = uptimeStr;
+            } else {
+                statusUptime.textContent = '-';
+            }
+        }
+        
+        // Device management functions
+        async function updateDevices() {
+            if (serverStatus !== 'running') {
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:3000/api/devices');
+                if (response.ok) {
+                    const newDevices = await response.json();
+                    if (JSON.stringify(newDevices) !== JSON.stringify(devices)) {
+                        devices = newDevices;
+                        applyDeviceFilter();
+                        updateDeviceStats();
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching devices:', error);
+            }
+        }
+
+        function applyDeviceFilter() {
+            filteredDevices = devices.filter(device => {
+                // Apply category filter
+                let passesFilter = true;
+                switch (currentFilter) {
+                    case 'connected':
+                        passesFilter = device.connected;
+                        break;
+                    case 'assigned':
+                        passesFilter = device.assignmentMode === 'assigned';
+                        break;
+                    case 'ESP32':
+                    case 'm5stick':
+                    case 'web':
+                        passesFilter = device.type === currentFilter;
+                        break;
+                    default:
+                        passesFilter = true;
+                }
+                
+                // Apply search filter
+                let passesSearch = true;
+                if (currentSearchTerm) {
+                    const searchableText = [
+                        device.name,
+                        device.id,
+                        device.type,
+                        device.ipAddress,
+                        device.assignedSource ? cleanSourceName(device.assignedSource) : ''
+                    ].join(' ').toLowerCase();
+                    
+                    passesSearch = searchableText.includes(currentSearchTerm);
+                }
+                
+                return passesFilter && passesSearch;
+            });
+            
+            // Update search results info
+            const searchResultsInfo = document.getElementById('searchResultsInfo');
+            const searchResultsCount = document.getElementById('searchResultsCount');
+            if (currentSearchTerm && searchResultsInfo && searchResultsCount) {
+                searchResultsCount.textContent = filteredDevices.length;
+                searchResultsInfo.classList.add('visible');
+            } else if (searchResultsInfo) {
+                searchResultsInfo.classList.remove('visible');
+            }
+            
+            currentPage = Math.min(currentPage, Math.ceil(filteredDevices.length / devicesPerPage) || 1);
+            renderDeviceList();
+            updatePagination();
+        }
+
+        function updateDeviceStats() {
+            const totalCount = devices.length;
+            const connectedCount = devices.filter(d => d.connected).length;
+            
+            document.getElementById('totalDeviceCount').textContent = `${totalCount} total`;
+            document.getElementById('connectedDeviceCount').textContent = `${connectedCount} online`;
+            
+            // Show/hide controls based on device count
+            const devicesControls = document.getElementById('devicesControls');
+            if (totalCount > 4) {
+                devicesControls.style.display = 'flex';
+            } else {
+                devicesControls.style.display = 'none';
+            }
+            
+            // Adjust list height for many devices
+            const deviceList = document.getElementById('deviceList');
+            if (totalCount > 6) {
+                deviceList.classList.add('many-devices');
+            } else {
+                deviceList.classList.remove('many-devices');
+            }
+        }
+
+        function renderDeviceList() {
+            const deviceList = document.getElementById('deviceList');
+            
+            if (filteredDevices.length === 0) {
+                if (devices.length === 0) {
+                    deviceList.innerHTML = `
+                        <div class="device-list-empty">
+                            No devices connected<br>
+                            <small>Waiting for ESP devices...</small>
+                        </div>
+                    `;
+                } else {
+                    deviceList.innerHTML = `
+                        <div class="device-list-empty">
+                            No devices match the current filter<br>
+                            <small>Try adjusting your filter settings</small>
+                        </div>
+                    `;
+                }
+                return;
+            }
+
+            // Calculate pagination
+            const startIndex = (currentPage - 1) * devicesPerPage;
+            const endIndex = startIndex + devicesPerPage;
+            const pageDevices = filteredDevices.slice(startIndex, endIndex);
+            
+            // Determine if we should use compact layout
+            const useCompactLayout = filteredDevices.length > 8;
+
+            deviceList.innerHTML = pageDevices.map(device => {
+                const deviceTypeDisplay = getDeviceTypeDisplay(device.type);
+                const timeSinceLastSeen = getTimeSinceLastSeen(device.lastSeen);
+                
+                let assignmentText = '';
+                let assignmentClass = '';
+                if (device.assignmentMode === 'assigned' && device.assignedSource) {
+                    const cleanedSourceName = cleanSourceName(device.assignedSource);
+                    assignmentText = `📌 ${cleanedSourceName}`;
+                    assignmentClass = 'assigned';
+                } else {
+                    assignmentText = '🔄 Unassigned';
+                    assignmentClass = '';
+                }
+
+                return `
+                    <div class="device-item ${useCompactLayout ? 'compact' : ''}" data-device-id="${device.id}">
+                        <div class="device-info">
+                            <div class="device-header">
+                                <div class="device-name" title="${device.name}">${device.name}</div>
+                                <div class="device-type-badge ${device.type.toLowerCase()}">${deviceTypeDisplay}</div>
+                            </div>
+                            <div class="device-details" title="${device.id} • ${timeSinceLastSeen}">
+                                ${device.ipAddress || device.id} • ${timeSinceLastSeen}
+                            </div>
+                            ${!useCompactLayout ? `<div class="device-assignment ${assignmentClass}" title="${assignmentText}">${assignmentText}</div>` : ''}
+                        </div>
+                        <div class="device-meta">
+                            ${useCompactLayout ? `<div style="font-size: 9px; color: rgba(255,255,255,0.6);" title="${assignmentText}">${device.assignmentMode === 'assigned' ? '📌' : '🔄'}</div>` : ''}
+                            <div class="device-status ${device.connected ? '' : 'disconnected'}" title="${device.connected ? 'Connected' : 'Disconnected'}"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updatePagination() {
+            const totalPages = Math.ceil(filteredDevices.length / devicesPerPage);
+            const pagination = document.getElementById('devicesPagination');
+            const pageInfo = document.getElementById('pageInfo');
+            const prevBtn = document.getElementById('prevPageBtn');
+            const nextBtn = document.getElementById('nextPageBtn');
+            
+            if (totalPages > 1) {
+                pagination.classList.add('visible');
+                pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+                prevBtn.disabled = currentPage === 1;
+                nextBtn.disabled = currentPage === totalPages;
+            } else {
+                pagination.classList.remove('visible');
+            }
+        }
+
+        function getDeviceTypeDisplay(type) {
+            switch (type) {
+                case 'ESP32': return 'ESP32';
+                case 'm5stick': return 'M5Stick';
+                case 'web': return 'Web';
+                case 'hardware': return 'Hardware';
+                default: return type.toUpperCase();
+            }
+        }
+
+        function getTimeSinceLastSeen(lastSeen) {
+            if (!lastSeen) return 'Never';
+            
+            const now = new Date();
+            const lastSeenDate = new Date(lastSeen);
+            const diffMs = now - lastSeenDate;
+            const diffSecs = Math.floor(diffMs / 1000);
+            const diffMins = Math.floor(diffSecs / 60);
+            const diffHours = Math.floor(diffMins / 60);
+            
+            if (diffSecs < 60) return `${diffSecs}s ago`;
+            if (diffMins < 60) return `${diffMins}m ago`;
+            if (diffHours < 24) return `${diffHours}h ago`;
+            return 'Over 1 day ago';
+        }
+
+        function cleanSourceName(sourceName) {
+            if (!sourceName) return 'Unknown';
+            
+            let cleaned = sourceName;
+            // Use the same cleaning logic as the admin panel
+            if (cleaned.startsWith('Source obs-scene-')) {
+                cleaned = cleaned.replace('Source obs-scene-', '');
+            } else if (cleaned.startsWith('Source obs-source-')) {
+                cleaned = cleaned.replace('Source obs-source-', '');
+            } else {
+                // Fallback for other formats - remove common prefixes
+                cleaned = cleaned.replace(/^(Source |Scene |obs-scene-|obs-source-|vmix-input-|vmix-scene-)/i, '');
+            }
+            
+            return cleaned;
+        }
+        
+        // Mixer status checking functions
+        async function updateMixers() {
+            if (serverStatus !== 'running') {
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:3000/api/mixers');
+                if (response.ok) {
+                    const newMixers = await response.json();
+                    if (JSON.stringify(newMixers) !== JSON.stringify(mixers)) {
+                        // Check for mixer connection issues before updating
+                        checkMixerConnectionIssues(newMixers);
+                        mixers = newMixers;
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching mixers:', error);
+            }
+        }
+
+        function checkMixerConnectionIssues(currentMixers) {
+            // Compare with previous state to detect new disconnections
+            if (!previousMixers) {
+                previousMixers = [];
+                notifiedMixers = new Set(); // Track which mixers we've already notified about
+            }
+
+            currentMixers.forEach(mixer => {
+                const previousMixer = previousMixers.find(m => m.id === mixer.id);
+                const notificationKey = `${mixer.id}-disconnected`;
+                
+                // Check if mixer just disconnected (only notify once per disconnection)
+                if (previousMixer && previousMixer.connected && !mixer.connected && !notifiedMixers.has(notificationKey)) {
+                    showMixerDisconnectedNotification(mixer);
+                    notifiedMixers.add(notificationKey);
+                }
+                
+                // If mixer reconnects, remove it from the notified set and show reconnection notification
+                if (mixer.connected && notifiedMixers.has(notificationKey)) {
+                    notifiedMixers.delete(notificationKey);
+                    showMixerReconnectedNotification(mixer);
+                }
+                
+                // Check if mixer has been disconnected for a while (show periodic reminders)
+                if (!mixer.connected && mixer.lastError) {
+                    const timeSinceLastReminder = Date.now() - (lastReminderTimes[mixer.id] || 0);
+                    
+                    // Show reminder every 2 minutes for persistent disconnections
+                    if (timeSinceLastReminder > 120000) {
+                        showMixerConnectionReminderNotification(mixer);
+                        lastReminderTimes[mixer.id] = Date.now();
+                    }
+                }
+            });
+
+            previousMixers = [...currentMixers];
+            
+            // Update the mixer status in the footer
+            updateMixerStatusFooter(currentMixers);
+        }
+
+        function updateMixerStatusFooter(currentMixers) {
+            const mixerStatusIndicator = document.getElementById('mixerStatusIndicator');
+            const mixerStatusText = document.getElementById('mixerStatusText');
+            
+            if (!mixerStatusIndicator || !mixerStatusText) return;
+            
+            if (!currentMixers || currentMixers.length === 0) {
+                // No mixers configured
+                mixerStatusIndicator.textContent = '⚪';
+                mixerStatusIndicator.className = 'mixer-status-indicator checking';
+                mixerStatusText.textContent = 'None configured';
+                return;
+            }
+            
+            const connectedMixers = currentMixers.filter(m => m.connected);
+            const totalMixers = currentMixers.length;
+            
+            if (connectedMixers.length === totalMixers) {
+                // All mixers connected
+                mixerStatusIndicator.textContent = '🟢';
+                mixerStatusIndicator.className = 'mixer-status-indicator connected';
+                mixerStatusText.textContent = totalMixers === 1 ? 'Connected' : `All ${totalMixers} connected`;
+            } else if (connectedMixers.length === 0) {
+                // No mixers connected
+                mixerStatusIndicator.textContent = '🔴';
+                mixerStatusIndicator.className = 'mixer-status-indicator disconnected';
+                mixerStatusText.textContent = totalMixers === 1 ? 'Disconnected' : `All ${totalMixers} disconnected`;
+            } else {
+                // Some mixers connected
+                mixerStatusIndicator.textContent = '🟡';
+                mixerStatusIndicator.className = 'mixer-status-indicator checking';
+                mixerStatusText.textContent = `${connectedMixers.length}/${totalMixers} connected`;
+            }
+        }
+
+        function showMixerDisconnectedNotification(mixer) {
+            const title = `🔴 ${mixer.name} Disconnected`;
+            const message = `${mixer.type.toUpperCase()} mixer at ${mixer.host}:${mixer.port} has lost connection`;
+            
+            showToastNotification(title, message, 'error');
+            addLog(`[ALERT] ${mixer.name} (${mixer.type}) disconnected from ${mixer.host}:${mixer.port}`, 'error');
+        }
+
+        function showMixerConnectionReminderNotification(mixer) {
+            const title = `⚠️ Mixer Still Disconnected`;
+            const message = `${mixer.name} remains disconnected. Check your mixer connection.`;
+            
+            showToastNotification(title, message, 'warning');
+        }
+
+        function showMixerReconnectedNotification(mixer) {
+            const title = `🟢 ${mixer.name} Reconnected`;
+            const message = `${mixer.type.toUpperCase()} mixer at ${mixer.host}:${mixer.port} is back online`;
+            
+            showToastNotification(title, message, 'success');
+            addLog(`[SUCCESS] ${mixer.name} (${mixer.type}) reconnected at ${mixer.host}:${mixer.port}`, 'success');
+        }
+
+        // Toast notification system
+        function showToastNotification(title, message, type, clickHandler) {
+            const toast = document.createElement('div');
+            toast.className = `toast-notification toast-${type}`;
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 10001;
+                background: ${getToastBackground(type)};
+                border: 1px solid ${getToastBorder(type)};
+                border-radius: 12px;
+                padding: 1rem 1.5rem;
+                max-width: 400px;
+                backdrop-filter: blur(10px);
+                transform: translateX(450px);
+                transition: transform 0.3s ease;
+                cursor: ${clickHandler ? 'pointer' : 'default'};
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            `;
+
+            toast.innerHTML = `
+                <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
+                    <div style="font-size: 1.2rem; flex-shrink: 0; margin-top: 2px;">
+                        ${getToastIcon(type)}
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-weight: 600; color: white; margin-bottom: 0.25rem; font-size: 14px;">
+                            ${title}
+                        </div>
+                        <div style="color: rgba(255, 255, 255, 0.8); font-size: 13px; line-height: 1.4;">
+                            ${message}
+                        </div>
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" style="
+                        background: none;
+                        border: none;
+                        color: rgba(255, 255, 255, 0.6);
+                        cursor: pointer;
+                        font-size: 1.2rem;
+                        padding: 0;
+                        line-height: 1;
+                        flex-shrink: 0;
+                    ">×</button>
+                </div>
+            `;
+
+            if (clickHandler) {
+                toast.addEventListener('click', (e) => {
+                    if (e.target.tagName !== 'BUTTON') {
+                        clickHandler();
+                        toast.remove();
+                    }
+                });
+            }
+
+            document.body.appendChild(toast);
+
+            // Animate in
+            setTimeout(() => {
+                toast.style.transform = 'translateX(0)';
+            }, 100);
+
+            // Auto-remove after delay (except errors which require manual dismissal)
+            if (type !== 'error') {
+                setTimeout(() => {
+                    if (toast.parentElement) {
+                        toast.style.transform = 'translateX(450px)';
+                        setTimeout(() => toast.remove(), 300);
+                    }
+                }, type === 'warning' ? 8000 : 5000);
+            }
+        }
+
+        function getToastBackground(type) {
+            switch (type) {
+                case 'error': return 'rgba(255, 59, 48, 0.15)';
+                case 'warning': return 'rgba(255, 149, 0, 0.15)';
+                case 'success': return 'rgba(52, 199, 89, 0.15)';
+                default: return 'rgba(0, 122, 255, 0.15)';
+            }
+        }
+
+        function getToastBorder(type) {
+            switch (type) {
+                case 'error': return 'rgba(255, 59, 48, 0.3)';
+                case 'warning': return 'rgba(255, 149, 0, 0.3)';
+                case 'success': return 'rgba(52, 199, 89, 0.3)';
+                default: return 'rgba(0, 122, 255, 0.3)';
+            }
+        }
+
+        function getToastIcon(type) {
+            switch (type) {
+                case 'error': return '🔴';
+                case 'warning': return '⚠️';
+                case 'success': return '✅';
+                default: return 'ℹ️';
+            }
+        }
+        
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', init);
+        
+        })(); // End of self-executing function
+    </script>
+</body>
+</html>

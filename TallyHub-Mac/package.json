@@ -1,0 +1,104 @@
+{
+  "name": "tallyhub-mac",
+  "version": "1.0.0",
+  "description": "TallyHub - Professional Tally Light Management for Mac",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev --enable-logging",
+    "build": "electron-builder",
+    "build-mac": "electron-builder --mac",
+    "build-mac-universal": "electron-builder --mac --universal",
+    "pack": "electron-builder --dir",
+    "dist": "npm run build",
+    "clean": "rm -rf dist/ node_modules/ server/",
+    "setup": "chmod +x scripts/*.sh && ./scripts/setup.sh",
+    "copy-server": "node scripts/copy-server.js",
+    "build-server": "cd server && npm install && npm run build",
+    "test-server": "node scripts/test-server.js",
+    "build-app": "./build-app.sh",
+    "prebuild": "npm run copy-server",
+    "postbuild": "npm run build-server",
+    "predev": "npm run copy-server"
+  },
+  "keywords": [
+    "tally",
+    "broadcast",
+    "streaming",
+    "obs",
+    "mixer",
+    "production"
+  ],
+  "author": "TallyHub Pro",
+  "license": "MIT",
+  "homepage": "https://tallyhubpro.github.io",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tallyhubpro/Tallyhub.git"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "electron-updater": "^6.1.7",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "ws": "^8.18.0",
+    "obs-websocket-js": "^5.0.6"
+  },
+  "build": {
+    "appId": "com.tallyhubpro.tallyhub",
+    "productName": "TallyHub",
+    "directories": {
+      "output": "dist"
+    },
+    "asarUnpack": [
+      "server/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.video",
+      "icon": "assets/icon.icns",
+      "target": [
+        {
+          "target": "zip",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "darkModeSupport": true,
+      "gatekeeperAssess": false,
+      "hardenedRuntime": false
+    },
+    "dmg": {
+      "title": "TallyHub Installer",
+      "backgroundColor": "#1a1a1a",
+      "window": {
+        "width": 600,
+        "height": 400
+      }
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*", 
+      "server/**/*",
+      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!**/node_modules/*.d.ts",
+      "!**/node_modules/.bin",
+      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
+      "!.editorconfig",
+      "!**/._*",
+      "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
+      "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
+      "!**/{appveyor.yml,.travis.yml,circle.yml}",
+      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+    ],
+    "extraFiles": [
+      {
+        "from": "server/node_modules",
+        "to": "Resources/app.asar.unpacked/server/node_modules",
+        "filter": ["**/*"]
+      }
+    ]
+  }
+}

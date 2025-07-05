@@ -11,7 +11,7 @@
 String wifi_ssid = "";
 String wifi_password = "";
 String hub_ip = "192.168.0.216";
-int hub_port = 7412;
+int hub_port = 7411;
 String device_id = "m5-tally-01";
 String device_name = "M5 Tally Light";
 
@@ -959,7 +959,7 @@ void loadConfiguration() {
   wifi_ssid = preferences.getString("wifi_ssid", "");
   wifi_password = preferences.getString("wifi_password", "");
   hub_ip = preferences.getString("hub_ip", "192.168.0.216");
-  hub_port = preferences.getInt("hub_port", 7412);
+  hub_port = preferences.getInt("hub_port", 7411);
   device_id = preferences.getString("device_id", "m5-tally-01");
   device_name = preferences.getString("device_name", "M5 Tally Light");
   
@@ -1207,7 +1207,7 @@ void handleRoot() {
   html += "<div class='form-group'><label class='form-label'>Hub Server IP</label>";
   html += "<input type='text' name='hub_ip' class='form-input' placeholder='192.168.1.100' value='" + hub_ip + "' required></div>";
   html += "<div class='form-group'><label class='form-label'>Hub Server Port</label>";
-  html += "<input type='number' name='hub_port' class='form-input' placeholder='7412' value='" + String(hub_port) + "' min='1' max='65535' required></div>";
+  html += "<input type='number' name='hub_port' class='form-input' placeholder='7411' value='" + String(hub_port) + "' min='1' max='65535' required></div>";
   html += "<div class='form-group'><label class='form-label'>Device ID</label>";
   html += "<input type='text' name='device_id' class='form-input' placeholder='m5-tally-01' value='" + device_id + "' required></div>";
   html += "<div class='form-group'><label class='form-label'>Display Name</label>";

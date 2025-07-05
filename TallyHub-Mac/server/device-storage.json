@@ -1,0 +1,9 @@
+[
+  {
+    "id": "tally-f09e9e1079e8",
+    "name": "ESP32 Tally Light",
+    "type": "ESP32",
+    "ipAddress": "192.168.0.64",
+    "lastSeen": "2025-07-05T18:19:36.297Z"
+  }
+]

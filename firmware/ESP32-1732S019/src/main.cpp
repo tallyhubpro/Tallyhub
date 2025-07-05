@@ -66,7 +66,7 @@ String deviceID = "tally-";
 String macAddress = "";
 String ipAddress = "";
 String hubIP = "192.168.0.216";
-int hubPort = 7412;
+int hubPort = 7411;
 String assignedSource = "";
 String assignedSourceName = ""; // The human-readable name of the assigned source
 String currentSource = ""; // Current source display name (cleaned)
@@ -177,8 +177,8 @@ void setup() {
     Serial.println("IP Address: " + ipAddress);
     setupWebServer();
     // Start UDP - use same port as hub for both sending and receiving
-    if (udp.begin(7412)) {
-      Serial.println("UDP started on port 7412");
+    if (udp.begin(7411)) {
+      Serial.println("UDP started on port 7411");
     } else {
       Serial.println("Failed to start UDP");
     }
@@ -583,7 +583,7 @@ void loadConfiguration() {
   preferences.begin("tally", false);
   deviceName = preferences.getString("deviceName", "ESP32 Tally Light");
   hubIP = preferences.getString("hubIP", "192.168.0.216");
-  hubPort = preferences.getInt("hubPort", 7412);
+  hubPort = preferences.getInt("hubPort", 7411);
   assignedSource = preferences.getString("assignedSource", "");
   assignedSourceName = preferences.getString("assignedSourceName", "");
   customDisplayName = preferences.getString("customDisplayName", "");
@@ -1182,7 +1182,7 @@ void handleRoot() {
   html += "<div class='form-group'><label class='form-label'>Hub Server IP</label>";
   html += "<input type='text' name='hub_ip' class='form-input' placeholder='192.168.1.100' value='" + hubIP + "' required></div>";
   html += "<div class='form-group'><label class='form-label'>Hub Server Port</label>";
-  html += "<input type='number' name='hub_port' class='form-input' placeholder='7412' value='" + String(hubPort) + "' min='1' max='65535' required></div>";
+  html += "<input type='number' name='hub_port' class='form-input' placeholder='7411' value='" + String(hubPort) + "' min='1' max='65535' required></div>";
   html += "<div class='form-group'><label class='form-label'>Device ID</label>";
   html += "<input type='text' name='device_id' class='form-input' placeholder='esp32-tally-01' value='" + deviceID + "' required></div>";
   html += "<button type='submit' class='btn btn-primary'>Save Configuration</button></form></div>";
@@ -1392,7 +1392,7 @@ void restartUDP() {
   udp.stop();
   delay(100);
   
-  if (udp.begin(7412)) {
+  if (udp.begin(7411)) {
     Serial.println("UDP restarted successfully");
   } else {
     Serial.println("Failed to restart UDP");

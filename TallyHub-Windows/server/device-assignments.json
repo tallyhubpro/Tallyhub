@@ -1,0 +1,79 @@
+[
+  {
+    "deviceId": "web-1750533361927-ef06u7b6t",
+    "sourceId": "obs-source-Sony",
+    "sourceName": "Source obs-source-Sony",
+    "assignedBy": "user",
+    "assignedAt": "2025-06-23T21:58:33.660Z"
+  },
+  {
+    "deviceId": "web-1750546770383-69tedzlaw",
+    "sourceId": "obs-source-NDI Main Camera",
+    "sourceName": "Source obs-source-NDI Main Camera",
+    "assignedBy": "admin",
+    "assignedAt": "2025-06-23T21:15:13.447Z"
+  },
+  {
+    "deviceId": "web-1750524765151-mlf699sm1",
+    "sourceId": "obs-scene-Audience",
+    "sourceName": "Source obs-scene-Audience",
+    "assignedBy": "admin",
+    "assignedAt": "2025-06-25T16:11:10.150Z"
+  },
+  {
+    "deviceId": "web-1750894778141-r5s01nezo",
+    "sourceId": "obs-scene-iPhone",
+    "sourceName": "Source obs-scene-iPhone",
+    "assignedBy": "user",
+    "assignedAt": "2025-06-25T23:39:44.181Z"
+  },
+  {
+    "deviceId": "web-1750534076144-k7dmj884f",
+    "sourceId": "obs-scene-iPhone",
+    "sourceName": "Source obs-scene-iPhone",
+    "assignedBy": "user",
+    "assignedAt": "2025-06-25T23:40:38.857Z"
+  },
+  {
+    "deviceId": "web-1751370048282-dxjmmb6aq",
+    "sourceId": "obs-scene-2nd Screen Capture",
+    "sourceName": "Source obs-scene-2nd Screen Capture",
+    "assignedBy": "admin",
+    "assignedAt": "2025-07-01T22:20:18.206Z"
+  },
+  {
+    "deviceId": "web-1751380730111-zzape94cq",
+    "sourceId": "obs-scene-Stage Projector",
+    "sourceName": "Source obs-scene-Stage Projector",
+    "assignedBy": "user",
+    "assignedAt": "2025-07-01T14:57:59.882Z"
+  },
+  {
+    "deviceId": "web-1751669614404-fmuzqkj6t",
+    "sourceId": "vmix-input-1",
+    "sourceName": "Source vmix-input-1",
+    "assignedBy": "admin",
+    "assignedAt": "2025-07-05T16:18:07.863Z"
+  },
+  {
+    "deviceId": "web-1751670486603-4l5egbj3c",
+    "sourceId": "obs-scene-Sony Camera",
+    "sourceName": "Source obs-scene-Sony Camera",
+    "assignedBy": "user",
+    "assignedAt": "2025-07-05T08:16:11.991Z"
+  },
+  {
+    "deviceId": "m5-tally-01",
+    "sourceId": "vmix-input-1",
+    "sourceName": "Source vmix-input-1",
+    "assignedBy": "admin",
+    "assignedAt": "2025-07-05T15:46:27.927Z"
+  },
+  {
+    "deviceId": "tally-f09e9e1079e8",
+    "sourceId": "vmix-input-2",
+    "sourceName": "Source vmix-input-2",
+    "assignedBy": "admin",
+    "assignedAt": "2025-07-05T15:45:19.369Z"
+  }
+]

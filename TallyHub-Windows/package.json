@@ -1,0 +1,148 @@
+{
+  "name": "tallyhub-windows",
+  "version": "1.0.0",
+  "description": "TallyHub - Professional Tally Light Management for Windows",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "node_modules\\.bin\\electron .",
+    "dev": "node_modules\\.bin\\electron . --dev --enable-logging",
+    "build": "electron-builder",
+    "build-win": "electron-builder --win",
+    "build-win-x64": "electron-builder --win --x64",
+    "build-win-ia32": "electron-builder --win --ia32",
+    "pack": "electron-builder --dir",
+    "dist": "npm run build",
+    "rebuild": "npm run clean && npm run setup && npm run build",
+    "force-rebuild": "npm run clean && rmdir /s /q node_modules 2>nul || echo \"No node_modules to remove\" && npm install && npm run copy-server && node scripts/create-proper-ico.js && npm run build",
+    "clean": "rimraf dist/ node_modules/ server/",
+    "setup": "npm install && npm run copy-server",
+    "copy-server": "node scripts/copy-server.js",
+    "build-server": "cd server && npm install && npm run build",
+    "test-server": "node scripts/test-server.js",
+    "convert-icons": "node scripts/convert-icons.js",
+    "validate-icons": "node scripts/validate-icons.js",
+    "prebuild": "npm run copy-server && node scripts/create-proper-ico.js",
+    "postbuild": "npm run build-server && node scripts/copy-icons-to-build.js && node scripts/set-exe-icon.js",
+    "predev": "npm run copy-server"
+  },
+  "keywords": [
+    "tally",
+    "broadcast",
+    "streaming",
+    "obs",
+    "mixer",
+    "production",
+    "windows"
+  ],
+  "author": "TallyHub Pro",
+  "license": "MIT",
+  "homepage": "https://tallyhubpro.github.io",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tallyhubpro/Tallyhub.git"
+  },
+  "devDependencies": {
+    "electron": "^28.3.3",
+    "electron-builder": "^24.9.1",
+    "png-to-ico": "^2.1.8",
+    "rcedit": "^4.0.1",
+    "rimraf": "^5.0.5",
+    "sharp": "^0.34.2"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "electron-updater": "^6.1.7",
+    "express": "^4.18.2",
+    "obs-websocket-js": "^5.0.6",
+    "ws": "^8.18.0"
+  },
+  "build": {
+    "appId": "com.tallyhubpro.tallyhub",
+    "productName": "TallyHub",
+    "directories": {
+      "output": "dist"
+    },
+    "asarUnpack": [
+      "server/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "publisherName": "TallyHub Pro",
+      "requestedExecutionLevel": "asInvoker",
+      "signAndEditExecutable": false,
+      "signDlls": false,
+      "verifyUpdateCodeSignature": false,
+      "extraResources": [
+        "assets/Square44x44Logo.png",
+        "assets/Square44x44Logo.scale-200.png",
+        "assets/Square44x44Logo.targetsize-16_altform-unplated.png",
+        "assets/Square44x44Logo.targetsize-24_altform-unplated.png",
+        "assets/Square44x44Logo.targetsize-32_altform-unplated.png",
+        "assets/Square44x44Logo.targetsize-48_altform-unplated.png",
+        "assets/Square44x44Logo.targetsize-64_altform-unplated.png",
+        "assets/Square44x44Logo.targetsize-128_altform-unplated.png",
+        "assets/Square44x44Logo.targetsize-256_altform-unplated.png"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "TallyHub",
+      "include": "build/installer.nsh",
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName}-Portable-${version}.${ext}"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "server/**/*",
+      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!**/node_modules/*.d.ts",
+      "!**/node_modules/.bin",
+      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
+      "!.editorconfig",
+      "!**/._*",
+      "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
+      "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
+      "!**/{appveyor.yml,.travis.yml,circle.yml}",
+      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+    ],
+    "extraFiles": [
+      {
+        "from": "server/node_modules",
+        "to": "resources/app.asar.unpacked/server/node_modules",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ]
+  }
+}
