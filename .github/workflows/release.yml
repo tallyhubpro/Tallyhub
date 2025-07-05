@@ -223,3 +223,25 @@ jobs:
           asset_name: TallyHub-Server-Linux.tar.gz
           asset_content_type: application/gzip
         continue-on-error: true
+
+      - name: Upload ESP32 Firmware
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./public/firmware/ESP32-1732S019/firmware-merged.bin
+          asset_name: ESP32-1732S019-Firmware.bin
+          asset_content_type: application/octet-stream
+        continue-on-error: true
+
+      - name: Upload M5Stick Firmware
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./public/firmware/M5Stick_Tally/firmware-merged.bin
+          asset_name: M5Stick-Tally-Firmware.bin
+          asset_content_type: application/octet-stream
+        continue-on-error: true
