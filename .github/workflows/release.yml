@@ -144,13 +144,10 @@ jobs:
           fi
       
       - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.version.outputs.version }}
-          release_name: Tally Hub ${{ steps.version.outputs.version }}
+          name: Tally Hub ${{ steps.version.outputs.version }}
           body: |
             ## 🎉 Tally Hub ${{ steps.version.outputs.version }}
             
@@ -158,9 +155,9 @@ jobs:
             
             ### 📦 Downloads
             
-            - **Windows**: Download `TallyHub-Setup.exe` for Windows 10/11
-            - **macOS**: Download `TallyHub.dmg` for macOS 10.15+
-            - **Linux/Server**: Download `tally-hub-server-linux.tar.gz` for server deployment
+            - **Windows**: Download `TallyHub-Windows-Setup.exe` for Windows 10/11
+            - **macOS**: Download `TallyHub-macOS.dmg` for macOS 10.15+
+            - **Linux/Server**: Download `TallyHub-Server-Linux.tar.gz` for server deployment
             
             ### ✨ Features
             
@@ -190,58 +187,11 @@ jobs:
             - **Commercial**: $200-500+ per device
           draft: false
           prerelease: false
-      
-      - name: Upload Windows Release Asset
-        uses: actions/upload-release-asset@v1
+          files: |
+            release-files/TallyHub-Setup.exe
+            release-files/TallyHub.dmg
+            release-files/tally-hub-server-linux.tar.gz
+            public/firmware/ESP32-1732S019/firmware-merged.bin
+            public/firmware/M5Stick_Tally/firmware-merged.bin
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./release-files/TallyHub-Setup.exe
-          asset_name: TallyHub-Windows-Setup.exe
-          asset_content_type: application/octet-stream
-        continue-on-error: true
-      
-      - name: Upload macOS Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./release-files/TallyHub.dmg
-          asset_name: TallyHub-macOS.dmg
-          asset_content_type: application/octet-stream
-        continue-on-error: true
-      
-      - name: Upload Server Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./release-files/tally-hub-server-linux.tar.gz
-          asset_name: TallyHub-Server-Linux.tar.gz
-          asset_content_type: application/gzip
-        continue-on-error: true
-
-      - name: Upload ESP32 Firmware
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./public/firmware/ESP32-1732S019/firmware-merged.bin
-          asset_name: ESP32-1732S019-Firmware.bin
-          asset_content_type: application/octet-stream
-        continue-on-error: true
-
-      - name: Upload M5Stick Firmware
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./public/firmware/M5Stick_Tally/firmware-merged.bin
-          asset_name: M5Stick-Tally-Firmware.bin
-          asset_content_type: application/octet-stream
-        continue-on-error: true
