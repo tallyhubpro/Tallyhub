@@ -90,10 +90,8 @@
         }
       ],
       "icon": "assets/icon.ico",
-      "publisherName": "TallyHub Pro",
       "requestedExecutionLevel": "asInvoker",
       "signAndEditExecutable": false,
-      "signDlls": false,
       "verifyUpdateCodeSignature": false,
       "extraResources": [
         "assets/Square44x44Logo.png",
@@ -113,7 +111,6 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "TallyHub",
-      "include": "build/installer.nsh",
       "artifactName": "${productName}-Setup-${version}.${ext}"
     },
     "portable": {

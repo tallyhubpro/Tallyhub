@@ -83,6 +83,87 @@
             gap: 1rem;
         }
 
+        .firmware-selector {
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .firmware-selector h4 {
+            margin-bottom: 1rem;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .firmware-options {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .firmware-option {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .firmware-option:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .firmware-option input[type="radio"] {
+            margin-right: 0.5rem;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-input-label {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: rgba(33, 150, 243, 0.2);
+            border: 1px solid rgba(33, 150, 243, 0.3);
+            border-radius: 6px;
+            color: #2196F3;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .file-input-label:hover {
+            background: rgba(33, 150, 243, 0.3);
+        }
+
+        .file-selected {
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            border-radius: 6px;
+            color: #4CAF50;
+            font-size: 0.9rem;
+        }
+
         .device-option {
             background: rgba(255, 255, 255, 0.1);
             border: 2px solid transparent;
@@ -300,6 +381,33 @@
                 </ol>
             </div>
 
+            <div class="firmware-selector" id="firmwareSelector" style="display: none;">
+                <h4>📦 Select Firmware Source</h4>
+                <div class="firmware-options">
+                    <label class="firmware-option">
+                        <input type="radio" name="firmwareSource" value="builtin" checked>
+                        <span>Use Built-in Firmware (Recommended)</span>
+                    </label>
+                    <label class="firmware-option">
+                        <input type="radio" name="firmwareSource" value="custom">
+                        <span>Browse for Custom .bin File</span>
+                    </label>
+                </div>
+                
+                <div id="customFileSection" style="display: none; margin-top: 1rem;">
+                    <div class="file-input-wrapper">
+                        <input type="file" id="customFirmwareFile" class="file-input" accept=".bin" />
+                        <label for="customFirmwareFile" class="file-input-label">
+                            📁 Browse .bin File
+                        </label>
+                    </div>
+                    <div id="fileSelected" class="file-selected" style="display: none;">
+                        <span>📄 Selected: </span><span id="selectedFileName"></span>
+                        <span> (</span><span id="selectedFileSize"></span><span>)</span>
+                    </div>
+                </div>
+            </div>
+
             <div class="firmware-info" id="firmwareInfo">
                 <h4>📦 Firmware Information</h4>
                 <p><strong>Device:</strong> <span id="selectedDeviceName">None</span></p>
@@ -324,8 +432,11 @@
             </div>
 
             <div class="note">
-                <h4>💡 Browser Requirements</h4>
-                <p>This flasher requires a Chromium-based browser (Chrome, Edge, Opera) with Web Serial API support. Make sure your device is connected via USB and the appropriate drivers are installed.</p>
+                <h4>💡 Browser Requirements & Usage</h4>
+                <p><strong>Browser:</strong> This flasher requires a Chromium-based browser (Chrome, Edge, Opera) with Web Serial API support.</p>
+                <p><strong>Built-in Firmware:</strong> Use the recommended firmware that comes with IP display improvements.</p>
+                <p><strong>Custom Firmware:</strong> Upload your own .bin firmware file for testing or custom builds.</p>
+                <p><strong>Connection:</strong> Make sure your device is connected via USB and the appropriate drivers are installed.</p>
             </div>
         </div>
     </div>
@@ -336,6 +447,7 @@
         let selectedDevice = null;
         let esploader = null;
         let transport = null;
+        let customFirmwareFile = null;
 
         // Device configurations - simplified to single file only
         const deviceConfigs = {
@@ -382,6 +494,9 @@
             document.getElementById('selectedDeviceName').textContent = config.name;
             document.getElementById('firmwareInfo').style.display = 'block';
             
+            // Show firmware selector
+            document.getElementById('firmwareSelector').style.display = 'block';
+            
             // Update connection instructions
             const instructionsList = document.getElementById('instructionsList');
             instructionsList.innerHTML = '';
@@ -395,7 +510,7 @@
             // Enable flash button
             document.getElementById('flashButton').disabled = false;
             
-            showStatus('Device selected: ' + config.name + '. Ready to flash!', 'info');
+            showStatus('Device selected: ' + config.name + '. Choose firmware source and click Flash!', 'info');
         };
 
         function showStatus(message, type) {
@@ -418,6 +533,13 @@
         window.flashFirmware = async function() {
             if (!selectedDevice) {
                 showStatus('Please select a device type first', 'error');
+                return;
+            }
+
+            // Check firmware source
+            const firmwareSource = document.querySelector('input[name="firmwareSource"]:checked').value;
+            if (firmwareSource === 'custom' && !customFirmwareFile) {
+                showStatus('Please select a custom firmware file first', 'error');
                 return;
             }
 
@@ -456,21 +578,34 @@
 
                 // Connect to chip
                 const chip = await esploader.main();
-                showStatus(`Connected to ${chip}. Downloading firmware...`, 'info');
+                showStatus(`Connected to ${chip}. Preparing firmware...`, 'info');
                 updateProgress(10);
 
-                // Download firmware
-                flashButton.textContent = '⬇️ Downloading...';
-                const response = await fetch(config.firmware + '?t=' + Date.now());
-                if (!response.ok) {
-                    throw new Error(`Failed to download firmware: ${response.status}`);
+                // Get firmware data
+                let firmwareData;
+                let firmwareSize;
+                
+                if (firmwareSource === 'custom') {
+                    // Use custom file
+                    flashButton.textContent = '📁 Reading File...';
+                    showStatus('Reading custom firmware file...', 'info');
+                    firmwareData = await customFirmwareFile.arrayBuffer();
+                    firmwareSize = (firmwareData.byteLength / 1024).toFixed(1);
+                } else {
+                    // Download built-in firmware
+                    flashButton.textContent = '⬇️ Downloading...';
+                    showStatus('Downloading built-in firmware...', 'info');
+                    const response = await fetch(config.firmware + '?t=' + Date.now());
+                    if (!response.ok) {
+                        throw new Error(`Failed to download firmware: ${response.status}`);
+                    }
+                    firmwareData = await response.arrayBuffer();
+                    firmwareSize = (firmwareData.byteLength / 1024).toFixed(1);
                 }
                 
-                const firmwareData = await response.arrayBuffer();
-                const firmwareSize = (firmwareData.byteLength / 1024).toFixed(1);
                 document.getElementById('firmwareSize').textContent = `${firmwareSize} KB`;
                 
-                showStatus(`Firmware downloaded (${firmwareSize} KB). Starting flash...`, 'info');
+                showStatus(`Firmware ready (${firmwareSize} KB). Starting flash...`, 'info');
                 updateProgress(30);
 
                 // Convert to binary string for esptool-js
@@ -504,7 +639,8 @@
 
                 // Success!
                 flashButton.textContent = '✅ Flash Complete';
-                showStatus(`✅ Firmware flashed successfully! You can now disconnect your ${config.name} and restart it.`, 'success');
+                const firmwareType = firmwareSource === 'custom' ? 'custom' : 'built-in';
+                showStatus(`✅ ${firmwareType} firmware flashed successfully! You can now disconnect your ${config.name} and restart it.`, 'success');
                 
                 // Add device-specific post-flash instructions
                 if (selectedDevice === 'M5Stick_Tally') {
@@ -541,6 +677,40 @@
             showStatus('⚠️ Web Serial API not supported. Please use Chrome, Edge, or Opera browser.', 'error');
             document.getElementById('flashButton').disabled = true;
         }
+
+        // Handle firmware source selection
+        document.querySelectorAll('input[name="firmwareSource"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const customSection = document.getElementById('customFileSection');
+                if (this.value === 'custom') {
+                    customSection.style.display = 'block';
+                } else {
+                    customSection.style.display = 'none';
+                    customFirmwareFile = null;
+                    document.getElementById('fileSelected').style.display = 'none';
+                }
+            });
+        });
+
+        // Handle custom file selection
+        document.getElementById('customFirmwareFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                if (!file.name.toLowerCase().endsWith('.bin')) {
+                    showStatus('Please select a .bin file', 'error');
+                    this.value = '';
+                    return;
+                }
+                
+                customFirmwareFile = file;
+                const fileSize = (file.size / 1024).toFixed(1);
+                document.getElementById('selectedFileName').textContent = file.name;
+                document.getElementById('selectedFileSize').textContent = `${fileSize} KB`;
+                document.getElementById('fileSelected').style.display = 'block';
+                
+                showStatus(`Custom firmware file selected: ${file.name} (${fileSize} KB)`, 'info');
+            }
+        });
     </script>
 </body>
 </html>
