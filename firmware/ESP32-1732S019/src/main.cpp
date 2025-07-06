@@ -1017,26 +1017,36 @@ void showStatus(const String& status, uint16_t bgColor, uint16_t textColor) {
   tft.setCursor(x, y);
   tft.print(status);
   
-  // Show assigned source if available
+  // Show assigned source if available and not in error states
   String displaySource = "";
   
-  // Prioritize custom display name set via web portal, then assignedSourceName, then fallbacks
-  if (customDisplayName.length() > 0) {
-    displaySource = customDisplayName;
-  } else if (assignedSourceName.length() > 0) {
-    displaySource = assignedSourceName;
-  } else if (currentSource.length() > 0) {
-    displaySource = currentSource;
-  } else if (assignedSource.length() > 0) {
-    displaySource = cleanSourceName(assignedSource);
-  }
-  
-  if (displaySource.length() > 0) {
+  // For HUB_LOST and RECONNECT states, show IP address prominently
+  if (status == "HUB LOST" || status == "RECONNECT") {
     tft.setTextSize(2);
-    x = (SCREEN_WIDTH - (displaySource.length() * 12)) / 2;
+    String ipText = "IP: " + ipAddress;
+    x = (SCREEN_WIDTH - (ipText.length() * 12)) / 2;
     y = SCREEN_HEIGHT / 2 + 10;
     tft.setCursor(x, y);
-    tft.print(displaySource);
+    tft.print(ipText);
+  } else {
+    // Normal operation - show assigned source if available
+    if (customDisplayName.length() > 0) {
+      displaySource = customDisplayName;
+    } else if (assignedSourceName.length() > 0) {
+      displaySource = assignedSourceName;
+    } else if (currentSource.length() > 0) {
+      displaySource = currentSource;
+    } else if (assignedSource.length() > 0) {
+      displaySource = cleanSourceName(assignedSource);
+    }
+    
+    if (displaySource.length() > 0) {
+      tft.setTextSize(2);
+      x = (SCREEN_WIDTH - (displaySource.length() * 12)) / 2;
+      y = SCREEN_HEIGHT / 2 + 10;
+      tft.setCursor(x, y);
+      tft.print(displaySource);
+    }
   }
   
   // Show recording/streaming status

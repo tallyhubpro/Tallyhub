@@ -879,6 +879,14 @@ void showStatus(String message, uint16_t color) {
   
   M5.Lcd.setCursor(10, (135 - 16) / 2);
   M5.Lcd.print(message);
+  
+  // Show IP address when hub is lost or reconnecting
+  if (message == "HUB LOST" || message == "Connecting...") {
+    M5.Lcd.setTextSize(1);
+    String ipText = "IP: " + WiFi.localIP().toString();
+    M5.Lcd.setCursor(10, (135 - 16) / 2 + 20);
+    M5.Lcd.print(ipText);
+  }
 }
 
 void showTallyState(String state, uint16_t color) {
