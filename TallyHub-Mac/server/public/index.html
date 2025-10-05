@@ -166,6 +166,23 @@
             background: rgba(255, 255, 255, 0.05);
             border-radius: 4px;
         }
+        /* Recent Messages */
+        .messages-panel { margin-top:2rem; text-align:left; }
+        .messages-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:.5rem; }
+        .messages-list { background:rgba(255,255,255,0.1); border-radius:8px; padding:.75rem; max-height:260px; overflow-y:auto; font-size:.8rem; }
+        .msg-row { display:grid; grid-template-columns: 1fr auto auto; gap:.5rem; padding:.4rem .3rem; border-bottom:1px solid rgba(255,255,255,0.08); align-items:center; }
+        .msg-row:last-child { border-bottom:none; }
+        .msg-text { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:260px; }
+        .msg-acks { font-weight:600; }
+        .msg-target { opacity:.7; font-size:.65rem; }
+        .badge { padding:.15rem .45rem; border-radius:12px; font-size:.6rem; letter-spacing:.5px; background:rgba(255,255,255,0.15); }
+        .badge.complete { background:#34C759; color:#fff; }
+        .badge.partial { background:#FF9500; color:#000; }
+        .badge.none { background:rgba(255,255,255,0.25); color:#222; }
+        .color-dot { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:4px; border:1px solid rgba(255,255,255,0.4); }
+        .tooltip { position:relative; }
+        .tooltip:hover .tooltip-content { opacity:1; pointer-events:auto; transform:translateY(0); }
+        .tooltip-content { position:absolute; left:0; top:110%; background:rgba(0,0,0,0.75); padding:.5rem .6rem; border-radius:6px; font-size:.65rem; line-height:1.2; max-width:220px; opacity:0; pointer-events:none; transition:.15s; backdrop-filter:blur(4px); }
     </style>
 </head>
 <body>
@@ -196,6 +213,33 @@
             <div class="device-list" id="device-list">
                 <!-- Device details will be populated here -->
             </div>
+                        <div style="margin-top:1rem;border-top:1px solid rgba(255,255,255,0.15);padding-top:1rem;">
+                             <h3 style="font-size:1rem;margin-bottom:.5rem;text-align:left;">Send Message</h3>
+                             <form id="msgForm" onsubmit="return sendMessage(event)" style="display:flex;flex-direction:column;gap:.5rem;">
+                                 <textarea id="msgText" maxlength="20" placeholder="Enter short message (max 20 chars)" style="resize:vertical;min-height:70px;padding:.5rem;border-radius:6px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.25);color:#fff;font-family:inherit;"></textarea>
+                                 <div style="display:flex;justify-content:flex-end;font-size:.7rem;opacity:.8;">
+                                     <span id="msgCharCount">20 left</span>
+                                 </div>
+                                 <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+                                     <select id="msgTarget" style="flex:1;min-width:140px;padding:.5rem;border-radius:6px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.25);color:#fff;">
+                                         <option value="">All Devices</option>
+                                     </select>
+                                     <input id="msgColor" type="text" placeholder="#FF9500" style="width:110px;padding:.5rem;border-radius:6px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.25);color:#fff;" title="Optional hex color #RRGGBB" />
+                                     <input id="msgDuration" type="number" min="1000" max="30000" step="500" value="8000" style="width:110px;padding:.5rem;border-radius:6px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.25);color:#fff;" title="Duration ms" />
+                                 </div>
+                                 <button type="submit" style="padding:.75rem 1rem;border:none;border-radius:8px;background:#007AFF;color:#fff;font-weight:600;cursor:pointer;">Send</button>
+                                 <div id="msgStatus" style="font-size:.75rem;min-height:16px;opacity:.8;"></div>
+                             </form>
+                        </div>
+        </div>
+        <div class="messages-panel">
+            <div class="messages-header">
+                <h3 style="font-size:1rem;">Recent Messages</h3>
+                <button onclick="refreshMessages()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;font-size:.65rem;padding:.3rem .6rem;border-radius:6px;cursor:pointer;">Refresh</button>
+            </div>
+            <div class="messages-list" id="messagesList">
+                <div style="opacity:.6;font-size:.7rem;">No messages yet.</div>
+            </div>
         </div>
     </div>
 
@@ -225,7 +269,7 @@
                 return `
                     <div class="device-item">
                         <div class="device-info">
-                            <div class="device-name">${device.name}</div>
+                            <div class="device-name">${device.id}</div>
                             ${assignmentInfo}
                         </div>
                         <div class="device-status ${statusClass}">${assignmentStatus}</div>
@@ -244,11 +288,21 @@
                 devices = data.devices;
                 document.getElementById('device-count').textContent = devices.length;
                 document.getElementById('server-status').className = 'status-indicator';
+                                // Refresh device select options
+                                const sel = document.getElementById('msgTarget');
+                                if (sel) {
+                                    const current = sel.value;
+                                    // Show only device IDs per request (omit friendly name)
+                                    sel.innerHTML = '<option value="">All Devices</option>' + devices.map(d=>`<option value="${d.id}">${d.id}</option>`).join('');
+                                    if ([...sel.options].some(o=>o.value===current)) sel.value = current; // preserve selection
+                                }
                 
                 // Update device list if it's currently shown
                 if (document.getElementById('device-list').classList.contains('show')) {
                     renderDeviceList();
                 }
+                // refresh message stats quietly
+                refreshMessages(false);
             } catch (error) {
                 document.getElementById('server-status').className = 'status-indicator disconnected';
                 devices = [];
@@ -256,9 +310,87 @@
             }
         }
 
+                async function sendMessage(e){
+                    e.preventDefault();
+                    const textEl = document.getElementById('msgText');
+                    const targetEl = document.getElementById('msgTarget');
+                    const colorEl = document.getElementById('msgColor');
+                    const durEl = document.getElementById('msgDuration');
+                    const statusEl = document.getElementById('msgStatus');
+                    const text = textEl.value.trim();
+                    if (!text){ statusEl.textContent='Message required'; statusEl.style.color='#FF3B30'; return false; }
+                    if (text.length > 20){ statusEl.textContent='Max 20 characters'; statusEl.style.color='#FF3B30'; return false; }
+                    statusEl.textContent='Sending...'; statusEl.style.color='#fff';
+                    try {
+                        const body = { text };
+                        if (targetEl.value) body.deviceId = targetEl.value;
+                        if (colorEl.value.trim()) body.color = colorEl.value.trim();
+                        const dur = parseInt(durEl.value,10); if(!isNaN(dur)) body.duration = dur;
+                        const resp = await fetch('/api/message', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+                        const json = await resp.json();
+                        if(!json.success){ statusEl.textContent = json.error || 'Failed'; statusEl.style.color='#FF3B30'; }
+                        else { statusEl.textContent = 'Sent to ' + (json.target==='all' ? 'all devices' : json.target); statusEl.style.color='#34C759'; textEl.value=''; }
+                    } catch(err){
+                        statusEl.textContent='Error sending'; statusEl.style.color='#FF3B30';
+                    }
+                    return false;
+                }
+
+        // Live character counter for message (20 char max)
+        (function(){
+            const MAX=20;
+            const ta=document.getElementById('msgText');
+            const counter=document.getElementById('msgCharCount');
+            function update(){
+                const left=Math.max(0, MAX - ta.value.length);
+                counter.textContent = `${left} left`;
+                counter.style.color = left <= 5 ? '#FF9500' : '#fff';
+            }
+            if (ta && counter){ ta.addEventListener('input', update); update(); }
+        })();
+
         // Update status every 5 seconds
         updateStatus();
         setInterval(updateStatus, 5000);
+
+        async function refreshMessages(showSpinner=true){
+            const list = document.getElementById('messagesList');
+            if(showSpinner) list.innerHTML = '<div style="opacity:.6;font-size:.7rem;">Loading...</div>';
+            try {
+                const resp = await fetch('/api/messages/recent?limit=25');
+                const json = await resp.json();
+                if(!json.success){ list.innerHTML = '<div style="opacity:.6;font-size:.7rem;">Error loading messages</div>'; return; }
+                const msgs = json.messages;
+                if(!msgs.length){ list.innerHTML = '<div style="opacity:.6;font-size:.7rem;">No messages yet.</div>'; return; }
+                // Build rows
+                // Determine total device denominator per message: if targeted use 1 else current device count
+                const deviceMap = {}; devices.forEach(d=>deviceMap[d.id]=d);
+                const rows = msgs.map(m=>{
+                    const ackIds = Object.keys(m.acknowledgements||{});
+                    const targetIsSingle = !!m.targetDeviceId;
+                    const denom = targetIsSingle ? 1 : devices.length || 0;
+                    const ackCount = ackIds.length;
+                    let badgeClass = 'none';
+                    if(ackCount>0 && denom>0){ if(ackCount===denom) badgeClass='complete'; else badgeClass='partial'; }
+                    const badgeLabel = denom>0 ? `${ackCount}/${denom}` : `${ackCount}`;
+                    const colorDot = m.color ? `<span class="color-dot" style="background:${m.color}"></span>` : '';
+                    const targetLabel = targetIsSingle ? m.targetDeviceId : 'All';
+                    const tooltip = ackIds.length ? ackIds.map(id=>{ const a=m.acknowledgements[id]; const t=new Date(a.at).toLocaleTimeString(); return `${id} (${a.method||'?'} @ ${t})`; }).join('<br/>') : 'No acknowledgements yet';
+                    return `<div class="msg-row tooltip">`+
+                           `<div class="msg-text" title="${m.text.replace(/&/g,'&amp;')}">${colorDot}${m.text}</div>`+
+                           `<div class="msg-target">${targetLabel}</div>`+
+                           `<div class="msg-acks"><span class="badge ${badgeClass}">${badgeLabel}</span></div>`+
+                           `<div class="tooltip-content">${tooltip}</div>`+
+                           `</div>`;
+                }).join('');
+                list.innerHTML = rows;
+            } catch(err){
+                list.innerHTML = '<div style="opacity:.6;font-size:.7rem;">Error loading messages</div>';
+            }
+        }
+
+        // initial load delayed slightly to allow devices fetch to populate
+        setTimeout(()=>refreshMessages(), 600);
     </script>
 </body>
 </html>

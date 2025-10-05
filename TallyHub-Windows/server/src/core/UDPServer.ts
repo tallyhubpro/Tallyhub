@@ -1,4 +1,6 @@
 import { createSocket, Socket } from 'dgram';
+import os from 'os';
+import bonjour from 'bonjour';
 import { TallyHub } from './TallyHub';
 import { TallyDevice, TallyState } from '../types';
 
@@ -16,6 +18,8 @@ export class UDPServer {
   private m5Devices: Map<string, M5Device> = new Map();
   private port: number;
   private cleanupInterval: NodeJS.Timeout | null = null;
+  private mdns: ReturnType<typeof bonjour> | null = null;
+  private mdnsService: any = null;
 
   constructor(tallyHub: TallyHub) {
     this.tallyHub = tallyHub;
@@ -62,6 +66,24 @@ export class UDPServer {
       this.socket.on('listening', () => {
         const address = this.socket!.address();
         console.log(`📡 UDP server listening on ${address.address}:${address.port}`);
+        if (!process.env.DISABLE_MDNS) {
+          try {
+            this.mdns = bonjour();
+            const apiPort = parseInt(process.env.PORT || '3000');
+            this.mdnsService = this.mdns.publish({
+              name: `TallyHub-${address.address}`,
+              type: 'tallyhub',
+              protocol: 'udp',
+              port: this.port,
+              txt: { api: String(apiPort), udp: String(this.port), ver: process.env.npm_package_version || 'unknown' }
+            });
+            this.mdnsService.on('up', () => console.log('📣 mDNS service _tallyhub._udp advertised'));
+          } catch (e) {
+            console.warn('mDNS advertisement failed (continuing):', e);
+          }
+        } else {
+          console.log('📣 mDNS disabled via DISABLE_MDNS env var');
+        }
         resolve();
       });
 
@@ -95,6 +117,9 @@ export class UDPServer {
       const deviceKey = `${rinfo.address}:${rinfo.port}`;
 
       switch (message.type) {
+        case 'discover':
+          this.handleDiscovery(rinfo);
+          break;
         case 'register':
           this.handleDeviceRegistration(message, rinfo);
           break;
@@ -113,6 +138,36 @@ export class UDPServer {
     } catch (error) {
       console.error('Error parsing UDP message:', error);
     }
+  }
+
+  private getLocalIPv4(): string {
+    const nets = os.networkInterfaces();
+    for (const name of Object.keys(nets)) {
+      const list = nets[name];
+      if (!list) continue;
+      for (const ni of list) {
+        if (ni.family === 'IPv4' && !ni.internal && ni.address) return ni.address;
+      }
+    }
+    return '0.0.0.0';
+  }
+
+  private handleDiscovery(rinfo: any): void {
+    const payload = {
+      type: 'discover_reply',
+      hubIp: this.getLocalIPv4(),
+      udpPort: this.port,
+      apiPort: parseInt(process.env.PORT || '3000'),
+      timestamp: new Date()
+    };
+    this.sendToAddress(rinfo.address, rinfo.port, payload);
+  }
+
+  public async stop(): Promise<void> {
+    if (this.cleanupInterval) clearInterval(this.cleanupInterval);
+    if (this.mdnsService) { try { this.mdnsService.stop(()=>{}); } catch {} this.mdnsService=null; }
+    if (this.mdns) { try { this.mdns.destroy(); } catch {} this.mdns=null; }
+    if (this.socket) { await new Promise<void>(res=>{ try { this.socket!.close(()=>res()); } catch { res(); } }); this.socket=null; }
   }
 
   private handleDeviceRegistration(message: any, rinfo: any): void {
@@ -309,9 +364,27 @@ export class UDPServer {
   }
 
   private broadcastTallyUpdate(tallyState: TallyState): void {
-    // M5 devices now only work in assignment mode
-    // They will only receive tally updates for their assigned source via device:notify event
-    // No broadcasting needed - keeping this method for potential future use
+    // Broadcast only program=true updates to allow devices to capture global live source.
+    if (!tallyState.program) return;
+    // Only broadcast OBS scenes (skip OBS sources) to avoid overlays/logos; include vMix/ATEM inputs.
+    const id = tallyState.id || '';
+    if (id.startsWith('obs-source-')) return;
+    if (!(id.startsWith('obs-scene-') || id.startsWith('vmix-input-') || id.startsWith('atem-input-'))) return;
+
+    const message = {
+      type: 'tally',
+      data: {
+        id: tallyState.id,
+        name: this.cleanSourceName(tallyState.name),
+        preview: tallyState.preview,
+        program: true,
+        recording: tallyState.recording || false,
+        streaming: tallyState.streaming || false
+      }
+    };
+    for (const m5Device of this.m5Devices.values()) {
+      this.sendToAddress(m5Device.address, m5Device.port, message);
+    }
   }
 
   private cleanupInactiveDevices(): void {
@@ -329,20 +402,7 @@ export class UDPServer {
     }
   }
 
-  public async stop(): Promise<void> {
-    if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval);
-      this.cleanupInterval = null;
-    }
-
-    if (this.socket) {
-      this.socket.close();
-      this.socket = null;
-    }
-
-    this.m5Devices.clear();
-    console.log('📡 UDP server stopped');
-  }
+  // (stop method with mDNS teardown defined earlier)
 
   public getM5Devices(): M5Device[] {
     return Array.from(this.m5Devices.values());

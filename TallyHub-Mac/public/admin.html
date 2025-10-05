@@ -1,0 +1,58 @@
+<!-- Selective copy of root admin.html (truncated for brevity) -->
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:* ws://localhost:*; img-src 'self' data:; font-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"/>
+<title>Admin Panel - Tally Hub</title>
+<style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:2rem;color:#fff;} .container{max-width:880px;margin:0 auto;} .card{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:16px;padding:1.75rem;margin-bottom:1.75rem;backdrop-filter:blur(10px);} h1{margin-bottom:1rem;text-align:center;font-size:2.4rem;} .section-title{font-size:1.2rem;font-weight:600;margin-bottom:.75rem;} .flex{display:flex;gap:1rem;flex-wrap:wrap;} table{width:100%;border-collapse:collapse;font-size:.8rem;} th,td{padding:.4rem .5rem;text-align:left;border-bottom:1px solid rgba(255,255,255,.15);} th{background:rgba(255,255,255,.08);} .badge{padding:.15rem .45rem;border-radius:12px;font-size:.55rem;letter-spacing:.5px;background:rgba(255,255,255,.15);} .badge.ok{background:#34C759;color:#fff;} .badge.warn{background:#FF9500;color:#000;} .badge.err{background:#FF3B30;} .panel{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:1rem;margin-bottom:1rem;} label{font-size:.7rem;letter-spacing:.5px;text-transform:uppercase;opacity:.85;font-weight:600;display:block;margin-bottom:.35rem;} input,select,textarea{width:100%;padding:.55rem .6rem;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);color:#fff;font-family:inherit;font-size:.8rem;} textarea{resize:vertical;min-height:70px;} button{cursor:pointer;border:none;border-radius:10px;padding:.65rem 1.1rem;font-weight:600;display:inline-flex;align-items:center;gap:.4rem;background:#007AFF;color:#fff;} button.secondary{background:rgba(255,255,255,.2);} .grid{display:grid;gap:1rem;} .grid.cols-2{grid-template-columns:repeat(auto-fit,minmax(260px,1fr));} .messages-list{max-height:240px;overflow-y:auto;font-size:.7rem;} .msg-row{display:grid;grid-template-columns:1fr auto auto;gap:.5rem;padding:.35rem .25rem;border-bottom:1px solid rgba(255,255,255,.1);align-items:center;} .msg-row:last-child{border-bottom:none;} .msg-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:320px;} .msg-target{opacity:.65;font-size:.6rem;} .msg-acks{font-weight:600;} .color-dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:4px;border:1px solid rgba(255,255,255,.4);} .tooltip{position:relative;} .tooltip:hover .tooltip-content{opacity:1;pointer-events:auto;transform:translateY(0);} .tooltip-content{position:absolute;left:0;top:110%;background:rgba(0,0,0,.75);padding:.45rem .55rem;border-radius:6px;font-size:.6rem;line-height:1.2;max-width:220px;opacity:0;pointer-events:none;transition:.15s;backdrop-filter:blur(4px);} .badge.complete{background:#34C759;} .badge.partial{background:#FF9500;color:#000;} .badge.none{background:rgba(255,255,255,.25);color:#222;} .inline{display:inline-block;}
+</style></head><body>
+  <div class="container">
+    <h1>⚙️ Admin Panel</h1>
+    <div class="card" id="devicesCard">
+      <div class="section-title">Devices</div>
+      <div id="devicesTableWrapper" class="panel" style="overflow-x:auto;">
+        <table id="devicesTable"><thead><tr><th>ID</th><th>Type</th><th>Assigned Source</th><th>Last Seen</th><th>Status</th></tr></thead><tbody><tr><td colspan="5" style="opacity:.6;">Loading...</td></tr></tbody></table>
+      </div>
+    </div>
+    <div class="card" id="assignmentCard">
+      <div class="section-title">Assign Source To Device</div>
+      <div class="grid cols-2">
+        <div><label for="assignDevice">Device</label><select id="assignDevice"></select></div>
+        <div><label for="assignSource">Source</label><select id="assignSource"></select></div>
+      </div>
+      <div style="margin-top:.75rem;display:flex;gap:.5rem;flex-wrap:wrap;">
+        <button onclick="assignSource()">Assign</button>
+        <button class="secondary" onclick="unassignDevice()">Unassign</button>
+        <span id="assignStatus" style="font-size:.65rem;align-self:center;opacity:.8;"></span>
+      </div>
+    </div>
+    <div class="card" id="messageCard">
+      <div class="section-title">Send Admin Message</div>
+      <div class="grid cols-2">
+        <div><label for="msgText">Message (120 chars)</label><textarea id="msgText" maxlength="120"></textarea></div>
+        <div style="display:flex;flex-direction:column;gap:.75rem;">
+          <div><label for="msgTarget">Target Device</label><select id="msgTarget"><option value="">All Devices</option></select></div>
+          <div><label for="msgColor">Color (#RRGGBB)</label><input id="msgColor" placeholder="#FF9500"/></div>
+          <div><label for="msgDuration">Duration (ms)</label><input id="msgDuration" type="number" min="1000" max="30000" step="500" value="8000"/></div>
+          <button onclick="sendAdminMessage()">Send Message</button>
+          <div id="msgStatus" style="font-size:.65rem;min-height:14px;opacity:.8;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card" id="recentMessagesCard">
+      <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;">Recent Messages <button class="secondary" style="font-size:.55rem;padding:.35rem .6rem;" onclick="refreshMessages()">Refresh</button></div>
+      <div class="messages-list" id="messagesList"><div style="opacity:.6;font-size:.65rem;">No messages yet.</div></div>
+    </div>
+  </div>
+<script>
+async function api(path,opts={}){const r=await fetch(path,opts);return r.json();}
+let devices=[]; let tallies=[];
+let initialAdminAttempts=0; async function loadStatus(){try{const s=await api('/api/status'); devices=s.devices||[]; tallies=s.tallies||[]; renderDevices(); populateAssignSelects(); populateMsgTargets(); refreshMessages(false); initialAdminAttempts=0;}catch(e){initialAdminAttempts++; const backoff=Math.min(2000, 150*initialAdminAttempts); setTimeout(loadStatus, backoff);}}
+function renderDevices(){const tb=document.querySelector('#devicesTable tbody'); if(!devices.length){tb.innerHTML='<tr><td colspan="5" style="opacity:.6;">No devices</td></tr>'; return;} tb.innerHTML=devices.map(d=>{const last=d.lastSeen?new Date(d.lastSeen).toLocaleTimeString():''; const assigned=d.assignedSource||''; const status=d.connected?'<span class="badge ok">ONLINE</span>':'<span class="badge err">OFFLINE</span>'; return `<tr><td>${d.id}</td><td>${d.type}</td><td>${assigned||'<span style=\"opacity:.5;\">(none)</span>'}</td><td>${last}</td><td>${status}</td></tr>`;}).join(''); }
+function populateAssignSelects(){const devSel=document.getElementById('assignDevice'); devSel.innerHTML=devices.map(d=>`<option value="${d.id}">${d.id}</option>`).join(''); const srcSel=document.getElementById('assignSource'); srcSel.innerHTML=tallies.map(t=>`<option value="${t.id}">${t.id}</option>`).join(''); }
+function populateMsgTargets(){const sel=document.getElementById('msgTarget'); sel.innerHTML='<option value="">All Devices</option>'+devices.map(d=>`<option value="${d.id}">${d.id}</option>`).join(''); }
+async function assignSource(){const dev=document.getElementById('assignDevice').value; const src=document.getElementById('assignSource').value; const st=document.getElementById('assignStatus'); st.textContent='Assigning...'; try{const r=await api(`/api/devices/${dev}/assign`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sourceId:src})}); if(r.success){st.textContent='Assigned'; loadStatus();} else {st.textContent=r.error||'Failed';}}catch(e){st.textContent='Error';}}
+async function unassignDevice(){const dev=document.getElementById('assignDevice').value; const st=document.getElementById('assignStatus'); st.textContent='Unassigning...'; try{const r=await api(`/api/devices/${dev}/assign`,{method:'DELETE'}); if(r.success){st.textContent='Unassigned'; loadStatus();} else {st.textContent=r.error||'Failed';}}catch(e){st.textContent='Error';}}
+async function sendAdminMessage(){const textEl=document.getElementById('msgText'); const targetEl=document.getElementById('msgTarget'); const colorEl=document.getElementById('msgColor'); const durEl=document.getElementById('msgDuration'); const statusEl=document.getElementById('msgStatus'); const text=textEl.value.trim(); if(!text){statusEl.textContent='Message required'; statusEl.style.color='#FF3B30'; return;} statusEl.textContent='Sending...'; statusEl.style.color='#fff'; try{const body={text}; if(targetEl.value) body.deviceId=targetEl.value; if(colorEl.value.trim()) body.color=colorEl.value.trim(); const dur=parseInt(durEl.value,10); if(!isNaN(dur)) body.duration=dur; const resp=await fetch('/api/message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); const json=await resp.json(); if(!json.success){statusEl.textContent=json.error||'Failed'; statusEl.style.color='#FF3B30';} else {statusEl.textContent='Sent'; statusEl.style.color='#34C759'; textEl.value=''; refreshMessages();}}catch(err){statusEl.textContent='Error'; statusEl.style.color='#FF3B30';}}
+async function refreshMessages(spinner=true){const list=document.getElementById('messagesList'); if(spinner) list.innerHTML='<div style="opacity:.6;font-size:.65rem;">Loading...</div>'; try{const resp=await fetch('/api/messages/recent?limit=25'); const json=await resp.json(); if(!json.success){list.innerHTML='<div style="opacity:.6;font-size:.65rem;">Error</div>'; return;} const msgs=json.messages; if(!msgs.length){list.innerHTML='<div style="opacity:.6;font-size:.65rem;">No messages yet.</div>'; return;} const deviceMap={}; devices.forEach(d=>deviceMap[d.id]=d); list.innerHTML=msgs.map(m=>{const ackIds=Object.keys(m.acknowledgements||{}); const targetSingle=!!m.targetDeviceId; const denom=targetSingle?1:devices.length||0; const ackCount=ackIds.length; let badgeClass='none'; if(ackCount>0 && denom>0){badgeClass=ackCount===denom?'complete':'partial';} const badgeLabel=denom>0?`${ackCount}/${denom}`:`${ackCount}`; const colorDot=m.color?`<span class=\"color-dot\" style=\"background:${m.color}\"></span>`:''; const tgt=targetSingle?(deviceMap[m.targetDeviceId]?.id||m.targetDeviceId):'All'; const tooltip=ackIds.length?ackIds.map(id=>{const a=m.acknowledgements[id]; const t=new Date(a.at).toLocaleTimeString(); return `${id} (${a.method||'?'} @ ${t})`;}).join('<br/>'):'No acknowledgements yet'; return `<div class=\"msg-row tooltip\"><div class=\"msg-text\" title=\"${m.text.replace(/&/g,'&amp;')}\">${colorDot}${m.text}</div><div class=\"msg-target\">${tgt}</div><div class=\"msg-acks\"><span class=\"badge ${badgeClass}\">${badgeLabel}</span></div><div class=\"tooltip-content\">${tooltip}</div></div>`;}).join(''); } catch(err){ list.innerHTML='<div style="opacity:.6;font-size:.65rem;">Error</div>'; }}
+loadStatus(); setInterval(loadStatus,7000); setTimeout(()=>refreshMessages(),800);
+</script>
+</body></html>

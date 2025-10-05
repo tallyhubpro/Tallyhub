@@ -397,6 +397,15 @@ export class TallyHub extends EventEmitter {
       streaming: update.streaming
     };
 
+    // Overlay global OBS recording/streaming status (if available) on all sources, OR-merging with mixer flags
+    const obsStatus = this.getObsGlobalStatus();
+    if (obsStatus) {
+      const baseRec = typeof update.recording === 'boolean' ? update.recording : (existingTally?.recording ?? false);
+      const baseStr = typeof update.streaming === 'boolean' ? update.streaming : (existingTally?.streaming ?? false);
+      newTallyState.recording = !!(baseRec || obsStatus.recording);
+      newTallyState.streaming = !!(baseStr || obsStatus.streaming);
+    }
+
     this.tallies.set(update.deviceId, newTallyState);
     
     // Emit tally update to all connected devices (for web interface)
@@ -418,6 +427,16 @@ export class TallyHub extends EventEmitter {
     
     // Emit status update to all connected clients
     this.emit('status:update', statusUpdate);
+
+      // If OBS status changed, push updated status to all assigned devices immediately
+      const changedConn = this.mixerConnections.get(statusUpdate.mixerId);
+      if (changedConn && changedConn.type === 'obs') {
+        for (const device of this.devices.values()) {
+          if (device.assignmentMode === 'assigned' && device.assignedSource) {
+            this.sendTallyToAssignedDevice(device.id, device.assignedSource);
+          }
+        }
+      }
   }
 
   private notifyDevices(tallyState: TallyState): void {
@@ -438,6 +457,19 @@ export class TallyHub extends EventEmitter {
     if (deviceNotificationCount > 1) {
       console.log(`📡 Notified ${deviceNotificationCount} device(s) about ${tallyState.name} state change`);
     }
+  }
+
+  // Return the latest global OBS recording/streaming status if any OBS mixer is configured
+  private getObsGlobalStatus(): { recording: boolean; streaming: boolean } | null {
+    const obs = Array.from(this.mixerConnections.values()).find(m => m.type === 'obs' && m.connected);
+    if (!obs) return null;
+    if (typeof obs.recording === 'boolean' || typeof obs.streaming === 'boolean') {
+      return {
+        recording: !!obs.recording,
+        streaming: !!obs.streaming
+      };
+    }
+    return null;
   }
 
   public registerDevice(device: TallyDevice): void {
@@ -473,7 +505,15 @@ export class TallyHub extends EventEmitter {
       // Send only the assigned source state
       const assignedTally = this.tallies.get(device.assignedSource);
       if (assignedTally) {
-        this.emit('device:notify', { device, tallyState: assignedTally });
+          const obsStatus = this.getObsGlobalStatus();
+          const tallied = { ...assignedTally } as TallyState;
+          if (obsStatus) {
+            const baseRec = typeof tallied.recording === 'boolean' ? tallied.recording : false;
+            const baseStr = typeof tallied.streaming === 'boolean' ? tallied.streaming : false;
+            tallied.recording = !!(baseRec || obsStatus.recording);
+            tallied.streaming = !!(baseStr || obsStatus.streaming);
+          }
+          this.emit('device:notify', { device, tallyState: tallied });
       }
     }
     // If device is not assigned, it will show "unassigned" state
@@ -845,6 +885,15 @@ export class TallyHub extends EventEmitter {
         streaming: false
       };
       console.log(`📡 Creating default tally state for ${sourceId} (${sourceName})`);
+    }
+
+    // Ensure OBS global status overlays before sending (OR-merge)
+    const obsStatus = this.getObsGlobalStatus();
+    if (obsStatus) {
+      const baseRec = typeof tallyState.recording === 'boolean' ? tallyState.recording : false;
+      const baseStr = typeof tallyState.streaming === 'boolean' ? tallyState.streaming : false;
+      tallyState.recording = !!(baseRec || obsStatus.recording);
+      tallyState.streaming = !!(baseStr || obsStatus.streaming);
     }
 
     console.log(`📡 Sending assigned tally update to ${device.name}: ${tallyState.name} (${tallyState.program ? 'LIVE' : tallyState.preview ? 'PREVIEW' : 'IDLE'})`);

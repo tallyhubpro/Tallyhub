@@ -261,7 +261,7 @@
 
     <div class="device-info" id="deviceInfo">
         <div>Device ID: <span id="deviceId">-</span></div>
-        <div>Device Name: <span id="deviceName">-</span></div>
+    <div>Device ID: <span id="deviceName">-</span></div>
         <div>Connection: <span id="connectionInfo">Connecting...</span></div>
         <div>Selected Source: <span id="selectedSourceInfo">All sources</span></div>
         <div>Last Update: <span id="lastUpdate">-</span></div>
@@ -372,6 +372,7 @@
                 const scenes = [];
                 const sources = [];
                 const vmixInputs = [];
+                const atemInputs = [];
                 
                 this.availableSources.forEach(source => {
                     if (source.id.startsWith('obs-scene-')) {
@@ -380,6 +381,8 @@
                         sources.push(source);
                     } else if (source.id.startsWith('vmix-input-')) {
                         vmixInputs.push(source);
+                    } else if (source.id.startsWith('atem-input-')) {
+                        atemInputs.push(source);
                     }
                 });
 
@@ -399,6 +402,11 @@
 
                 // Sort vMix inputs alphabetically (matching admin.html logic)
                 const sortedVMixInputs = vmixInputs.sort((a, b) => {
+                    const nameA = this.cleanSourceName(a.id, a.name);
+                    const nameB = this.cleanSourceName(b.id, b.name);
+                    return nameA.localeCompare(nameB);
+                });
+                const sortedATEMInputs = atemInputs.sort((a, b) => {
                     const nameA = this.cleanSourceName(a.id, a.name);
                     const nameB = this.cleanSourceName(b.id, b.name);
                     return nameA.localeCompare(nameB);
@@ -491,10 +499,32 @@
                     select.appendChild(vmixGroup);
                 }
 
+                // Add ATEM Inputs section
+                if (sortedATEMInputs.length > 0) {
+                    const atemGroup = document.createElement('optgroup');
+                    atemGroup.label = '🎛️ ATEM Inputs';
+                    sortedATEMInputs.forEach(atemInput => {
+                        const option = document.createElement('option');
+                        option.value = atemInput.id;
+                        let displayName = this.cleanSourceName(atemInput.id, atemInput.name);
+                        option.textContent = displayName;
+                        if (atemInput.program) {
+                            option.textContent += ' (LIVE)';
+                            option.style.color = '#ff4444';
+                            option.style.fontWeight = 'bold';
+                        } else if (atemInput.preview) {
+                            option.textContent += ' (PVW)';
+                            option.style.color = '#44ff44';
+                        }
+                        atemGroup.appendChild(option);
+                    });
+                    select.appendChild(atemGroup);
+                }
+
                 // Set selected value
                 select.value = this.selectedSource;
                 
-                console.log(`Populated source select with ${sortedScenes.length} scenes, ${sortedSources.length} sources, and ${sortedVMixInputs.length} vMix inputs`);
+                console.log(`Populated source select with ${sortedScenes.length} scenes, ${sortedSources.length} sources, ${sortedVMixInputs.length} vMix inputs and ${sortedATEMInputs.length} ATEM inputs`);
             }
 
             updateSelectedSourceUI() {
@@ -516,6 +546,8 @@
                             sourceName = '🎬 ' + baseName;
                         } else if (source.id.startsWith('vmix-input-')) {
                             sourceName = '📺 ' + baseName;
+                        } else if (source.id.startsWith('atem-input-')) {
+                            sourceName = '🎛️ ' + baseName;
                         } else {
                             sourceName = baseName;
                         }

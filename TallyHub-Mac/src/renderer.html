@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* ws://localhost:*; connect-src 'self' http://localhost:* ws://localhost:*; img-src 'self' data:;">
+    <!-- Hardened CSP: removed 'unsafe-eval'; keep inline for existing styles/scripts; restrict to localhost for dev APIs -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:* ws://localhost:*; img-src 'self' data:; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self';">
     <title>Tally Hub</title>
     <style>
         * {
@@ -1115,10 +1116,19 @@
                 // Start periodic mixer checking
                 setInterval(updateMixers, 4000); // Check mixers every 4 seconds
                 
-                // Initial status updates
-                updateServerStatus();
-                updateDevices();
-                updateMixers();
+                                // Initial status updates (defer devices/mixers until server reported running)
+                                await updateServerStatus();
+                                if (serverStatus === 'running') {
+                                    updateDevices();
+                                    updateMixers();
+                                } else if (electronAPI.onServerReady) {
+                                    electronAPI.onServerReady(() => {
+                                        updateServerStatus().then(() => {
+                                            updateDevices();
+                                            updateMixers();
+                                        });
+                                    });
+                                }
                 
                 // Set up device filter event listeners
                 setupDeviceFilters();

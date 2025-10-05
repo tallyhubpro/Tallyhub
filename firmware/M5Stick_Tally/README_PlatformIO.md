@@ -109,6 +109,34 @@ M5Stick_Tally/
 
 ## Advanced Features
 
+### Compile-Time Feature Flags
+You can customize the UI/behavior using optional `build_flags` in `platformio.ini`. Uncomment (or add) the flags under each environment's `build_flags` section.
+
+| Flag | Effect |
+|------|--------|
+| `-DBATT_HIDE_PERCENT` | Hides battery percent text (battery icon only). |
+| `-DBATT_SMALL_PERCENT` | Uses a more compact battery percent layout. Ignored if hide flag is set. |
+| `-DWIFI_SPRITE_ICONS` | Uses a precomputed bitmap mask for Wi‑Fi arcs (reduces per-frame math). |
+| (outline always on) | Wi‑Fi outline is now always shown (flag removed). |
+| (disconnect X always on) | Red X when disconnected is always shown (flag removed). |
+
+Example:
+```ini
+[env:m5stickc-plus-tally]
+build_flags =
+   -D CORE_DEBUG_LEVEL=1
+   -D BOARD_HAS_PSRAM
+   -D ESP32
+   -D WIFI_SPRITE_ICONS   ; outline & X now implicit
+```
+
+After changing flags, rebuild and upload:
+```bash
+pio run -e m5stickc-plus-tally --target upload
+```
+
+You can maintain different visual/behavior profiles per environment (e.g., Plus vs Plus2) by enabling different subsets of flags in each `[env:...]` section.
+
 ### Over-The-Air (OTA) Updates
 Uncomment OTA settings in `platformio.ini` for wireless updates:
 ```ini

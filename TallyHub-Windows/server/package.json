@@ -33,6 +33,7 @@
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
+    "@types/bonjour": "^3.5.13",
     "@types/node": "^24.0.3",
     "@types/ws": "^8.18.1",
     "nodemon": "^3.1.10",
@@ -44,6 +45,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
+    "bonjour": "^3.5.0",
     "multer": "^2.0.1",
     "obs-websocket-js": "^5.0.6",
     "ws": "^8.18.0"

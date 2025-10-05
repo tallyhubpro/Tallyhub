@@ -1,0 +1,104 @@
+<!-- Copied selectively from root public/index.html with admin messaging + read receipts -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<!-- Basic CSP: allow self + inline styles/scripts (existing inline usage); block eval; allow ws/http localhost for API -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:* ws://localhost:*; img-src 'self' data:; font-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';" />
+<title>Tally Hub</title>
+<style>
+/* (trimmed comment) Core styles copied */
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); min-height:100vh; display:flex; align-items:center; justify-content:center; color:#fff; }
+.container { text-align:center; max-width:600px; padding:2rem; }
+h1 { font-size:3rem; margin-bottom:1rem; text-shadow:2px 2px 4px rgba(0,0,0,.3); }
+.subtitle { font-size:1.2rem; margin-bottom:3rem; opacity:.9; }
+.nav-buttons { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1.5rem; margin-bottom:3rem; }
+.nav-button { background:rgba(255,255,255,.1); border:2px solid rgba(255,255,255,.3); border-radius:12px; padding:2rem 1.5rem; text-decoration:none; color:#fff; transition:.3s; backdrop-filter:blur(10px); }
+.nav-button:hover { background:rgba(255,255,255,.2); border-color:rgba(255,255,255,.5); transform:translateY(-2px); }
+.nav-button h3 { font-size:1.5rem; margin-bottom:.5rem; }
+.nav-button p { opacity:.8; font-size:.9rem; }
+.status { background:rgba(255,255,255,.1); border-radius:8px; padding:1rem; backdrop-filter:blur(10px); }
+.status-item { display:flex; justify-content:space-between; align-items:center; padding:.5rem 0; border-bottom:1px solid rgba(255,255,255,.1); }
+.status-item:last-child { border-bottom:none; }
+.status-indicator { width:12px; height:12px; border-radius:50%; background:#4CAF50; }
+.status-indicator.disconnected { background:#f44336; }
+.device-list { background:rgba(255,255,255,.05); border-radius:6px; margin-top:.5rem; padding:.5rem; display:none; max-height:200px; overflow-y:auto; }
+.device-list.show { display:block; }
+.device-item { display:flex; justify-content:space-between; align-items:center; padding:.3rem 0; font-size:.85rem; border-bottom:1px solid rgba(255,255,255,.1); }
+.device-item:last-child { border-bottom:none; }
+.device-info { display:flex; flex-direction:column; align-items:flex-start; }
+.device-name { font-weight:600; }
+.device-type { opacity:.7; font-size:.75rem; }
+.device-status { font-size:.75rem; padding:.2rem .4rem; border-radius:4px; background:rgba(76,175,80,.3); }
+.device-status.unassigned { background:rgba(255,193,7,.3); }
+.clickable { cursor:pointer; user-select:none; }
+.clickable:hover { background:rgba(255,255,255,.05); border-radius:4px; }
+/* Messages */
+.messages-panel { margin-top:2rem; text-align:left; }
+.messages-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:.5rem; }
+.messages-list { background:rgba(255,255,255,.1); border-radius:8px; padding:.75rem; max-height:260px; overflow-y:auto; font-size:.8rem; }
+.msg-row { display:grid; grid-template-columns:1fr auto auto; gap:.5rem; padding:.4rem .3rem; border-bottom:1px solid rgba(255,255,255,.08); align-items:center; }
+.msg-row:last-child { border-bottom:none; }
+.msg-text { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:260px; }
+.msg-acks { font-weight:600; }
+.msg-target { opacity:.7; font-size:.65rem; }
+.badge { padding:.15rem .45rem; border-radius:12px; font-size:.6rem; letter-spacing:.5px; background:rgba(255,255,255,.15); }
+.badge.complete { background:#34C759; color:#fff; }
+.badge.partial { background:#FF9500; color:#000; }
+.badge.none { background:rgba(255,255,255,.25); color:#222; }
+.color-dot { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:4px; border:1px solid rgba(255,255,255,.4); }
+.tooltip { position:relative; }
+.tooltip:hover .tooltip-content { opacity:1; pointer-events:auto; transform:translateY(0); }
+.tooltip-content { position:absolute; left:0; top:110%; background:rgba(0,0,0,.75); padding:.5rem .6rem; border-radius:6px; font-size:.65rem; line-height:1.2; max-width:220px; opacity:0; pointer-events:none; transition:.15s; backdrop-filter:blur(4px); }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🚦 Tally Hub</h1>
+  <p class="subtitle">Professional Tally Light System</p>
+  <div class="nav-buttons">
+    <a href="/tally" class="nav-button"><h3>📱 Web Tally</h3><p>Use your phone as a tally light</p></a>
+    <a href="/admin" class="nav-button"><h3>⚙️ Admin Panel</h3><p>Configure mixers and manage devices</p></a>
+  </div>
+  <div class="status">
+    <div class="status-item"><span>Server Status</span><div class="status-indicator" id="server-status"></div></div>
+    <div class="status-item clickable" id="device-toggle" onclick="toggleDeviceList()"><span>Connected Devices</span><span id="device-count">0</span></div>
+    <div class="device-list" id="device-list"></div>
+    <div style="margin-top:1rem;border-top:1px solid rgba(255,255,255,.15);padding-top:1rem;">
+      <h3 style="font-size:1rem;margin-bottom:.5rem;text-align:left;">Send Message</h3>
+      <form id="msgForm" onsubmit="return sendMessage(event)" style="display:flex;flex-direction:column;gap:.5rem;">
+        <textarea id="msgText" maxlength="20" placeholder="Enter short message (max 20 chars)" style="resize:vertical;min-height:70px;padding:.5rem;border-radius:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:#fff;font-family:inherit;"></textarea>
+        <div style="display:flex;justify-content:flex-end;font-size:.7rem;opacity:.8;"><span id="msgCharCount">20 left</span></div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+          <select id="msgTarget" style="flex:1;min-width:140px;padding:.5rem;border-radius:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:#fff;"><option value="">All Devices</option></select>
+          <input id="msgColor" type="text" placeholder="#FF9500" style="width:110px;padding:.5rem;border-radius:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:#fff;" />
+          <input id="msgDuration" type="number" min="1000" max="30000" step="500" value="8000" style="width:110px;padding:.5rem;border-radius:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:#fff;" />
+        </div>
+        <button type="submit" style="padding:.75rem 1rem;border:none;border-radius:8px;background:#007AFF;color:#fff;font-weight:600;cursor:pointer;">Send</button>
+        <div id="msgStatus" style="font-size:.75rem;min-height:16px;opacity:.8;"></div>
+      </form>
+    </div>
+  </div>
+  <div class="messages-panel">
+    <div class="messages-header">
+      <h3 style="font-size:1rem;">Recent Messages</h3>
+      <button onclick="refreshMessages()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;font-size:.65rem;padding:.3rem .6rem;border-radius:6px;cursor:pointer;">Refresh</button>
+    </div>
+    <div class="messages-list" id="messagesList"><div style="opacity:.6;font-size:.7rem;">No messages yet.</div></div>
+  </div>
+</div>
+<script>
+let devices=[];
+function toggleDeviceList(){document.getElementById('device-list').classList.toggle('show');}
+function renderDeviceList(){const el=document.getElementById('device-list'); if(!devices.length){el.innerHTML='<div style="text-align:center;opacity:.7;padding:1rem;">No devices connected</div>'; return;} el.innerHTML=devices.map(d=>{const assigned=d.assignedSource?`<div class=\"device-type\">Assigned to: ${d.assignedSource}</div>`:`<div class=\"device-type\">Type: ${d.type}</div>`; const statusClass=d.assignedSource?'':'unassigned'; return `<div class=\"device-item\"><div class=\"device-info\"><div class=\"device-name\">${d.id}</div>${assigned}</div><div class=\"device-status ${statusClass}\">${d.assignedSource?'Assigned':'Unassigned'}</div></div>`;}).join('');}
+let initialStatusAttempts=0; async function updateStatus(){try{const r=await fetch('/api/status'); const data=await r.json(); devices=data.devices; document.getElementById('device-count').textContent=devices.length; document.getElementById('server-status').className='status-indicator'; const sel=document.getElementById('msgTarget'); if(sel){const cur=sel.value; sel.innerHTML='<option value="">All Devices</option>'+devices.map(d=>`<option value="${d.id}">${d.id}</option>`).join(''); if([...sel.options].some(o=>o.value===cur)) sel.value=cur;} if(document.getElementById('device-list').classList.contains('show')) renderDeviceList(); refreshMessages(false); initialStatusAttempts=0;}catch(e){initialStatusAttempts++; const backoff=Math.min(2000, 200*initialStatusAttempts); setTimeout(updateStatus, backoff); document.getElementById('server-status').className='status-indicator disconnected'; devices=[]; document.getElementById('device-count').textContent='0';}}
+async function sendMessage(e){e.preventDefault(); const textEl=document.getElementById('msgText'); const targetEl=document.getElementById('msgTarget'); const colorEl=document.getElementById('msgColor'); const durEl=document.getElementById('msgDuration'); const statusEl=document.getElementById('msgStatus'); const text=textEl.value.trim(); if(!text){statusEl.textContent='Message required'; statusEl.style.color='#FF3B30'; return false;} if(text.length>20){statusEl.textContent='Max 20 characters'; statusEl.style.color='#FF3B30'; return false;} statusEl.textContent='Sending...'; statusEl.style.color='#fff'; try{const body={text}; if(targetEl.value) body.deviceId=targetEl.value; if(colorEl.value.trim()) body.color=colorEl.value.trim(); const dur=parseInt(durEl.value,10); if(!isNaN(dur)) body.duration=dur; const resp=await fetch('/api/message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); const json=await resp.json(); if(!json.success){statusEl.textContent=json.error||'Failed'; statusEl.style.color='#FF3B30';} else {statusEl.textContent='Sent to '+(json.target==='all'?'all devices':json.target); statusEl.style.color='#34C759'; textEl.value='';}}catch(err){statusEl.textContent='Error sending'; statusEl.style.color='#FF3B30';} return false;}
+// Live character counter
+(function(){const MAX=20; const ta=document.getElementById('msgText'); const c=document.getElementById('msgCharCount'); function u(){const l=Math.max(0,MAX-ta.value.length); c.textContent=`${l} left`; c.style.color=l<=5?'#FF9500':'#fff';} if(ta&&c){ta.addEventListener('input',u); u();}})();
+setInterval(updateStatus,5000); updateStatus();
+async function refreshMessages(spinner=true){const list=document.getElementById('messagesList'); if(spinner) list.innerHTML='<div style="opacity:.6;font-size:.7rem;">Loading...</div>'; try{const resp=await fetch('/api/messages/recent?limit=25'); const json=await resp.json(); if(!json.success){list.innerHTML='<div style="opacity:.6;font-size:.7rem;">Error loading messages</div>'; return;} const msgs=json.messages; if(!msgs.length){list.innerHTML='<div style="opacity:.6;font-size:.7rem;">No messages yet.</div>'; return;} const deviceMap={}; devices.forEach(d=>deviceMap[d.id]=d); list.innerHTML=msgs.map(m=>{const ackIds=Object.keys(m.acknowledgements||{}); const single=!!m.targetDeviceId; const denom=single?1:devices.length||0; const ackCount=ackIds.length; let badgeClass='none'; if(ackCount>0 && denom>0){badgeClass=ackCount===denom?'complete':'partial';} const badgeLabel=denom>0?`${ackCount}/${denom}`:`${ackCount}`; const colorDot=m.color?`<span class=\"color-dot\" style=\"background:${m.color}\"></span>`:''; const targetLabel=single?(deviceMap[m.targetDeviceId]?.id||m.targetDeviceId):'All'; const tooltip=ackIds.length?ackIds.map(id=>{const a=m.acknowledgements[id]; const t=new Date(a.at).toLocaleTimeString(); return `${id} (${a.method||'?'} @ ${t})`;}).join('<br/>'):'No acknowledgements yet'; return `<div class=\"msg-row tooltip\"><div class=\"msg-text\" title=\"${m.text.replace(/&/g,'&amp;')}\">${colorDot}${m.text}</div><div class=\"msg-target\">${targetLabel}</div><div class=\"msg-acks\"><span class=\"badge ${badgeClass}\">${badgeLabel}</span></div><div class=\"tooltip-content\">${tooltip}</div></div>`;}).join(''); } catch(err){ list.innerHTML='<div style="opacity:.6;font-size:.7rem;">Error loading messages</div>'; }} setTimeout(()=>refreshMessages(),600);
+</script>
+</body>
+</html>

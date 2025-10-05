@@ -1062,6 +1062,7 @@
                             <select id="mixerType" class="form-select">
                                 <option value="obs">OBS Studio</option>
                                 <option value="vmix">vMix</option>
+                                <option value="atem">ATEM Mini Pro</option>
                             </select>
                         </div>
                         <div class="form-field">
@@ -1495,7 +1496,7 @@
                     return `
                     <div class="device-item" data-device-id="${device.id}">
                         <div class="device-info">
-                            <div class="device-name">${device.name}</div>
+                            <div class="device-name">${device.id}</div>
                             <div class="device-type">${getDeviceTypeDisplay(device.type)} • ${device.id}</div>
                             <div class="device-assignment" data-assignment-container="${device.id}">
                                 <div class="assignment-mode ${device.assignmentMode || 'auto'}" data-assignment-mode="${device.id}">
@@ -1630,7 +1631,7 @@
                                 </div>
                             </div>
                             <div class="mixer-connection-info">
-                                ${mixer.type.toUpperCase()} • ${mixer.host}:${mixer.port}
+                                ${this.getMixerTypeIcon(mixer.type)} ${mixer.type.toUpperCase()} • ${mixer.host}:${mixer.port}
                             </div>
                             ${errorDisplay}
                             <div class="mixer-actions">
@@ -1752,6 +1753,20 @@
                 }
             }
 
+            // Helper function to get mixer type icon
+            getMixerTypeIcon(mixerType) {
+                switch (mixerType.toLowerCase()) {
+                    case 'obs':
+                        return '📺';
+                    case 'vmix':
+                        return '🎬';
+                    case 'atem':
+                        return '🎛️';
+                    default:
+                        return '📡';
+                }
+            }
+
             // Helper function to create user-friendly error messages
             getFriendlyErrorMessage(errorMessage, mixerType) {
                 const lowerError = errorMessage.toLowerCase();
@@ -1761,6 +1776,8 @@
                         return `OBS Studio is not running or WebSocket server is disabled. Please start OBS and enable WebSocket server in Tools → WebSocket Server Settings.`;
                     } else if (mixerType === 'vmix') {
                         return `vMix is not running or Web Controller is disabled. Please start vMix and enable Web Controller in Settings → Web Controller.`;
+                    } else if (mixerType === 'atem') {
+                        return `ATEM Mini Pro is not powered on or not connected to the network. Check power and Ethernet connection.`;
                     }
                     return `${mixerType.toUpperCase()} software is not running or network connection is blocked.`;
                 }
@@ -1801,6 +1818,7 @@
                         const scenes = [];
                         const sources = [];
                         const vmixInputs = [];
+                        const atemInputs = [];
                         
                         tallies.forEach(tally => {
                             if (tally.id.startsWith('obs-scene-')) {
@@ -1809,6 +1827,8 @@
                                 sources.push(tally);
                             } else if (tally.id.startsWith('vmix-input-')) {
                                 vmixInputs.push(tally);
+                            } else if (tally.id.startsWith('atem-input-')) {
+                                atemInputs.push(tally);
                             }
                         });
 
@@ -1828,6 +1848,11 @@
 
                         // Sort vMix inputs alphabetically
                         const sortedVMixInputs = vmixInputs.sort((a, b) => {
+                            const nameA = this.cleanSourceName(a.id, a.name);
+                            const nameB = this.cleanSourceName(b.id, b.name);
+                            return nameA.localeCompare(nameB);
+                        });
+                        const sortedATEMInputs = atemInputs.sort((a, b) => {
                             const nameA = this.cleanSourceName(a.id, a.name);
                             const nameB = this.cleanSourceName(b.id, b.name);
                             return nameA.localeCompare(nameB);
@@ -1941,6 +1966,33 @@
                                 });
                                 
                                 select.appendChild(vmixGroup);
+                            }
+
+                            // Add ATEM Inputs section
+                            if (sortedATEMInputs.length > 0) {
+                                const atemGroup = document.createElement('optgroup');
+                                atemGroup.label = '🎛️ ATEM Inputs';
+
+                                sortedATEMInputs.forEach(atemInput => {
+                                    const option = document.createElement('option');
+                                    option.value = atemInput.id;
+                                    let displayName = this.cleanSourceName(atemInput.id, atemInput.name);
+                                    option.textContent = displayName;
+                                    if (atemInput.program) {
+                                        option.textContent += ' (LIVE)';
+                                        option.style.color = '#ff4444';
+                                        option.style.fontWeight = 'bold';
+                                    } else if (atemInput.preview) {
+                                        option.textContent += ' (PVW)';
+                                        option.style.color = '#44ff44';
+                                    }
+                                    if (atemInput.id === currentValue) {
+                                        option.selected = true;
+                                    }
+                                    atemGroup.appendChild(option);
+                                });
+
+                                select.appendChild(atemGroup);
                             }
                             
                             // Add event listeners to track when dropdowns are being used
@@ -2272,6 +2324,9 @@
             } else if (type === 'vmix') {
                 passwordField.style.display = 'none';
                 portField.value = '8088';
+            } else if (type === 'atem') {
+                passwordField.style.display = 'none';
+                portField.value = '9910';
             }
         }
 
@@ -3203,6 +3258,52 @@
                             <strong>💡 Pro Tip:</strong> You can test the connection by opening 
                             <code style="background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">http://${host}:${port}/api</code> 
                             in your browser - it should show vMix API information.
+                        </div>
+                    </div>
+                `;
+            } else if (mixerType === 'atem') {
+                return `
+                    <div style="font-size: 14px; line-height: 1.6;">
+                        <div style="
+                            background: rgba(255, 149, 0, 0.1);
+                            border: 1px solid rgba(255, 149, 0, 0.2);
+                            border-radius: 8px;
+                            padding: 1rem;
+                            margin-bottom: 1.5rem;
+                        ">
+                            <strong>🎛️ ATEM Mini Pro Connection Issue</strong><br>
+                            <span style="opacity: 0.8;">Trying to connect to ${host}:${port}</span>
+                        </div>
+                        
+                        <h4 style="color: var(--system-blue); margin-bottom: 0.5rem;">✅ Quick Checklist:</h4>
+                        <ol style="margin-left: 1.5rem; margin-bottom: 1.5rem;">
+                            <li style="margin-bottom: 0.5rem;"><strong>Is ATEM Mini Pro powered on?</strong><br>
+                                <span style="opacity: 0.8;">Make sure the device is plugged in and the power LED is on.</span></li>
+                            <li style="margin-bottom: 0.5rem;"><strong>Network Connection:</strong><br>
+                                <span style="opacity: 0.8;">ATEM Mini Pro should be connected to your network via Ethernet.</span></li>
+                            <li style="margin-bottom: 0.5rem;"><strong>Check IP Address:</strong><br>
+                                <span style="opacity: 0.8;">Default IP is usually 192.168.10.240. Check ATEM Setup utility or your router.</span></li>
+                            <li style="margin-bottom: 0.5rem;"><strong>Port Settings:</strong><br>
+                                <span style="opacity: 0.8;">Default port is 9910. Make sure it matches your configuration.</span></li>
+                        </ol>
+                        
+                        <h4 style="color: var(--system-orange); margin-bottom: 0.5rem;">🔍 Troubleshooting Steps:</h4>
+                        <ul style="margin-left: 1.5rem; margin-bottom: 1.5rem;">
+                            <li style="margin-bottom: 0.5rem;">Use ATEM Setup utility to configure network settings</li>
+                            <li style="margin-bottom: 0.5rem;">Power cycle the ATEM Mini Pro (unplug for 10 seconds)</li>
+                            <li style="margin-bottom: 0.5rem;">Check Ethernet cable connection</li>
+                            <li style="margin-bottom: 0.5rem;">Verify your computer is on the same network</li>
+                            <li style="margin-bottom: 0.5rem;">Try connecting with ATEM Software Control first</li>
+                        </ul>
+                        
+                        <div style="
+                            background: rgba(52, 199, 89, 0.1);
+                            border: 1px solid rgba(52, 199, 89, 0.2);
+                            border-radius: 8px;
+                            padding: 1rem;
+                        ">
+                            <strong>💡 Pro Tip:</strong> Download the ATEM Setup utility from Blackmagic Design 
+                            to configure your ATEM Mini Pro's network settings and firmware updates.
                         </div>
                     </div>
                 `;

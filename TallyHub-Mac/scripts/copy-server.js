@@ -57,7 +57,7 @@ async function copyServerFiles() {
     // Create a simplified package.json for the server
     const serverPackageJson = {
       "name": "tally-hub-server",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "description": "Tally Hub Server for Mac App",
       "main": "dist/index.js",
       "scripts": {
@@ -69,9 +69,11 @@ async function copyServerFiles() {
         "express": "^5.1.0",
         "ws": "^8.18.0",
         "cors": "^2.8.5",
+        "atem-connection": "^3.6.0",
         "obs-websocket-js": "^5.0.6",
         "dotenv": "^16.5.0",
-        "multer": "^2.0.1"
+        "multer": "^2.0.1",
+        "bonjour": "^3.5.0"
       },
       "devDependencies": {
         "@types/node": "^24.0.3",
@@ -79,6 +81,7 @@ async function copyServerFiles() {
         "@types/cors": "^2.8.19",
         "@types/ws": "^8.18.1",
         "@types/multer": "^1.4.13",
+        "@types/bonjour": "^3.5.13",
         "typescript": "^5.8.3",
         "ts-node": "^10.9.2"
       }

@@ -8,6 +8,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { TallyHub } from './core/TallyHub';
 import { WebSocketManager } from './core/WebSocketManager';
+import { logger } from './core/logger';
 
 // Global error handlers to prevent crashes from unhandled rejections
 process.on('unhandledRejection', (reason, promise) => {
@@ -70,7 +71,7 @@ class TallyHubServer {
     // Serve static files from public directory
     const publicPath = path.join(process.cwd(), 'public');
     this.app.use(express.static(publicPath));
-    console.log(`📁 Serving static files from: ${publicPath}`);
+  logger.info(`Static directory: ${publicPath}`);
   }
 
   private setupRoutes(): void {
@@ -120,7 +121,7 @@ class TallyHubServer {
           connected: false
         };
 
-        console.log(`[INFO] Adding mixer: ${name} (${type})`);
+  logger.info(`Adding mixer: ${name} (${type})`);
         const success = this.tallyHub.addMixerConnection(mixerId, mixerConfig, password);
         
         if (success) {
@@ -213,11 +214,11 @@ class TallyHubServer {
         const { deviceId } = req.params;
         const { sourceId, assignedBy = 'admin' } = req.body;
         
-        console.log(`📍 Assignment request: deviceId=${deviceId}, sourceId='${sourceId}', type=${typeof sourceId}`);
+  logger.debug(`Assignment request deviceId=${deviceId} sourceId='${sourceId}' type=${typeof sourceId}`);
         
         // If sourceId is explicitly empty string, unassign the device
         if (sourceId === '') {
-          console.log(`🔄 Unassigning device ${deviceId}`);
+          logger.info(`Unassign device ${deviceId}`);
           const success = this.tallyHub.unassignDevice(deviceId);
           
           if (success) {
@@ -236,11 +237,11 @@ class TallyHubServer {
         
         // If sourceId is missing, undefined, or null, return error
         if (sourceId === undefined || sourceId === null) {
-          console.log(`❌ sourceId is missing: ${sourceId}`);
+          logger.warn(`Assignment missing sourceId for device ${deviceId}`);
           return res.status(400).json({ error: 'sourceId is required' });
         }
         
-        console.log(`➡️ Assigning device ${deviceId} to source ${sourceId}`);
+  logger.info(`Assign device ${deviceId} -> source ${sourceId}`);
         const success = this.tallyHub.assignSourceToDevice(deviceId, sourceId, assignedBy);
         
         if (success) {
@@ -310,27 +311,7 @@ class TallyHubServer {
       res.json({ status: 'healthy', timestamp: new Date() });
     });
 
-    // Test endpoint to simulate status updates (for testing)
-    this.app.post('/api/test/status', (req, res) => {
-      const { recording = false, streaming = false } = req.body;
-      
-      // Emit a test status update
-      const statusUpdate = {
-        mixerId: 'test-mixer',
-        recording: recording,
-        streaming: streaming,
-        timestamp: new Date()
-      };
-      
-      this.tallyHub.emit('status:update', statusUpdate);
-      
-      console.log('📊 Test status update sent:', statusUpdate);
-      res.json({ 
-        success: true, 
-        message: 'Status update sent',
-        statusUpdate 
-      });
-    });
+    // (Removed /api/test/status for production build)
 
     // Save mixer configurations endpoint
     this.app.post('/api/mixers/save', (req, res) => {
@@ -352,7 +333,7 @@ class TallyHubServer {
     // Server shutdown endpoint
     this.app.post('/api/shutdown', async (req, res) => {
       try {
-        console.log('🛑 Shutdown request received from admin panel');
+  logger.warn('Shutdown request received');
         
         // Send response first before shutting down
         res.json({ 
@@ -391,37 +372,37 @@ class TallyHubServer {
 
   private async killProcessOnPort(port: number): Promise<void> {
     try {
-      console.log(`🔍 Checking for processes on port ${port}...`);
+  logger.debug(`Checking for processes on port ${port}...`);
       
       // Find process using the port on macOS/Linux
       const { stdout } = await execAsync(`lsof -ti:${port}`);
       
       if (stdout.trim()) {
         const pids = stdout.trim().split('\n');
-        console.log(`⚠️  Found ${pids.length} process(es) using port ${port}: ${pids.join(', ')}`);
+  logger.warn(`Found ${pids.length} process(es) using port ${port}: ${pids.join(', ')}`);
         
         for (const pid of pids) {
           try {
             await execAsync(`kill -9 ${pid.trim()}`);
-            console.log(`💀 Killed process ${pid.trim()}`);
+            logger.warn(`Killed process ${pid.trim()}`);
           } catch (error) {
-            console.log(`⚠️  Process ${pid.trim()} may have already exited`);
+            logger.debug(`Process ${pid.trim()} may have already exited`);
           }
         }
         
         // Wait a moment for processes to fully terminate
         await new Promise(resolve => setTimeout(resolve, 1000));
-        console.log(`✅ Port ${port} is now available`);
+  logger.info(`Port ${port} is now available`);
       } else {
-        console.log(`✅ Port ${port} is available`);
+  logger.debug(`Port ${port} is available`);
       }
     } catch (error) {
       // If lsof fails, the port is likely available or we're on Windows
       if ((error as any).code === 1) {
-        console.log(`✅ Port ${port} is available`);
+  logger.debug(`Port ${port} is available`);
       } else {
-        console.log(`⚠️  Could not check port ${port}: ${(error as Error).message}`);
-        console.log(`ℹ️  Attempting to start server anyway...`);
+  logger.warn(`Could not check port ${port}: ${(error as Error).message}`);
+  logger.info('Attempting to start server anyway...');
       }
     }
   }

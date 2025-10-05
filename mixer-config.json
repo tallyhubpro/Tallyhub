@@ -1,16 +1,16 @@
 [
   {
-    "id": "vmix-1751717685813",
-    "name": "Vmix",
-    "type": "vmix",
-    "host": "192.168.0.197",
-    "port": 8088
+    "id": "atem-1758384922075",
+    "name": "Atem",
+    "type": "atem",
+    "host": "192.168.1.23",
+    "port": 9910
   },
   {
-    "id": "obs-1751728834894",
-    "name": "Obs",
+    "id": "obs-1759697610402",
+    "name": "OBS",
     "type": "obs",
-    "host": "192.168.0.216",
+    "host": "localhost",
     "port": 4455
   }
 ]

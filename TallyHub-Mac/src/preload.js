@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Event listeners
   onServerStatusChange: (callback) => ipcRenderer.on('server-status-change', callback),
   onServerLog: (callback) => ipcRenderer.on('server-log', callback),
+  onServerReady: (callback) => ipcRenderer.once('server-ready', callback),
   
   // Remove listeners
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),

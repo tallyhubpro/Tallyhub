@@ -257,6 +257,24 @@
             box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
         }
 
+        .secondary-button {
+            background: linear-gradient(45deg, #2196F3, #1976D2);
+            color: #fff;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            font-size: 0.9rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 10px rgba(33,150,243,0.35);
+            margin-left: 0.5rem;
+            display: none;
+        }
+        .secondary-button:hover:not(:disabled){
+            background: linear-gradient(45deg, #1976D2, #2196F3);
+            transform: translateY(-1px);
+        }
+
         .flash-button:disabled {
             background: #666;
             cursor: not-allowed;
@@ -371,6 +389,10 @@
                         <h4>M5Stick C Plus 1.1</h4>
                         <p>1.14" Display • Buttons • Premium Build</p>
                     </div>
+                    <div class="device-option" onclick="selectDevice('M5Stick_Tally_Plus2')">
+                        <h4>M5Stick C Plus2</h4>
+                        <p>1.14" Display • Buttons • Latest hardware</p>
+                    </div>
                 </div>
             </div>
 
@@ -420,6 +442,7 @@
                 <button id="flashButton" class="flash-button" onclick="flashFirmware()" disabled>
                     📲 Flash Firmware
                 </button>
+                <button id="resetButton" class="secondary-button" onclick="manualReset()" title="Attempt a post-flash reset via serial (DTR/RTS)">🔁 Reset Device</button>
                 
                 <div class="progress-container" id="progressContainer">
                     <div class="progress-bar">
@@ -448,6 +471,8 @@
         let esploader = null;
         let transport = null;
         let customFirmwareFile = null;
+    let lastPort = null; // retain port for post-flash reset attempt
+    let autoResetPerformed = false;
 
         // Device configurations - simplified to single file only
         const deviceConfigs = {
@@ -470,6 +495,19 @@
                 flashSize: '4MB',
                 instructions: [
                     'Connect your M5Stick C Plus to your computer via USB-C cable',
+                    'Turn on the device by pressing the power button (if needed)',
+                    'Hold the HOME button (M5 button) while clicking "Flash Firmware"',
+                    'Release the HOME button when flashing starts',
+                    'Wait for the process to complete (~2 minutes)'
+                ]
+            },
+            'M5Stick_Tally_Plus2': {
+                name: 'M5Stick C Plus2',
+                firmware: '/firmware/M5Stick_Tally_Plus2/firmware-merged.bin',
+                chip: 'esp32',
+                flashSize: '4MB',
+                instructions: [
+                    'Connect your M5Stick C Plus2 to your computer via USB-C cable',
                     'Turn on the device by pressing the power button (if needed)',
                     'Hold the HOME button (M5 button) while clicking "Flash Firmware"',
                     'Release the HOME button when flashing starts',
@@ -560,6 +598,7 @@
                 
                 // Request port access
                 const port = await navigator.serial.requestPort();
+                lastPort = port;
                 transport = new Transport(port, true);
                 
                 showStatus('Connecting to device...', 'info');
@@ -632,7 +671,7 @@
                         
                         if (written === total) {
                             updateProgress(100);
-                            showStatus('Firmware flashed successfully! 🎉', 'success');
+                            showStatus('Firmware flashed successfully! 🎉 Preparing reset...', 'success');
                         }
                     }
                 });
@@ -640,7 +679,21 @@
                 // Success!
                 flashButton.textContent = '✅ Flash Complete';
                 const firmwareType = firmwareSource === 'custom' ? 'custom' : 'built-in';
-                showStatus(`✅ ${firmwareType} firmware flashed successfully! You can now disconnect your ${config.name} and restart it.`, 'success');
+                showStatus(`✅ ${firmwareType} firmware flashed successfully! Attempting automatic reset...`, 'success');
+
+                // Try auto reset using transport toggling DTR/RTS
+                try {
+                    await attemptAutoReset();
+                } catch(e) {
+                    console.warn('Auto reset attempt failed:', e);
+                }
+
+                if (autoResetPerformed) {
+                    showStatus('🔁 Device reset signal sent. If display doesn\'t update within 5s, press the power button briefly.', 'info');
+                } else {
+                    showStatus('⚠️ Auto reset not available in this browser/transport. Use the Reset Device button or press the power button.', 'warning');
+                    document.getElementById('resetButton').style.display = 'inline-block';
+                }
                 
                 // Add device-specific post-flash instructions
                 if (selectedDevice === 'M5Stick_Tally') {
@@ -662,15 +715,45 @@
                 }, 3000);
                 
                 // Cleanup
-                if (transport) {
-                    try {
-                        await transport.disconnect();
-                    } catch (e) {
-                        console.warn('Error disconnecting transport:', e);
-                    }
-                }
+                // Keep port/transport open briefly to allow reset toggling, close later.
+                setTimeout(async () => {
+                  if (transport) {
+                    try { await transport.disconnect(); } catch(e){ console.warn('Error disconnecting transport:', e); }
+                  }
+                }, 4000);
             }
         };
+
+        async function attemptAutoReset(){
+            if (!transport || !lastPort) return;
+            // esptool-js Transport exposes setDTR/setRTS on underlying serial port; fallback to direct port if available
+            const s = lastPort;
+            if (!s.setSignals) return; // Web Serial API required
+            try {
+                // Standard reset pulse sequence
+                await s.setSignals({ dataTerminalReady: false, requestToSend: true });
+                await delay(120);
+                await s.setSignals({ dataTerminalReady: false, requestToSend: false });
+                await delay(80);
+                await s.setSignals({ dataTerminalReady: true, requestToSend: false });
+                autoResetPerformed = true;
+            } catch(e) {
+                console.warn('Reset pulse error:', e);
+            }
+        }
+
+        window.manualReset = async function(){
+            showStatus('Issuing manual reset pulse...', 'info');
+            autoResetPerformed = false;
+            await attemptAutoReset();
+            if (autoResetPerformed) {
+                showStatus('🔁 Reset signal sent. Device should reboot now.', 'success');
+            } else {
+                showStatus('⚠️ Reset signal could not be sent. Please press the device power/reset button.', 'warning');
+            }
+        }
+
+        function delay(ms){ return new Promise(r=>setTimeout(r, ms)); }
 
         // Check browser compatibility on load
         if (!navigator.serial) {

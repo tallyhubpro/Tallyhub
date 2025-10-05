@@ -64,23 +64,44 @@
   },
   {
     "deviceId": "m5-tally-01",
-    "sourceId": "vmix-input-1",
-    "sourceName": "Source vmix-input-1",
+    "sourceId": "obs-scene-Audience",
+    "sourceName": "Audience",
     "assignedBy": "admin",
-    "assignedAt": "2025-07-05T15:46:27.927Z"
+    "assignedAt": "2025-09-14T19:33:53.814Z"
   },
   {
     "deviceId": "tally-f09e9e1079e8",
-    "sourceId": "vmix-input-2",
-    "sourceName": "Source vmix-input-2",
+    "sourceId": "obs-scene-Stage",
+    "sourceName": "Source obs-scene-Stage",
     "assignedBy": "admin",
-    "assignedAt": "2025-07-05T15:45:19.369Z"
+    "assignedAt": "2025-08-29T11:21:25.686Z"
   },
   {
     "deviceId": "web-1751384933627-n5vc9a3e9",
-    "sourceId": "vmix-input-1",
-    "sourceName": "Source vmix-input-1",
-    "assignedBy": "user",
-    "assignedAt": "2025-07-05T18:10:39.557Z"
+    "sourceId": "obs-scene-Atem",
+    "sourceName": "Atem",
+    "assignedBy": "admin",
+    "assignedAt": "2025-09-09T21:12:11.692Z"
+  },
+  {
+    "deviceId": "m5-tally-02",
+    "sourceId": "obs-scene-Audience",
+    "sourceName": "Audience",
+    "assignedBy": "admin",
+    "assignedAt": "2025-09-14T19:33:56.953Z"
+  },
+  {
+    "deviceId": "M5-tally-02",
+    "sourceId": "obs-scene-Audience",
+    "sourceName": "Audience",
+    "assignedBy": "admin",
+    "assignedAt": "2025-09-13T23:25:46.210Z"
+  },
+  {
+    "deviceId": "m5-tally-03",
+    "sourceId": "obs-scene-Intro Video",
+    "sourceName": "Intro Video",
+    "assignedBy": "admin",
+    "assignedAt": "2025-09-11T20:40:13.647Z"
   }
 ]

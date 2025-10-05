@@ -64,23 +64,65 @@
   },
   {
     "deviceId": "m5-tally-01",
-    "sourceId": "vmix-input-1",
-    "sourceName": "Source vmix-input-1",
+    "sourceId": "obs-scene-Audience",
+    "sourceName": "Audience",
     "assignedBy": "admin",
-    "assignedAt": "2025-07-05T15:46:27.927Z"
+    "assignedAt": "2025-09-14T21:25:54.142Z"
   },
   {
     "deviceId": "tally-f09e9e1079e8",
-    "sourceId": "vmix-input-2",
-    "sourceName": "Source vmix-input-2",
+    "sourceId": "obs-scene-Stage",
+    "sourceName": "Source obs-scene-Stage",
     "assignedBy": "admin",
-    "assignedAt": "2025-07-05T15:45:19.369Z"
+    "assignedAt": "2025-08-29T11:21:25.686Z"
   },
   {
     "deviceId": "web-1751384933627-n5vc9a3e9",
-    "sourceId": "vmix-input-1",
-    "sourceName": "Source vmix-input-1",
+    "sourceId": "obs-scene-Atem",
+    "sourceName": "Atem",
+    "assignedBy": "admin",
+    "assignedAt": "2025-09-09T21:12:11.692Z"
+  },
+  {
+    "deviceId": "m5-tally-02",
+    "sourceId": "obs-scene-Atem",
+    "sourceName": "Atem",
+    "assignedBy": "admin",
+    "assignedAt": "2025-09-14T21:26:51.726Z"
+  },
+  {
+    "deviceId": "M5-tally-02",
+    "sourceId": "obs-scene-Atem",
+    "sourceName": "Atem",
+    "assignedBy": "admin",
+    "assignedAt": "2025-09-14T20:55:25.881Z"
+  },
+  {
+    "deviceId": "m5-tally-03",
+    "sourceId": "obs-scene-Intro Video",
+    "sourceName": "Intro Video",
+    "assignedBy": "admin",
+    "assignedAt": "2025-09-11T20:40:13.647Z"
+  },
+  {
+    "deviceId": "m5-tally-fabb50",
+    "sourceId": "atem-input-4",
+    "sourceName": "Camera 4",
+    "assignedBy": "admin",
+    "assignedAt": "2025-09-20T16:17:41.600Z"
+  },
+  {
+    "deviceId": "m5-tally-c4b6b4",
+    "sourceId": "atem-input-3",
+    "sourceName": "Camera 3",
+    "assignedBy": "admin",
+    "assignedAt": "2025-09-20T16:17:35.428Z"
+  },
+  {
+    "deviceId": "web-1759697234190-rb6m25kvv",
+    "sourceId": "obs-scene-Atem device",
+    "sourceName": "Atem device",
     "assignedBy": "user",
-    "assignedAt": "2025-07-05T18:10:39.557Z"
+    "assignedAt": "2025-10-05T20:53:59.959Z"
   }
 ]

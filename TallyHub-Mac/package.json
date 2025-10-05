@@ -1,14 +1,18 @@
 {
   "name": "tallyhub-mac",
-  "version": "1.0.0",
-  "description": "TallyHub - Professional Tally Light Management for Mac",
+  "version": "1.2.0",
+  "description": "TallyHub - Professional Tally Light Management for Mac with Auto Discovery",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev --enable-logging",
     "build": "electron-builder",
-    "build-mac": "electron-builder --mac",
-    "build-mac-universal": "electron-builder --mac --universal",
+  "build-mac": "electron-builder --mac",
+  "prebuild-mac": "npm run copy-server",
+  "postbuild-mac": "npm run build-server",
+  "build-mac-universal": "electron-builder --mac --universal",
+  "prebuild-mac-universal": "npm run copy-server",
+  "postbuild-mac-universal": "npm run build-server",
     "pack": "electron-builder --dir",
     "dist": "npm run build",
     "clean": "rm -rf dist/ node_modules/ server/",
@@ -38,7 +42,8 @@
   },
   "devDependencies": {
     "electron": "^28.0.0",
-    "electron-builder": "^24.9.1"
+    "electron-builder": "^24.9.1",
+    "fs-extra": "^11.2.0"
   },
   "dependencies": {
     "electron-updater": "^6.1.7",
@@ -46,6 +51,10 @@
     "cors": "^2.8.5",
     "ws": "^8.18.0",
     "obs-websocket-js": "^5.0.6"
+  },
+  "overrides": {
+    "form-data": "^4.0.4",
+    "tmp": "^0.2.4"
   },
   "build": {
     "appId": "com.tallyhubpro.tallyhub",

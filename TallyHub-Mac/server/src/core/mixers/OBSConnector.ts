@@ -101,23 +101,17 @@ export class OBSConnector extends EventEmitter {
     // Listen for recording status changes
     this.obs.on('RecordStateChanged', (data) => {
       this.isRecording = data.outputActive;
-      console.log(`🔴 OBS Recording ${this.isRecording ? 'started' : 'stopped'} - triggering tally updates`);
-      // Clear state cache to force updates
-      this.currentSourceStates.clear();
-      this.currentSceneStates.clear();
-      // Update all tally states when recording status changes
-      this.updateSourceTallies();
+      console.log(`🔴 OBS Recording ${this.isRecording ? 'started' : 'stopped'}`);
+      // Emit only a global status update; Hub will re-send assigned tallies with overlay
+      this.emitStatusUpdate();
     });
 
     // Listen for streaming status changes
     this.obs.on('StreamStateChanged', (data) => {
       this.isStreaming = data.outputActive;
-      console.log(`📡 OBS Streaming ${this.isStreaming ? 'started' : 'stopped'} - triggering tally updates`);
-      // Clear state cache to force updates
-      this.currentSourceStates.clear();
-      this.currentSceneStates.clear();
-      // Update all tally states when streaming status changes
-      this.updateSourceTallies();
+      console.log(`📡 OBS Streaming ${this.isStreaming ? 'started' : 'stopped'}`);
+      // Emit only a global status update; Hub will re-send assigned tallies with overlay
+      this.emitStatusUpdate();
     });
 
     // Listen for transition events

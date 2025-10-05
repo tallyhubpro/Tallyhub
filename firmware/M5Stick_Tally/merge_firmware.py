@@ -25,11 +25,14 @@ def merge_firmware(source, target, env):
     merged_path = os.path.join(build_dir, "firmware-merged.bin")
     
     # Public firmware directory (for web flasher)
-    public_dir = os.path.join(project_dir, "..", "..", "public", "firmware", "M5Stick_Tally")
+    # Decide output subfolder based on env name (to separate Plus2 vs Plus)
+    pio_env = env.get("PIOENV", "")
+    family_folder = "M5Stick_Tally_Plus2" if "plus2" in pio_env.lower() else "M5Stick_Tally"
+    public_dir = os.path.join(project_dir, "..", "..", "public", "firmware", family_folder)
     public_merged_path = os.path.join(public_dir, "firmware-merged.bin")
     
     print("\n" + "="*50)
-    print("🔧 M5Stick CPlus 1.1 Firmware Merge Process")
+    print("🔧 M5StickC Firmware Merge Process (env: %s)" % pio_env)
     print("="*50)
     print(f"📂 Build directory: {build_dir}")
     print(f"📂 Project directory: {project_dir}")

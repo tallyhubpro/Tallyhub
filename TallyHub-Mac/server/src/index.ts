@@ -8,6 +8,8 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { TallyHub } from './core/TallyHub';
 import { WebSocketManager } from './core/WebSocketManager';
+import { ATEMConnector } from './core/mixers/ATEMConnector';
+import { logger } from './core/logger';
 
 // Global error handlers to prevent crashes from unhandled rejections
 process.on('unhandledRejection', (reason, promise) => {
@@ -70,7 +72,7 @@ class TallyHubServer {
     // Serve static files from public directory
     const publicPath = path.join(process.cwd(), 'public');
     this.app.use(express.static(publicPath));
-    console.log(`📁 Serving static files from: ${publicPath}`);
+  logger.info(`Static directory: ${publicPath}`);
   }
 
   private setupRoutes(): void {
@@ -89,8 +91,42 @@ class TallyHubServer {
       res.json(this.tallyHub.getTallies());
     });
 
+
     this.app.get('/api/devices', (req, res) => {
       res.json(this.tallyHub.getDevices());
+    });
+
+    // Admin text message endpoint
+    this.app.post('/api/message', express.json(), (req, res): void => {
+      const { text, deviceId, color, duration } = (req.body || {}) as { text?: string; deviceId?: string; color?: string; duration?: number };
+      if (!text || typeof text !== 'string') {
+        res.status(400).json({ success: false, error: 'text is required' });
+        return;
+      }
+      if (text.length > 120) {
+        res.status(400).json({ success: false, error: 'text too long (max 120 chars)' });
+        return;
+      }
+      if (color && !/^#?[0-9A-Fa-f]{6}$/.test(color)) {
+        res.status(400).json({ success: false, error: 'color must be hex RRGGBB' });
+        return;
+      }
+      let dur = typeof duration === 'number' ? duration : 8000;
+      if (dur < 1000) dur = 1000; if (dur > 30000) dur = 30000;
+      try {
+        this.udpServer.sendAdminMessage(text, { color, duration: dur, deviceId });
+        res.json({ success: true, message: 'Message dispatched', target: deviceId || 'all' });
+      } catch (err) {
+        console.error('❌ Error sending admin message', err);
+        res.status(500).json({ success: false, error: 'Failed to dispatch message' });
+      }
+    });
+
+    // Recent admin messages + read receipts
+    this.app.get('/api/messages/recent', (req, res) => {
+      const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : 25;
+      const messages = this.udpServer.getRecentAdminMessages(limit);
+      res.json({ success: true, messages });
     });
 
     this.app.get('/api/mixers', (req, res) => {
@@ -120,7 +156,7 @@ class TallyHubServer {
           connected: false
         };
 
-        console.log(`[INFO] Adding mixer: ${name} (${type})`);
+  logger.info(`Adding mixer: ${name} (${type})`);
         const success = this.tallyHub.addMixerConnection(mixerId, mixerConfig, password);
         
         if (success) {
@@ -187,6 +223,34 @@ class TallyHubServer {
       }
     });
 
+    // Mixer inputs endpoint
+    this.app.get('/api/mixers/:id/inputs', async (req, res) => {
+      const { id } = req.params;
+  logger.debug(`Mixer inputs request for ID: ${id}`);
+  const mixer = this.tallyHub.getMixerById(id);
+  logger.debug(`Mixer found: ${mixer ? mixer.constructor.name : 'null'}`);
+      if (!mixer) {
+        res.status(404).json({ error: 'Mixer not found' });
+        return;
+      }
+      
+      // If ATEM, get input sources
+      if (mixer instanceof ATEMConnector && typeof mixer.getInputSources === 'function') {
+        try {
+          const inputs = mixer.getInputSources();
+          logger.debug(`ATEM inputs: ${inputs.length}`);
+          res.json({ inputs });
+          return;
+        } catch (error) {
+          console.error(`🚨 Error getting ATEM inputs:`, error);
+          res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
+          return;
+        }
+      }
+      
+      res.status(400).json({ error: 'Mixer does not support input listing' });
+    });
+
     // Device assignment endpoints
     this.app.get('/api/devices/:deviceId/assignment', (req: any, res: any) => {
       try {
@@ -213,11 +277,11 @@ class TallyHubServer {
         const { deviceId } = req.params;
         const { sourceId, assignedBy = 'admin' } = req.body;
         
-        console.log(`📍 Assignment request: deviceId=${deviceId}, sourceId='${sourceId}', type=${typeof sourceId}`);
+  logger.debug(`Assignment request deviceId=${deviceId} sourceId='${sourceId}' type=${typeof sourceId}`);
         
         // If sourceId is explicitly empty string, unassign the device
         if (sourceId === '') {
-          console.log(`🔄 Unassigning device ${deviceId}`);
+          logger.info(`Unassign device ${deviceId}`);
           const success = this.tallyHub.unassignDevice(deviceId);
           
           if (success) {
@@ -236,11 +300,11 @@ class TallyHubServer {
         
         // If sourceId is missing, undefined, or null, return error
         if (sourceId === undefined || sourceId === null) {
-          console.log(`❌ sourceId is missing: ${sourceId}`);
+          logger.warn(`Assignment missing sourceId for device ${deviceId}`);
           return res.status(400).json({ error: 'sourceId is required' });
         }
         
-        console.log(`➡️ Assigning device ${deviceId} to source ${sourceId}`);
+  logger.info(`Assign device ${deviceId} -> source ${sourceId}`);
         const success = this.tallyHub.assignSourceToDevice(deviceId, sourceId, assignedBy);
         
         if (success) {
@@ -310,27 +374,7 @@ class TallyHubServer {
       res.json({ status: 'healthy', timestamp: new Date() });
     });
 
-    // Test endpoint to simulate status updates (for testing)
-    this.app.post('/api/test/status', (req, res) => {
-      const { recording = false, streaming = false } = req.body;
-      
-      // Emit a test status update
-      const statusUpdate = {
-        mixerId: 'test-mixer',
-        recording: recording,
-        streaming: streaming,
-        timestamp: new Date()
-      };
-      
-      this.tallyHub.emit('status:update', statusUpdate);
-      
-      console.log('📊 Test status update sent:', statusUpdate);
-      res.json({ 
-        success: true, 
-        message: 'Status update sent',
-        statusUpdate 
-      });
-    });
+    // (Removed /api/test/status for production build)
 
     // Save mixer configurations endpoint
     this.app.post('/api/mixers/save', (req, res) => {
@@ -352,7 +396,7 @@ class TallyHubServer {
     // Server shutdown endpoint
     this.app.post('/api/shutdown', async (req, res) => {
       try {
-        console.log('🛑 Shutdown request received from admin panel');
+  logger.warn('Shutdown request received');
         
         // Send response first before shutting down
         res.json({ 

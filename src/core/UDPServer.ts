@@ -1,4 +1,6 @@
 import { createSocket, Socket } from 'dgram';
+import os from 'os';
+import bonjour from 'bonjour';
 import { TallyHub } from './TallyHub';
 import { TallyDevice, TallyState } from '../types';
 
@@ -10,12 +12,26 @@ interface M5Device {
   device: TallyDevice;
 }
 
+interface TrackedAdminMessage {
+  id: string;
+  text: string;
+  color?: string;
+  duration?: number;
+  timestamp: number; // when sent
+  targetDeviceId?: string; // undefined means broadcast
+  acknowledgements: Record<string, { method: string; at: number; snippet?: string }>;
+}
+
 export class UDPServer {
   private socket: Socket | null = null;
   private tallyHub: TallyHub;
   private m5Devices: Map<string, M5Device> = new Map();
   private port: number;
   private cleanupInterval: NodeJS.Timeout | null = null;
+  private adminMessages: TrackedAdminMessage[] = []; // ring buffer
+  private readonly maxAdminMessages = 50;
+  private mdns: ReturnType<typeof bonjour> | null = null;
+  private mdnsService: any = null;
 
   constructor(tallyHub: TallyHub) {
     this.tallyHub = tallyHub;
@@ -55,6 +71,53 @@ export class UDPServer {
     });
   }
 
+  /**
+   * Broadcast a short admin text message to all registered M5 / ESP32 tally devices.
+   * @param text Message body (will be truncated to 20 characters for status bar display)
+   * @param opts Optional parameters: color (hex string), duration (ms), targetDeviceId for single device
+   */
+  public sendAdminMessage(text: string, opts: { color?: string; duration?: number; deviceId?: string } = {}): void {
+    // Limit message length to prevent display issues (20 chars fits in status bar)
+    const maxLength = 20;
+    if (text.length > maxLength) {
+      text = text.substring(0, maxLength - 3) + "...";
+      console.log(`📝 Admin message truncated to ${maxLength} characters for display`);
+    }
+    
+    const id = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+    const ts = Date.now();
+    const payload = {
+      type: 'admin_message',
+      id,
+      text,
+      color: opts.color,
+      duration: opts.duration,
+      timestamp: ts
+    };
+
+    // Track message
+    const entry: TrackedAdminMessage = {
+      id,
+      text,
+      color: opts.color,
+      duration: opts.duration,
+      timestamp: ts,
+      targetDeviceId: opts.deviceId,
+      acknowledgements: {}
+    };
+    this.adminMessages.unshift(entry);
+    if (this.adminMessages.length > this.maxAdminMessages) this.adminMessages.pop();
+
+    if (opts.deviceId) {
+      this.sendToDevice(opts.deviceId, payload);
+      return;
+    }
+    // broadcast to all
+    for (const m5Device of this.m5Devices.values()) {
+      this.sendToAddress(m5Device.address, m5Device.port, payload);
+    }
+  }
+
   public async start(): Promise<void> {
     return new Promise((resolve, reject) => {
       this.socket = createSocket('udp4');
@@ -62,6 +125,29 @@ export class UDPServer {
       this.socket.on('listening', () => {
         const address = this.socket!.address();
         console.log(`📡 UDP server listening on ${address.address}:${address.port}`);
+        // Start mDNS advertisement unless disabled
+        if (!process.env.DISABLE_MDNS) {
+          try {
+            this.mdns = bonjour();
+            const apiPort = parseInt(process.env.PORT || '3000');
+            this.mdnsService = this.mdns.publish({
+              name: `TallyHub-${address.address}`,
+              type: 'tallyhub',
+              protocol: 'udp',
+              port: this.port,
+              txt: {
+                api: String(apiPort),
+                udp: String(this.port),
+                ver: process.env.npm_package_version || 'unknown'
+              }
+            });
+            this.mdnsService.on('up', () => console.log('📣 mDNS service _tallyhub._udp advertised'));
+          } catch (e) {
+            console.warn('mDNS advertisement failed (continuing):', e);
+          }
+        } else {
+          console.log('📣 mDNS disabled via DISABLE_MDNS env var');
+        }
         resolve();
       });
 
@@ -95,6 +181,11 @@ export class UDPServer {
       const deviceKey = `${rinfo.address}:${rinfo.port}`;
 
       switch (message.type) {
+        case 'discover':
+          // Lightweight auto-discovery request from firmware devices.
+          // Reply unicast with hub network coordinates so device can persist them.
+          this.handleDiscovery(rinfo);
+          break;
         case 'register':
           this.handleDeviceRegistration(message, rinfo);
           break;
@@ -106,12 +197,60 @@ export class UDPServer {
         case 'status':
           this.handleStatusUpdate(message, rinfo);
           break;
+        case 'admin_message_ack':
+          this.handleAdminMessageAck(message, rinfo);
+          break;
 
         default:
           console.warn(`Unknown UDP message type: ${message.type} from ${deviceKey}`);
       }
     } catch (error) {
       console.error('Error parsing UDP message:', error);
+    }
+  }
+
+  /** Determine a suitable LAN IPv4 address for discovery responses */
+  private getLocalIPv4(): string {
+    const nets = os.networkInterfaces();
+    for (const name of Object.keys(nets)) {
+      const list = nets[name];
+      if (!list) continue;
+      for (const ni of list) {
+        if (ni.family === 'IPv4' && !ni.internal && ni.address) {
+          return ni.address;
+        }
+      }
+    }
+    return '0.0.0.0';
+  }
+
+  private handleDiscovery(rinfo: any): void {
+    const payload = {
+      type: 'discover_reply',
+      hubIp: this.getLocalIPv4(),
+      udpPort: this.port,
+      apiPort: parseInt(process.env.PORT || '3000'),
+      timestamp: new Date()
+    };
+    this.sendToAddress(rinfo.address, rinfo.port, payload);
+  }
+
+  /** Graceful shutdown allowing tests / electron app to stop networking & mDNS */
+  public async stop(): Promise<void> {
+    if (this.cleanupInterval) clearInterval(this.cleanupInterval);
+    if (this.mdnsService) {
+      try { this.mdnsService.stop(() => {}); } catch {}
+      this.mdnsService = null;
+    }
+    if (this.mdns) {
+      try { this.mdns.destroy(); } catch {}
+      this.mdns = null;
+    }
+    if (this.socket) {
+      await new Promise<void>(res => {
+        try { this.socket!.close(() => res()); } catch { res(); }
+      });
+      this.socket = null;
     }
   }
 
@@ -264,6 +403,38 @@ export class UDPServer {
     }
   }
 
+  private handleAdminMessageAck(message: any, rinfo: any): void {
+    const deviceKey = `${rinfo.address}:${rinfo.port}`;
+    const m5Device = this.m5Devices.get(deviceKey);
+    const summary = (message && message.textSnippet) ? message.textSnippet : '';
+    const msgId = message.id as string | undefined;
+    if (m5Device) {
+      console.log(`✅ Admin message ACK from ${m5Device.id} (${m5Device.device.type}) method=${message.method || 'unknown'}${summary ? ` snippet=\"${summary}\"` : ''}${msgId ? ` id=${msgId}` : ''}`);
+      if (msgId) {
+        const tracked = this.adminMessages.find(m => m.id === msgId);
+        if (tracked) {
+          tracked.acknowledgements[m5Device.id] = { method: message.method || 'unknown', at: Date.now(), snippet: summary };
+        }
+      }
+    } else {
+      console.log(`✅ Admin message ACK from unknown device ${deviceKey}`);
+    }
+  }
+
+  /** Return recent admin messages with acknowledgement stats */
+  public getRecentAdminMessages(limit = 25) {
+    return this.adminMessages.slice(0, limit).map(m => ({
+      id: m.id,
+      text: m.text,
+      color: m.color,
+      duration: m.duration,
+      timestamp: m.timestamp,
+      targetDeviceId: m.targetDeviceId,
+      acknowledgements: m.acknowledgements,
+      ackCount: Object.keys(m.acknowledgements).length
+    }));
+  }
+
   private sendToAddress(address: string, port: number, message: any): void {
     if (!this.socket) return;
 
@@ -309,9 +480,31 @@ export class UDPServer {
   }
 
   private broadcastTallyUpdate(tallyState: TallyState): void {
-    // M5 devices now only work in assignment mode
-    // They will only receive tally updates for their assigned source via device:notify event
-    // No broadcasting needed - keeping this method for potential future use
+    // Broadcast only when a source is in PROGRAM to allow devices to learn the global live source.
+    // Firmware will capture this before assignment filtering to show "Live: <source>" in IDLE/PREVIEW.
+    if (!tallyState.program) return;
+
+    // Only broadcast OBS scenes (not individual OBS sources) to avoid overlays/logos being treated as live.
+    // Allow vMix inputs and ATEM inputs as they represent program buses.
+    const id = tallyState.id || '';
+    if (id.startsWith('obs-source-')) return; // skip OBS sources
+    if (!(id.startsWith('obs-scene-') || id.startsWith('vmix-input-') || id.startsWith('atem-input-'))) return;
+
+    const message = {
+      type: 'tally',
+      data: {
+        id: tallyState.id,
+        name: this.cleanSourceName(tallyState.name),
+        preview: tallyState.preview,
+        program: true,
+        recording: tallyState.recording || false,
+        streaming: tallyState.streaming || false
+      }
+    };
+
+    for (const m5Device of this.m5Devices.values()) {
+      this.sendToAddress(m5Device.address, m5Device.port, message);
+    }
   }
 
   private cleanupInactiveDevices(): void {
@@ -329,20 +522,7 @@ export class UDPServer {
     }
   }
 
-  public async stop(): Promise<void> {
-    if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval);
-      this.cleanupInterval = null;
-    }
-
-    if (this.socket) {
-      this.socket.close();
-      this.socket = null;
-    }
-
-    this.m5Devices.clear();
-    console.log('📡 UDP server stopped');
-  }
+  // (stop method with mDNS teardown defined earlier)
 
   public getM5Devices(): M5Device[] {
     return Array.from(this.m5Devices.values());

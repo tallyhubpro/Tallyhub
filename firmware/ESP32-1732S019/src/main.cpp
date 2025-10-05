@@ -22,9 +22,10 @@
 #include <Preferences.h>
 #include <TFT_eSPI.h>
 #include <WiFiManager.h>
+#include <qrcode.h>
 
 // Firmware version
-#define FIRMWARE_VERSION "1.0.0"
+#define FIRMWARE_VERSION "1.0.1"
 #define DEVICE_MODEL "ESP32-1732S019"
 
 // Display configuration - Based on kingson87 project
@@ -107,6 +108,13 @@ unsigned long registrationStatusStart = 0;
 String registrationStatusMessage = "";
 uint16_t registrationStatusColor = COLOR_GREEN;
 
+// Admin message overlay state
+static String adminMessageText = "";
+static bool adminMessageActive = false;
+static unsigned long adminMessageExpire = 0;
+static uint16_t adminMessageBg = COLOR_BLUE; // default background color if none supplied
+static String adminMessageId = ""; // hub-provided id for read receipts
+
 // Assignment confirmation display
 bool showingAssignmentConfirmation = false;
 unsigned long assignmentConfirmationStart = 0;
@@ -123,6 +131,7 @@ void registerDevice();
 void sendHeartbeat();
 void handleUDPMessages();
 void updateDisplay();
+void displayWiFiQRCode(const String& apName);
 void updateStatus(const String& status);
 void showStatus(const String& status, uint16_t bgColor, uint16_t textColor = COLOR_WHITE);
 void showBootScreen();
@@ -483,6 +492,28 @@ void checkButtonForWiFiReset() {
       ESP.restart();
     }
   } else {
+    // Short release detection for admin message dismiss (tap)
+    if (buttonWasPressed) {
+      unsigned long held = millis() - buttonPressStart;
+      if (held < WIFI_RESET_HOLD_TIME && adminMessageActive) {
+        String snippet = adminMessageText.substring(0,24);
+        adminMessageActive = false;
+        adminMessageText = "";
+        Serial.println("Admin message dismissed via short BOOT tap");
+        // Send acknowledgement to hub
+        JsonDocument ack;
+        ack["type"] = "admin_message_ack";
+        ack["deviceId"] = deviceID;
+        ack["method"] = "button";
+        ack["timestamp"] = millis();
+        ack["textSnippet"] = snippet;
+  if (adminMessageId.length() > 0) ack["id"] = adminMessageId;
+        String payload; serializeJson(ack, payload);
+        int r = udp.beginPacket(hubIP.c_str(), hubPort);
+        if (r==1) { udp.print(payload); udp.endPacket(); }
+        updateDisplay();
+      }
+    }
     buttonWasPressed = false;
   }
 }
@@ -511,14 +542,8 @@ void setupWiFi() {
   
   wifiManager.setAPCallback([](WiFiManager *myWiFiManager) {
     Serial.println("[WiFiManager] Entered AP mode");
-    tft.fillScreen(COLOR_ORANGE);
-    tft.setTextColor(COLOR_WHITE);
-    tft.setTextSize(2);
-    tft.setCursor(20, SCREEN_HEIGHT / 2 - 20);
-    tft.print("AP MODE");
-    tft.setTextSize(1);
-    tft.setCursor(20, SCREEN_HEIGHT / 2 + 10);
-    tft.print("Connect to setup WiFi");
+    String apName = "TallyLight-" + deviceID.substring(6, 12);
+    displayWiFiQRCode(apName);
   });
 
   wifiManager.setSaveConfigCallback([]() {
@@ -745,7 +770,7 @@ void handleUDPMessages() {
         }
         
         if (program) {
-          updateStatus("LIVE");
+          updateStatus("PROGRAM");
         } else if (preview) {
           updateStatus("PREVIEW");
         } else {
@@ -772,7 +797,7 @@ void handleUDPMessages() {
         isStreaming = streaming;
 
         if (program) {
-          updateStatus("LIVE");
+          updateStatus("PROGRAM");
         } else if (preview) {
           updateStatus("PREVIEW");
         } else {
@@ -903,10 +928,70 @@ void handleUDPMessages() {
     Serial.println("Heartbeat acknowledged");
     hubConnectionAttempts = 0; // Reset reconnection attempts on successful communication
     // No display update needed - heartbeat ack should not change display state
+  } else if (type == "admin_message") {
+    const char* txt = doc["text"] | "";
+    if (strlen(txt) > 0) {
+      adminMessageText = String(txt);
+      adminMessageId = doc["id"].isNull() ? String("") : String((const char*)doc["id"].as<const char*>());
+      unsigned long dur = doc["duration"].isNull() ? 8000UL : (unsigned long)doc["duration"].as<unsigned long>();
+      if (dur < 1000UL) dur = 1000UL; if (dur > 30000UL) dur = 30000UL;
+      adminMessageExpire = millis() + dur;
+      adminMessageBg = COLOR_BLUE;
+      if (!doc["color"].isNull()) {
+        String c = doc["color"].as<String>();
+        if (c.startsWith("#")) c.remove(0,1);
+        if (c.length() == 6) {
+          char rHex[3]={c[0],c[1],'\0'}; char gHex[3]={c[2],c[3],'\0'}; char bHex[3]={c[4],c[5],'\0'};
+          int r = strtol(rHex,nullptr,16); int g = strtol(gHex,nullptr,16); int b = strtol(bHex,nullptr,16);
+          uint16_t rr = (r & 0xF8) << 8; uint16_t gg = (g & 0xFC) << 3; uint16_t bb = (b >> 3);
+          adminMessageBg = rr | gg | bb;
+        }
+      }
+      adminMessageActive = true;
+      Serial.printf("Admin message received (%lu ms): %s\n", dur, adminMessageText.c_str());
+      updateDisplay(); // immediate refresh
+    }
   }
 }
 
 void updateDisplay() {
+  // Expire admin message if needed
+  if (adminMessageActive && millis() > adminMessageExpire) {
+    adminMessageActive = false;
+    adminMessageText = "";
+  }
+
+  // Show admin message overlay priority below assignment/registration screens
+  if (adminMessageActive && !showingAssignmentConfirmation && !showingRegistrationStatus) {
+    tft.fillScreen(adminMessageBg);
+    // Text wrapping with much larger size (size 4 for maximum visibility)
+    String msg = adminMessageText;
+    const int maxCharsPerLine = 12; // adjusted for even larger text size 4
+    std::vector<String> lines;
+    while (msg.length() > 0) {
+      if (msg.length() <= (size_t)maxCharsPerLine) { lines.push_back(msg); break; }
+      int cut = maxCharsPerLine;
+      for (int i = cut; i >= 0; --i) { if (msg[i]==' ') { cut = i; break; } }
+      lines.push_back(msg.substring(0, cut));
+      while ((size_t)cut < msg.length() && msg[cut]==' ') cut++;
+      msg = msg.substring(cut);
+      if (lines.size() >= 3) break; // adjusted limit for much larger text
+    }
+    int totalH = lines.size() * 36; // textSize 4 => ~32px height + spacing
+    int y = (SCREEN_HEIGHT - totalH)/2; if (y < 10) y = 10;
+    tft.setTextColor(COLOR_WHITE);
+    tft.setTextSize(4); // Increased from 3 to 4 for maximum message visibility
+    for (size_t i=0;i<lines.size();++i) {
+      int w = lines[i].length()*24; // adjusted for size 4
+      int x = (SCREEN_WIDTH - w)/2; if (x<4) x=4;
+      tft.setCursor(x, y + i*36);
+      tft.print(lines[i]);
+    }
+    tft.setTextSize(1);
+    tft.setCursor(6, SCREEN_HEIGHT - 12);
+    tft.print("Msg from Admin");
+    return; // don't fall through
+  }
   // Show assignment confirmation if needed
   if (showingAssignmentConfirmation) {
     if (millis() - assignmentConfirmationStart < 2000) { // Show for 2 seconds
@@ -964,10 +1049,10 @@ void updateDisplay() {
     bgColor = COLOR_GRAY;
     textColor = COLOR_WHITE;
     statusText = "UNASSIGNED";
-  } else if (currentStatus == "LIVE") {
+  } else if (currentStatus == "PROGRAM") {
     bgColor = COLOR_LIVE_RED;
     textColor = COLOR_WHITE;
-    statusText = "LIVE";
+  statusText = "PROGRAM";
   } else if (currentStatus == "PREVIEW") {
     bgColor = COLOR_PREVIEW_ORANGE;
     textColor = COLOR_BLACK;
@@ -999,6 +1084,41 @@ void updateDisplay() {
   }
 
   showStatus(statusText, bgColor, textColor);
+}
+
+// Generate and display actual scannable QR Code for WiFi credentials
+void displayWiFiQRCode(const String& apName) {
+  tft.fillScreen(COLOR_BLACK);
+  
+  // QR code data for WiFi: WIFI:T:WPA;S:SSID;P:PASSWORD;;
+  String qrData = "WIFI:T:WPA;S:" + apName + ";P:;;";
+  
+  // Create QR Code
+  QRCode qrcode;
+  uint8_t qrcodeData[qrcode_getBufferSize(3)];
+  qrcode_initText(&qrcode, qrcodeData, 3, 0, qrData.c_str());
+  
+  // Calculate QR code display parameters for full screen
+  int maxScale = min(SCREEN_WIDTH / qrcode.size, SCREEN_HEIGHT / qrcode.size);
+  int scale = max(1, maxScale); // Ensure at least scale of 1
+  int qrDisplaySize = qrcode.size * scale;
+  int startX = (SCREEN_WIDTH - qrDisplaySize) / 2;
+  int startY = (SCREEN_HEIGHT - qrDisplaySize) / 2;
+  
+  // Draw QR code with inverted colors (white on black for better contrast)
+  for (uint8_t y = 0; y < qrcode.size; y++) {
+    for (uint8_t x = 0; x < qrcode.size; x++) {
+      // Invert colors: QR modules are white, background is black
+      uint16_t color = qrcode_getModule(&qrcode, x, y) ? COLOR_WHITE : COLOR_BLACK;
+      
+      if (scale == 1) {
+        tft.drawPixel(startX + x, startY + y, color);
+      } else {
+        // Draw scaled modules
+        tft.fillRect(startX + x * scale, startY + y * scale, scale, scale, color);
+      }
+    }
+  }
 }
 
 void updateStatus(const String& status) {

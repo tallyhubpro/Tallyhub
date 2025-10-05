@@ -8,6 +8,8 @@ let serverProcess;
 let tray;
 let isQuitting = false;
 let isRestarting = false;
+let isStopping = false; // Track user-initiated stop to avoid false error dialog
+let pendingRestart = false; // Guard to prevent multiple concurrent restarts
 let autoLaunchEnabled = false; // Track auto-launch status
 
 // Server configuration
@@ -284,13 +286,36 @@ function createMenu() {
           }
         },
         {
-          label: 'Firmware Flash',
+          label: 'Flash Firmware',
           accelerator: 'CmdOrCtrl+4',
           click: () => {
-            if (mainWindow) {
-              mainWindow.webContents.executeJavaScript(`
-                window.location.href = '/flash.html';
-              `);
+            // Open the flasher in the default browser served by the local server
+            shell.openExternal(`http://localhost:${SERVER_PORT}/flash.html`);
+          }
+        },
+        {
+          label: 'Flash in Chrome',
+          click: () => {
+            // Attempt to open specifically in Google Chrome for Web Serial support
+            const chromePaths = [
+              '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+              '/Applications/Chromium.app/Contents/MacOS/Chromium'
+            ];
+            let opened = false;
+            for (const chromePath of chromePaths) {
+              if (fs.existsSync(chromePath)) {
+                try {
+                  const { spawn } = require('child_process');
+                  spawn(chromePath, [`http://localhost:${SERVER_PORT}/flash.html`], { detached: true, stdio: 'ignore' });
+                  opened = true;
+                  break;
+                } catch (e) {
+                  // fallthrough
+                }
+              }
+            }
+            if (!opened) {
+              shell.openExternal(`http://localhost:${SERVER_PORT}/flash.html`);
             }
           }
         },
@@ -571,16 +596,21 @@ function startTallyHubServer() {
     return;
   }
 
+  let serverReadyEmitted = false;
   serverProcess.stdout.on('data', (data) => {
+    const line = data.toString().trim();
     try {
       if (!app.isQuitting && mainWindow && !mainWindow.isDestroyed()) {
-        console.log(`[Server] ${data.toString().trim()}`);
-        // Send to renderer if needed
-        mainWindow.webContents.send('server-log', data.toString().trim());
+        console.log(`[Server] ${line}`);
+        mainWindow.webContents.send('server-log', line);
       }
-    } catch (error) {
-      // Ignore write errors when app is quitting
-    }
+      if (!serverReadyEmitted && line.includes('Tally Hub server running')) {
+        serverReadyEmitted = true;
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('server-ready');
+        }
+      }
+    } catch (_) { /* swallow */ }
   });
 
   serverProcess.stderr.on('data', (data) => {
@@ -594,27 +624,24 @@ function startTallyHubServer() {
     }
   });
 
-  serverProcess.on('close', (code) => {
+  serverProcess.on('close', (code, signal) => {
     try {
-      if (!isQuitting && !isRestarting) {
-        console.log(`Server process exited with code ${code}`);
-        if (code !== 0 && mainWindow && !mainWindow.isDestroyed()) {
+      const normalExitCodes = new Set([0, 143]); // 143 = SIGTERM on Unix (Node reports 143 sometimes)
+      const wasNormal = normalExitCodes.has(code) || signal === 'SIGTERM';
+      const context = isQuitting ? 'app quitting' : isRestarting ? 'restarting' : isStopping ? 'user stop' : 'unexpected';
+      console.log(`Server process exited (code=${code}, signal=${signal || 'none'}, context=${context})`);
+
+      if (!isQuitting && !isRestarting && !isStopping && !wasNormal) {
+        if (mainWindow && !mainWindow.isDestroyed()) {
           dialog.showErrorBox(
             'Server Error',
             `TallyHub server stopped unexpectedly (code: ${code}). Please check the console for details.`
           );
         }
       } else if (isRestarting) {
-        console.log(`Server process stopped for restart (code: ${code})`);
+        console.log('Server process stopped for restart');
       }
     } catch (error) {
-      // Ignore errors when app is quitting
-    }
-    serverProcess = null;
-  });
-
-  serverProcess.on('error', (error) => {
-    try {
       if (!isQuitting) {
         console.error('Failed to start server:', error);
         if (mainWindow && !mainWindow.isDestroyed()) {
@@ -624,8 +651,6 @@ function startTallyHubServer() {
           );
         }
       }
-    } catch (err) {
-      // Ignore errors when app is quitting
     }
   });
 
@@ -636,11 +661,12 @@ function startTallyHubServer() {
 function stopTallyHubServer() {
   if (serverProcess && !serverProcess.killed) {
     console.log('Stopping TallyHub server...');
-    
+    isStopping = true; // mark intentional stop
+
     try {
       // Try graceful shutdown first
       serverProcess.kill('SIGTERM');
-      
+
       // Force kill after 3 seconds if it doesn't stop gracefully
       setTimeout(() => {
         if (serverProcess && !serverProcess.killed) {
@@ -651,36 +677,57 @@ function stopTallyHubServer() {
     } catch (error) {
       console.log('Error stopping server:', error.message);
     }
-    
-    serverProcess = null;
+    // Don't null serverProcess here; allow close handler to run
   }
 }
 
 function restartServer() {
-  console.log('Restarting TallyHub server...');
+  if (pendingRestart) {
+    console.log('Restart already in progress – ignoring duplicate request');
+    return;
+  }
+  console.log('Restarting TallyHub server (improved sequence)...');
+  pendingRestart = true;
   isRestarting = true;
-  stopTallyHubServer();
-  
-  setTimeout(() => {
-    isRestarting = false;
-    startTallyHubServer();
-    
-    // Notify renderer about status change
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('server-status-change', { 
-        status: 'restarting' 
-      });
-      
-      // Update status to running after a delay
-      setTimeout(() => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('server-status-change', { 
-            status: serverProcess && !serverProcess.killed ? 'running' : 'stopped' 
-          });
-        }
-      }, 2000);
+
+  const startAfterStop = () => {
+    try {
+      console.log('Starting server after clean shutdown...');
+      startTallyHubServer();
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('server-status-change', { status: 'running' });
+      }
+    } finally {
+      isRestarting = false;
+      pendingRestart = false;
     }
-  }, 1000);
+  };
+
+  if (!serverProcess || serverProcess.killed) {
+    console.log('No existing server process; starting fresh.');
+    startAfterStop();
+    return;
+  }
+
+  // Attach one-time listener BEFORE sending kill to ensure capture even if exit is immediate
+  const restartTimeout = setTimeout(() => {
+    console.warn('Server did not exit within expected timeout; forcing start anyway');
+    startAfterStop();
+  }, 5000);
+
+  serverProcess.once('close', (code, signal) => {
+    clearTimeout(restartTimeout);
+    console.log(`Previous server closed (code=${code}, signal=${signal}); proceeding with restart`);
+    startAfterStop();
+  });
+
+  // Initiate graceful stop
+  stopTallyHubServer();
+
+  // Notify renderer that restart is underway
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('server-status-change', { status: 'restarting' });
+  }
 }
 
 // IPC handlers
@@ -985,6 +1032,11 @@ function updateTrayMenu() {
       label: 'Open Admin Panel',
       enabled: serverRunning,
       click: () => shell.openExternal(`http://localhost:${SERVER_PORT}/admin.html`)
+    },
+    {
+      label: 'Flash Firmware',
+      enabled: serverRunning,
+      click: () => shell.openExternal(`http://localhost:${SERVER_PORT}/flash.html`)
     },
     { type: 'separator' },
     {

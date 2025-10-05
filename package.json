@@ -1,6 +1,6 @@
 {
   "name": "tally-hub",
-  "version": "1.0.0",
+   "version": "1.0.1",
   "description": "Professional Tally Light System for Video Production",
   "main": "index.js",
   "repository": {
@@ -24,23 +24,42 @@
   ],
   "author": "TallyHub Pro",
   "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
+    "prestart": "npm run build",
     "start": "node dist/index.js",
+    "start:prod": "NODE_ENV=production node dist/index.js",
     "dev": "nodemon --exec ts-node src/index.ts --ignore device-storage.json --ignore device-assignments.json --ignore logs/",
     "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint 'src/**/*.{ts,tsx}'",
+    "lint:fix": "eslint 'src/**/*.{ts,tsx}' --fix",
+    "format": "prettier --write .",
+    "logs:prune": "node scripts/clean-logs.js",
+    "prepare": "npm run typecheck"
   },
   "devDependencies": {
+    "@types/bonjour": "^3.5.13",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/node": "^24.0.3",
     "@types/ws": "^8.18.1",
+    "eslint": "^9.11.1",
+    "@typescript-eslint/parser": "^8.7.0",
+    "@typescript-eslint/eslint-plugin": "^8.7.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.3.3",
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   },
   "dependencies": {
     "@types/multer": "^1.4.13",
+    "atem-connection": "^3.6.0",
+    "bonjour": "3.3.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",

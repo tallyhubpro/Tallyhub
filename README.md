@@ -42,12 +42,21 @@
    - Navigate to `http://localhost:3000`
    - Use the admin panel to configure your mixer and devices
 
-## 📋 Available Scripts
+## 📋 Development & Scripts
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm start` - Start production server
-- `npm test` - Run tests
+Core commands:
+
+- `npm run dev` – Start development server with ts-node + nodemon
+- `npm run build` – Compile TypeScript to `dist/`
+- `npm start` – Run compiled production build
+- `npm run typecheck` – TypeScript strict type checking (no emit)
+- `npm run lint` – Lint codebase (ESLint + TypeScript rules)
+- `npm run lint:fix` – Auto-fix lint issues
+- `npm run format` – Prettier formatting across the repo
+- `npm run logs:prune` – Remove log files older than 14 days
+- `npm test` – (Currently a placeholder – test suite forthcoming)
+
+Editor integration: the repo includes `.editorconfig`, `.prettierrc`, and ESLint config for consistent formatting. Enable “Format on Save” in your IDE for best results.
 
 ## 🎯 What is Tally Hub?
 
@@ -59,15 +68,75 @@ Tally Hub is a professional tally light system that works with OBS Studio, vMix,
 - **🔌 Universal Compatibility**: Works with any computer and popular video software
 - **📱 Device Flexibility**: ESP32, M5Stick, or any web browser as tally lights
 
+### Recent Firmware Improvements (Sept 2025)
+- Unified battery smoothing & percent logic across M5StickC Plus and Plus2.
+- Always-on Wi‑Fi outline and disconnect indicator (simpler, clearer status at a glance).
+- Removed legacy battery calibration/debug mode for a leaner build.
+- Overlap-safe layout for battery percent and Wi‑Fi icon.
+
 ## 📖 Documentation
 
 For complete setup guides, hardware recommendations, troubleshooting, and more, visit our comprehensive documentation:
 
 **[🌐 tallyhubpro.github.io](https://tallyhubpro.github.io)**
 
+## 🏭 Production Run
+
+Build once and run the compiled output:
+
+```bash
+npm run build
+NODE_ENV=production LOG_LEVEL=info node dist/index.js
+```
+
+`LOG_LEVEL` supports: `error`, `warn`, `info` (default), `debug`.
+
+Recommended in production:
+- `NODE_ENV=production`
+- Rotate or prune `logs/` (see `npm run logs:prune`)
+- Keep `LOG_LEVEL=info` unless diagnosing an issue.
+
+## 🔍 Device Discovery (UDP + mDNS)
+
+Tally devices now locate the Hub automatically using a two‑stage strategy:
+
+1. **UDP Broadcast Probe** – Firmware sends a small JSON packet `{ "type": "discover" }` to the subnet broadcast on UDP port `7411`. The Hub replies directly with:
+   ```json
+   { "type":"discover_reply", "hubIp":"<address>", "udpPort":7411, "apiPort":3000 }
+   ```
+   The device then persists the hub IP/port.
+2. **mDNS Fallback (`_tallyhub._udp`)** – If no reply is received after several attempts, firmware performs an mDNS query for service `_tallyhub._udp.local` and adopts the first result.
+
+Hub advertisement uses Bonjour / mDNS with TXT records:
+```
+Service: _tallyhub._udp.local
+TXT: api=<http-port>, udp=<udp-port>, ver=<package version>
+```
+
+### Environment Control
+Set `DISABLE_MDNS=1` in the Hub environment to suppress mDNS advertising (devices will still try UDP broadcast discovery).
+
+### When to Manually Configure
+You may still hard‑code or override the Hub IP if:
+- Broadcast traffic is filtered (enterprise / VLAN segmentation)
+- mDNS is disabled on the network
+- You need to point devices across routed subnets
+
+### Future Enhancements (Planned)
+- Priority selection if multiple hubs advertise
+- Optional signed discovery replies for zero‑trust environments
+- Admin UI toggle to disable discovery at runtime
+
+If discovery fails completely, the device will enter its configuration (AP) mode so you can supply credentials and a hub IP manually.
+
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guidelines](https://tallyhubpro.github.io/contributing/) for details.
+We welcome contributions! Start by reading `CONTRIBUTING.md` in the repository root for:
+- Branch naming & commit message style
+- Code quality gates (lint, typecheck, formatting)
+- Release & versioning notes
+
+Full user documentation remains at the docs site: [Contributing Guide (Docs)](https://tallyhubpro.github.io/contributing/)
 
 ## 📄 License
 
