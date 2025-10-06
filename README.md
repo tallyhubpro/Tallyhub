@@ -138,6 +138,66 @@ We welcome contributions! Start by reading `CONTRIBUTING.md` in the repository r
 
 Full user documentation remains at the docs site: [Contributing Guide (Docs)](https://tallyhubpro.github.io/contributing/)
 
+## 🍓 Raspberry Pi Quick Install
+
+You can deploy Tally Hub on a Raspberry Pi (Pi 3B+, 4, 5 recommended) with a single command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/tallyhubpro/Tallyhub/main/scripts/install-pi.sh | bash
+```
+
+Install as a background service (systemd):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/tallyhubpro/Tallyhub/main/scripts/install-pi.sh | bash -s -- --service
+```
+
+After installation:
+
+```bash
+curl http://<pi-host-or-ip>:3000/health
+```
+
+Update later:
+```bash
+cd ~/Tallyhub
+git pull
+npm ci
+npm run build
+sudo systemctl restart tallyhub  # if installed as service
+```
+
+### Environment Overrides (.env)
+```
+PORT=3000
+HOST=0.0.0.0
+LOG_LEVEL=info
+NODE_ENV=production
+```
+
+### Service Logs
+```bash
+journalctl -u tallyhub -f
+```
+
+## 🧪 CLI Launcher
+
+The project provides a lightweight CLI wrapper when installed (locally or via GitHub):
+
+```bash
+npx tallyhub            # builds (if needed) and starts the server
+NODE_ENV=production npx tallyhub
+```
+
+On a Pi (after clone):
+```bash
+npx tallyhub
+```
+
+### Planned CLI Flags (future)
+`--port <port>`, `--log-level <level>`, `--service` (wraps systemd install) – open to contributions.
+
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
