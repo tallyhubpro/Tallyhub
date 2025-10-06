@@ -13,16 +13,19 @@ REPO_URL="https://github.com/tallyhubpro/Tallyhub.git"
 APP_DIR="$HOME/Tallyhub"
 SERVICE=0
 BRANCH="main"
+SERVICE_ONLY=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --service) SERVICE=1 ;;
+  --service-only) SERVICE=1; SERVICE_ONLY=1 ;;
     --branch) shift; BRANCH="$1" ;;
     -h|--help)
       cat <<EOF
 TallyHub Installer
 Options:
   --service        Install/enable systemd service (tallyhub)
+  --service-only   Only (re)create+enable the systemd service, skip clone/update unless build missing
   --branch <name>  Use alternate branch (default: main)
   --help           Show this help
 EOF
@@ -119,15 +122,32 @@ EOF
 
 install_deps_build(){
   cd "$APP_DIR"
+  if [ ! -d dist ]; then
+    BUILD_NEEDED=1
+  else
+    BUILD_NEEDED=0
+  fi
+
   if [ ! -d node_modules ]; then
     log "Installing dependencies (npm ci)"
-    npm ci
+    if ! npm ci; then
+      warn "npm ci failed (possibly lock mismatch). Falling back to 'npm install'."
+      npm install --no-audit --no-fund
+    fi
   else
     log "Incremental dependency update (npm install)"
-    npm install --no-audit --no-fund
+    if ! npm install --no-audit --no-fund; then
+      warn "npm install failed; retrying clean install sequence."
+      rm -rf node_modules package-lock.json
+      npm install --no-audit --no-fund
+    fi
   fi
-  log "Building project"
-  npm run build
+  if [ $BUILD_NEEDED -eq 1 ]; then
+    log "Building project"
+    npm run build
+  else
+    log "Existing build detected; skipping build (remove dist/ to force rebuild)"
+  fi
 }
 
 install_service(){
@@ -181,9 +201,17 @@ run_foreground(){
 main(){
   ensure_packages
   ensure_node
-  clone_or_update
-  create_env
-  install_deps_build
+  if [ $SERVICE_ONLY -eq 1 ]; then
+    if [ ! -d "$APP_DIR" ]; then
+      err "--service-only requested but $APP_DIR does not exist. Run without --service-only first."
+      exit 1
+    fi
+    log "--service-only: skipping clone/update & dependency install."
+  else
+    clone_or_update
+    create_env
+    install_deps_build
+  fi
   if [ $SERVICE -eq 1 ]; then
     install_service
   else
