@@ -7,8 +7,12 @@
     "dist",
     "README.md",
     "LICENSE",
-    "scripts/run-on-pi.sh"
+    "scripts/run-on-pi.sh",
+    "bin/tallyhub.js"
   ],
+  "bin": {
+    "tallyhub": "bin/tallyhub.js"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/tallyhubpro/Tallyhub.git"
@@ -46,7 +50,8 @@
     "logs:prune": "node scripts/clean-logs.js",
     "prepare": "npm run build",
     "pi:run": "bash scripts/run-on-pi.sh",
-    "pi:service": "bash scripts/run-on-pi.sh --service"
+    "pi:service": "bash scripts/run-on-pi.sh --service",
+    "postinstall": "node scripts/postinstall-check.js || echo 'Postinstall check failed (non-fatal)'"
   },
   "devDependencies": {
     "@types/bonjour": "^3.5.13",
