@@ -145,6 +145,7 @@ install_deps_build(){
   if [ $BUILD_NEEDED -eq 1 ]; then
     log "Building project"
     npm run build
+    log "Build complete"
   else
     log "Existing build detected; skipping build (remove dist/ to force rebuild)"
   fi
@@ -181,7 +182,9 @@ User=$USER
 Group=$USER
 NoNewPrivileges=true
 ProtectSystem=full
-ProtectHome=true
+# ProtectHome=true can block access to the user's home directory causing CHDIR failures.
+ProtectHome=read-only
+WorkingDirectory=$APP_DIR
 
 [Install]
 WantedBy=multi-user.target
@@ -195,6 +198,10 @@ EOF
 run_foreground(){
   cd "$APP_DIR"
   log "Starting foreground server (CTRL+C to stop)"
+  if [ ! -f dist/index.js ]; then
+    err "dist/index.js missing; build step appears to have failed. Aborting run."
+    exit 1
+  fi
   NODE_ENV=production LOG_LEVEL=info node dist/index.js
 }
 
