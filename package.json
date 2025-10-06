@@ -2,7 +2,13 @@
   "name": "tally-hub",
    "version": "1.1.0",
   "description": "Professional Tally Light System for Video Production",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "scripts/run-on-pi.sh"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/tallyhubpro/Tallyhub.git"
@@ -38,7 +44,9 @@
     "lint:fix": "eslint 'src/**/*.{ts,tsx}' --fix",
     "format": "prettier --write .",
     "logs:prune": "node scripts/clean-logs.js",
-    "prepare": "npm run typecheck"
+    "prepare": "npm run build",
+    "pi:run": "bash scripts/run-on-pi.sh",
+    "pi:service": "bash scripts/run-on-pi.sh --service"
   },
   "devDependencies": {
     "@types/bonjour": "^3.5.13",
