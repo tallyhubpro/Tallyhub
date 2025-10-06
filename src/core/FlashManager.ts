@@ -54,12 +54,39 @@ export class FlashManager {
   }
 
   async detectPorts(): Promise<string[]> {
-    // Basic heuristic: list /dev/ttyUSB* and /dev/ttyACM*, filter existing.
-    const candidates = [
+    // Expanded heuristic:
+    // 1. Canonical /dev/ttyUSB*, /dev/ttyACM*, /dev/ttyAMA*
+    // 2. Symlinks under /dev/serial/by-id (preferred stable names)
+    // 3. De-dupe and ensure they exist & are character devices
+    const raw: string[] = [
       ...globLike('/dev', /^ttyUSB\d+$/),
-      ...globLike('/dev', /^ttyACM\d+$/)
+      ...globLike('/dev', /^ttyACM\d+$/),
+      ...globLike('/dev', /^ttyAMA\d+$/)
     ];
-    return candidates;
+    const byIdDir = '/dev/serial/by-id';
+    try {
+      for (const entry of fs.readdirSync(byIdDir)) {
+        const full = path.join(byIdDir, entry);
+        try {
+          const target = fs.realpathSync(full);
+          raw.push(full); // include symlink path (friendlier)
+          raw.push(target); // include resolved canonical path
+        } catch {/* ignore */}
+      }
+    } catch {/* directory may not exist */}
+
+    const seen = new Set<string>();
+    const result: string[] = [];
+    for (const p of raw) {
+      if (seen.has(p)) continue;
+      try {
+        const st = fs.statSync(p);
+        if (!st.isCharacterDevice()) continue;
+        seen.add(p);
+        result.push(p);
+      } catch {/* ignore missing */}
+    }
+    return result.sort();
   }
 
   createJob(params: { port: string; firmwareRel: string; chip?: string; }): FlashJob {

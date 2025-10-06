@@ -39,7 +39,7 @@ done
 ensure_packages(){
   log "Installing base packages (git, curl, build-essential, python3)..."
   sudo apt update -y
-  sudo apt install -y git curl build-essential python3
+  sudo apt install -y git curl build-essential python3 lsof
 }
 
 ensure_node(){
