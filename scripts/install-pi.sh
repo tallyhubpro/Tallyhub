@@ -40,20 +40,57 @@ ensure_packages(){
 }
 
 ensure_node(){
-  if ! command -v node >/dev/null 2>&1 || ! node -v | grep -qE 'v1[89]|v20'; then
-    warn "Node >=18 not found (or older). Installing Node 20 via nvm..."
-    if [ ! -d "$HOME/.nvm" ]; then
+  # Attempt to ensure a recent Node.js (>=18) is present.
+  # Preference order: existing system node -> nvm install -> NodeSource apt fallback.
+  local NEED_NODE=0
+  if ! command -v node >/dev/null 2>&1; then
+    NEED_NODE=1
+  else
+    if ! node -v | grep -qE 'v1[89]|v20'; then
+      NEED_NODE=1
+    fi
+  fi
+
+  if [ $NEED_NODE -eq 0 ]; then
+    log "Node present: $(node -v)"
+  else
+    warn "Node >=18 not found (or too old). Attempting nvm install of Node 20..."
+    export NVM_DIR="$HOME/.nvm"
+    if [ ! -d "$NVM_DIR" ]; then
       curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
     fi
     # shellcheck source=/dev/null
-    source "$HOME/.nvm/nvm.sh"
-    nvm install 20
-    nvm alias default 20
-  else
-    log "Node present: $(node -v)"
+    if [ -s "$NVM_DIR/nvm.sh" ]; then
+      . "$NVM_DIR/nvm.sh"
+    fi
+    # shellcheck source=/dev/null
+    [ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"
+
+    if command -v nvm >/dev/null 2>&1; then
+      nvm install 20
+      nvm alias default 20
+    else
+      warn "nvm not available after install attempt. Falling back to NodeSource (system-wide)"
+      if command -v apt >/dev/null 2>&1; then
+        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+        sudo apt install -y nodejs
+      else
+        err "apt not available; cannot install Node.js automatically. Please install Node 18+ manually and re-run."
+        exit 1
+      fi
+    fi
   fi
+
+  # Re-source nvm for current shell if present so subsequent npm commands use it.
+  export NVM_DIR="$HOME/.nvm"
   # shellcheck source=/dev/null
-  [ -f "$HOME/.nvm/nvm.sh" ] && source "$HOME/.nvm/nvm.sh"
+  [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+  if command -v node >/dev/null 2>&1; then
+    log "Using Node: $(command -v node) ($(node -v))"
+  else
+    err "Node installation failed; aborting."
+    exit 1
+  fi
 }
 
 clone_or_update(){
@@ -101,6 +138,12 @@ install_service(){
     return
   fi
   log "Creating systemd service"
+  local NODE_BIN
+  NODE_BIN="$(command -v node)"
+  if [ -z "$NODE_BIN" ]; then
+    err "Cannot determine node binary path for service. Aborting."
+    exit 1
+  fi
   sudo tee "$svc" >/dev/null <<EOF
 [Unit]
 Description=Tally Hub Server
@@ -111,7 +154,7 @@ Type=simple
 WorkingDirectory=$APP_DIR
 Environment=NODE_ENV=production
 Environment=LOG_LEVEL=info
-ExecStart=$(command -v node) dist/index.js
+ExecStart=$NODE_BIN dist/index.js
 Restart=on-failure
 RestartSec=3
 User=$USER
