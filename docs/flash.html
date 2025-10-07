@@ -184,21 +184,49 @@ document.getElementById('customInput').addEventListener('change', e=>{
 async function ensureManifestThenDownload(){
   if(!manifest){
     setStatus('Fetching manifest...','info');
-    const r = await fetch(MANIFEST_URL+'?t='+Date.now(), { cache:'no-store' });
-    if(!r.ok) throw new Error('Manifest HTTP '+r.status);
-    manifest = await r.json();
+    try {
+      const r = await fetch(MANIFEST_URL+'?t='+Date.now(), { cache:'no-store' });
+      if(!r.ok) throw new Error('Manifest HTTP '+r.status);
+      manifest = await r.json();
+    } catch(err){
+      setStatus('Manifest fetch failed: '+ err.message +'\nClick "Retry Manifest" or check network.', 'error');
+      showRetryControls();
+      throw err;
+    }
   }
   if(!selected) return;
   const entry = manifest.devices?.[selected];
   if(!entry){ throw new Error('No entry for '+selected); }
   onlineEntry = entry; setStatus('Downloading '+selected+' (v'+(entry.version||'n/a')+')','info');
-  const rf = await fetch(entry.url+'?t='+Date.now(), { cache:'no-store' });
-  if(!rf.ok) throw new Error('Firmware HTTP '+rf.status);
-  const buf = await rf.arrayBuffer();
+  let rf;
+  try {
+    rf = await fetch(entry.url+'?t='+Date.now(), { cache:'no-store' });
+  } catch(fetchErr){
+    setStatus('Network error fetching firmware: '+ fetchErr.message +'\nUse "Retry Firmware" or verify Release asset exists.', 'error');
+    showRetryControls();
+    throw fetchErr;
+  }
+  if(!rf.ok){
+    setStatus('Firmware HTTP '+rf.status+' – asset missing or tag mismatch. Ensure release tag '+ entry.version +' has '+ selected +'.bin', 'error');
+    showRetryControls();
+    throw new Error('Firmware HTTP '+rf.status);
+  }
+  let buf;
+  try {
+    buf = await rf.arrayBuffer();
+  } catch(bufErr){
+    setStatus('Read error: '+bufErr.message, 'error');
+    showRetryControls();
+    throw bufErr;
+  }
   if(entry.sha256){
     const hashBuf = await crypto.subtle.digest('SHA-256', buf);
     const hex = Array.from(new Uint8Array(hashBuf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-    if(hex.toLowerCase() !== entry.sha256.toLowerCase()) throw new Error('SHA256 mismatch');
+    if(hex.toLowerCase() !== entry.sha256.toLowerCase()){
+      setStatus('SHA256 mismatch expected '+ entry.sha256 +' got '+ hex, 'error');
+      showRetryControls();
+      throw new Error('SHA256 mismatch');
+    }
   }
   onlineBuffer = buf; updateMeta(buf.byteLength); setStatus('Online firmware verified ✓ ('+bytesKB(buf.byteLength)+')','success');
 }
@@ -268,8 +296,59 @@ flashBtn.addEventListener('click', flash);
 
 renderDevices();
 
-// Pre-fetch manifest quietly after 1.5s to warm cache.
-setTimeout(()=>{ fetch(MANIFEST_URL+'?t='+Date.now()).then(r=>r.ok?r.json():null).then(j=>{ manifest=j; }).catch(()=>{}); },1500);
+// Retry / diagnostics controls (injected lazily on failure)
+function showRetryControls(){
+  if(document.getElementById('retryPanel')) return;
+  const panel = document.createElement('div');
+  panel.id = 'retryPanel';
+  panel.style.marginTop = '1rem';
+  panel.style.display = 'flex';
+  panel.style.flexWrap = 'wrap';
+  panel.style.gap = '0.5rem';
+  panel.innerHTML = `
+    <button id="retryManifest" style="flex:1;min-width:140px;padding:.6rem;border:none;border-radius:8px;cursor:pointer;background:#1976d2;color:#fff;">Retry Manifest</button>
+    <button id="retryFirmware" style="flex:1;min-width:140px;padding:.6rem;border:none;border-radius:8px;cursor:pointer;background:#388e3c;color:#fff;">Retry Firmware</button>
+    <button id="diagBtn" style="flex:1;min-width:140px;padding:.6rem;border:none;border-radius:8px;cursor:pointer;background:#ffa000;color:#222;">Diagnostics</button>
+  `;
+  statusEl.parentNode.insertBefore(panel, statusEl.nextSibling);
+  document.getElementById('retryManifest').onclick = ()=>{
+    manifest = null; onlineBuffer=null; onlineEntry=null; ensureManifestThenDownload().catch(()=>{});
+  };
+  document.getElementById('retryFirmware').onclick = ()=>{
+    if(selected && manifest){ onlineBuffer=null; ensureManifestThenDownload().catch(()=>{}); }
+  };
+  document.getElementById('diagBtn').onclick = runDiagnostics;
+}
+
+function runDiagnostics(){
+  const lines = [];
+  lines.push('Diagnostics:');
+  lines.push('Page URL: '+location.href);
+  lines.push('Host: '+location.host);
+  lines.push('Secure Context: '+ (window.isSecureContext?'yes':'no'));
+  lines.push('Navigator.onLine: '+navigator.onLine);
+  lines.push('Selected device: '+ (selected||'none'));
+  lines.push('Manifest loaded: '+ (!!manifest));
+  lines.push('Manifest URL: '+ MANIFEST_URL);
+  if(onlineEntry){
+    lines.push('Firmware URL: '+ onlineEntry.url);
+  }
+  setStatus(lines.join('\n'), 'info');
+}
+
+// Pre-fetch manifest quietly after 1.5s to warm cache (with silent failure)
+setTimeout(()=>{ fetch(MANIFEST_URL+'?t='+Date.now()).then(r=>r.ok?r.json():null).then(j=>{ if(j) manifest=j; }).catch(()=>{}); },1500);
+
+// Guidance if user is at user root but project path needed
+(() => {
+  const likelyProjectPath = '/Tallyhub/flash.html';
+  if(location.pathname === '/flash.html' && !manifest){
+    // Provide a hint but don't block
+    setTimeout(()=>{
+      setStatus('If online fetch keeps failing here, try: '+ location.origin + likelyProjectPath +' (project site path).', 'warn');
+    }, 800);
+  }
+})();
 
 </script>
 </body>
