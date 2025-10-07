@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "generated": "2025-10-07T00:00:00Z",
+  "latest": "2025.10.07",
+  "devices": {
+    "ESP32-1732S019": {
+      "version": "2025.10.07",
+      "url": "https://github.com/tallyhubpro/Tallyhub/releases/download/v2025.10.07/ESP32-1732S019.bin",
+      "sha256": "CHANGE_ME_SHA256_ESP32_1732S019",
+      "size": 0
+    },
+    "M5Stick_Tally": {
+      "version": "2025.10.07",
+      "url": "https://github.com/tallyhubpro/Tallyhub/releases/download/v2025.10.07/M5Stick_Tally.bin",
+      "sha256": "CHANGE_ME_SHA256_M5STICK",
+      "size": 0
+    },
+    "M5Stick_Tally_Plus2": {
+      "version": "2025.10.07",
+      "url": "https://github.com/tallyhubpro/Tallyhub/releases/download/v2025.10.07/M5Stick_Tally_Plus2.bin",
+      "sha256": "CHANGE_ME_SHA256_M5STICK_PLUS2",
+      "size": 0
+    }
+  }
+}
