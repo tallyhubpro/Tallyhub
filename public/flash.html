@@ -354,6 +354,18 @@
             margin-bottom: 0.5rem;
         }
 
+        /* Server flash fallback */
+        #serverFlashContainer { margin-top:2rem; display:none; }
+        #serverFlashContainer h3 { margin-bottom:0.75rem; }
+        .inline-group { display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end; }
+        .inline-group select, .inline-group button { padding:0.5rem; border-radius:6px; border:1px solid rgba(255,255,255,0.3); background:rgba(255,255,255,0.1); color:#fff; }
+        .inline-group button { cursor:pointer; background:linear-gradient(45deg,#2196F3,#1976D2); border:none; }
+        .inline-group button:hover { filter:brightness(1.1); }
+        #serverFlashStatus { margin-top:0.75rem; white-space:pre-line; font-size:0.85rem; background:rgba(0,0,0,0.25); padding:0.75rem; border-radius:8px; max-height:220px; overflow:auto; }
+        #toggleModeBtn { margin-top:0.5rem; background:linear-gradient(45deg,#ff9800,#f57c00); border:none; padding:0.4rem 0.8rem; border-radius:6px; color:#fff; cursor:pointer; font-size:0.8rem; }
+        #toggleModeBtn:hover { filter:brightness(1.1); }
+        .badge { background:#2196F3; padding:0.2rem 0.5rem; border-radius:4px; font-size:0.7rem; vertical-align:middle; }
+
         @media (max-width: 768px) {
             .device-grid {
                 grid-template-columns: 1fr;
@@ -460,6 +472,28 @@
                 <p><strong>Built-in Firmware:</strong> Use the recommended firmware that comes with IP display improvements.</p>
                 <p><strong>Custom Firmware:</strong> Upload your own .bin firmware file for testing or custom builds.</p>
                 <p><strong>Connection:</strong> Make sure your device is connected via USB and the appropriate drivers are installed.</p>
+            </div>
+
+            <div id="serverFlashContainer" class="card" style="background:rgba(0,0,0,0.25);">
+                <h3>🖥️ Server Flash Mode <span class="badge">BETA</span></h3>
+                <p style="opacity:0.85; font-size:0.9rem; margin-bottom:0.75rem;">Use this when Web Serial is unavailable or the device is plugged into the Tally Hub server (e.g. Raspberry Pi). The server must have <code>esptool.py</code> installed.</p>
+                <div class="inline-group">
+                    <div style="flex:1; min-width:160px;">
+                        <label style="font-size:0.75rem; opacity:0.8;">Serial Port</label>
+                        <select id="serverPortSelect"></select>
+                    </div>
+                    <div style="flex:1; min-width:200px;">
+                        <label style="font-size:0.75rem; opacity:0.8;">Firmware</label>
+                        <select id="serverFirmwareSelect"></select>
+                    </div>
+                    <div style="display:flex; gap:0.5rem;">
+                        <button id="refreshServerListsBtn" type="button">🔄 Refresh</button>
+                        <button id="startServerFlashBtn" type="button" style="background:linear-gradient(45deg,#4CAF50,#45a049);">⚡ Flash</button>
+                    </div>
+                </div>
+                <div style="margin-top:0.75rem; font-size:0.75rem; opacity:0.7;">Ports are detected from /dev (USB/ACM/AMA/by-id). Firmware list comes from <code>/api/flash/firmware</code>.</div>
+                <div id="serverFlashStatus"></div>
+                <button id="toggleModeBtn" type="button" style="display:none;">Switch to Web Serial Mode</button>
             </div>
         </div>
     </div>
@@ -755,11 +789,135 @@
 
         function delay(ms){ return new Promise(r=>setTimeout(r, ms)); }
 
-        // Check browser compatibility on load
-        if (!navigator.serial) {
-            showStatus('⚠️ Web Serial API not supported. Please use Chrome, Edge, or Opera browser.', 'error');
+        // ---- Web Serial vs Server Fallback ----
+        const serverFlashEl = document.getElementById('serverFlashContainer');
+        const toggleModeBtn = document.getElementById('toggleModeBtn');
+        let serverMode = false;
+
+        function enableServerMode(autoReason){
+            serverMode = true;
+            serverFlashEl.style.display = 'block';
+            toggleModeBtn.style.display = navigator.serial ? 'inline-block' : 'none';
             document.getElementById('flashButton').disabled = true;
+            if(autoReason){
+                showStatus(autoReason + ' – switched to Server Flash Mode.', 'warning');
+            }
+            refreshServerLists();
         }
+
+        if (!navigator.serial) {
+            enableServerMode('⚠️ Web Serial API not available');
+        } else {
+            toggleModeBtn.textContent = 'Use Server Flash Mode';
+            toggleModeBtn.style.display = 'inline-block';
+        }
+
+        toggleModeBtn?.addEventListener('click', () => {
+            if(serverMode){
+                serverMode = false;
+                serverFlashEl.style.display = 'none';
+                showStatus('Returned to Web Serial mode. Select device and flash via browser.', 'info');
+                if(selectedDevice) document.getElementById('flashButton').disabled = false;
+                toggleModeBtn.textContent = 'Use Server Flash Mode';
+            } else {
+                enableServerMode('🔁 Manual switch');
+                toggleModeBtn.textContent = 'Switch to Web Serial Mode';
+            }
+        });
+
+        // ---- Server Flash Mode logic ----
+        let currentJobId = null;
+        const serverStatusBox = document.getElementById('serverFlashStatus');
+        const portSelect = document.getElementById('serverPortSelect');
+        const fwSelect = document.getElementById('serverFirmwareSelect');
+        const refreshBtn = document.getElementById('refreshServerListsBtn');
+        const startBtn = document.getElementById('startServerFlashBtn');
+
+        function serverLog(msg){
+            const ts = new Date().toISOString().split('T')[1].split('Z')[0];
+            serverStatusBox.textContent += `[${ts}] ${msg}\n`;
+            serverStatusBox.style.display = 'block';
+            serverStatusBox.scrollTop = serverStatusBox.scrollHeight;
+        }
+
+        async function refreshServerLists(){
+            try {
+                serverLog('Refreshing ports & firmware...');
+                const [portsResp, fwResp] = await Promise.all([
+                    fetch('/api/flash/ports'),
+                    fetch('/api/flash/firmware')
+                ]);
+                const portsJson = await portsResp.json();
+                const fwJson = await fwResp.json();
+                portSelect.innerHTML = '';
+                (portsJson.ports || []).forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p; opt.textContent = p; portSelect.appendChild(opt);
+                });
+                if(!portSelect.value) serverLog('No ports detected yet. Plug device & Refresh.');
+                fwSelect.innerHTML = '';
+                (fwJson.files || []).forEach(f => {
+                    const opt = document.createElement('option');
+                    opt.value = f; opt.textContent = f; fwSelect.appendChild(opt);
+                });
+                if(selectedDevice){
+                    const cfg = deviceConfigs[selectedDevice];
+                    if(cfg){
+                        const rel = cfg.firmware.replace('/firmware/','');
+                        const tail = rel.split('/').slice(-1)[0];
+                        const match = Array.from(fwSelect.options).find(o=>o.value.endsWith(tail));
+                        if(match) fwSelect.value = match.value;
+                    }
+                }
+                serverLog('Lists updated.');
+            } catch(e){
+                serverLog('Error refreshing lists: ' + e.message);
+            }
+        }
+
+        async function startServerFlash(){
+            if(!portSelect.value){ serverLog('Select a port first.'); return; }
+            if(!fwSelect.value){ serverLog('Select firmware first.'); return; }
+            startBtn.disabled = true; refreshBtn.disabled = true;
+            serverLog('Starting flash job...');
+            try {
+                const body = { port: portSelect.value, firmware: fwSelect.value, chip: 'esp32' };
+                const resp = await fetch('/api/flash/jobs', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+                const json = await resp.json();
+                if(!json.success){ serverLog('Failed to start job: '+ json.error); startBtn.disabled=false; refreshBtn.disabled=false; return; }
+                currentJobId = json.job.id;
+                serverLog('Job started: ' + currentJobId);
+                pollJob();
+            } catch(e){
+                serverLog('Error starting job: '+ e.message);
+                startBtn.disabled=false; refreshBtn.disabled=false;
+            }
+        }
+
+        async function pollJob(){
+            if(!currentJobId) return;
+            try {
+                const r = await fetch('/api/flash/jobs/' + currentJobId);
+                if(!r.ok){ serverLog('Job lookup failed (status '+r.status+').'); return; }
+                const j = await r.json();
+                if(!j.success){ serverLog('Job error: '+ j.error); return; }
+                const job = j.job;
+                const lastLine = job.log[job.log.length-1];
+                serverLog('Status: '+ job.status + (lastLine ? ' | '+ lastLine : ''));
+                if(job.status === 'running'){
+                    setTimeout(pollJob, 1500);
+                } else {
+                    serverLog('Job finished: ' + job.status);
+                    startBtn.disabled=false; refreshBtn.disabled=false;
+                }
+            } catch(e){
+                serverLog('Poll error: '+ e.message);
+                setTimeout(pollJob, 2500);
+            }
+        }
+
+        refreshBtn?.addEventListener('click', refreshServerLists);
+        startBtn?.addEventListener('click', startServerFlash);
 
         // Handle firmware source selection
         document.querySelectorAll('input[name="firmwareSource"]').forEach(radio => {
