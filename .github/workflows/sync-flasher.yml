@@ -1,0 +1,47 @@
+name: Sync Flasher Page to User Site
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'docs/flash.html'
+      - '.github/workflows/sync-flasher.yml'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    name: Copy docs/flash.html to tallyhubpro.github.io
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout user site repo
+        uses: actions/checkout@v4
+        with:
+          repository: tallyhubpro/tallyhubpro.github.io
+          path: user-site
+          token: ${{ secrets.PAGES_SYNC_TOKEN }}
+          fetch-depth: 0
+
+      - name: Copy flasher page
+        run: |
+          cp docs/flash.html user-site/flash.html
+          echo "Copied flash.html to user-site repo root"
+
+      - name: Commit & push if changed
+        working-directory: user-site
+        run: |
+          if git diff --quiet --exit-code flash.html; then
+            echo "No changes to flash.html; skipping commit."; exit 0; fi
+          git config user.name "tallyhub-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add flash.html
+          git commit -m "chore: sync flash.html from Tallyhub repo" || echo "Nothing to commit"
+          git push origin HEAD:main
+
+      - name: Summary
+        run: |
+          echo "Sync complete. If this is the first run ensure GitHub Pages is enabled for tallyhubpro.github.io repo." >> $GITHUB_STEP_SUMMARY
