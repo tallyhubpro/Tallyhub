@@ -396,6 +396,16 @@ class TallyHubServer {
       }
     });
 
+    // Flash diagnostics (esptool availability, ports, groups) for troubleshooting Pi issues
+    this.app.get('/api/flash/diagnostics', async (req, res) => {
+      try {
+        const diag = await this.flashManager.diagnostics();
+        res.json({ success: true, diagnostics: diag });
+      } catch (e: any) {
+        res.status(500).json({ success: false, error: e.message });
+      }
+    });
+
     this.app.post('/api/flash/jobs', express.json(), async (req, res): Promise<void> => {
       try {
         const { port, firmware, chip } = req.body || {};

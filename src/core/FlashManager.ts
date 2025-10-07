@@ -1,4 +1,4 @@
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs';
 import path from 'path';
@@ -27,6 +27,7 @@ export interface FlashJob {
 export class FlashManager {
   private jobs: Map<string, FlashJob> = new Map();
   private baseFirmwareDir: string;
+  private resolvedEsptool?: string; // cached path or module invocation
 
   constructor() {
     this.baseFirmwareDir = path.join(process.cwd(), 'public', 'firmware');
@@ -120,27 +121,94 @@ export class FlashManager {
     job.status = 'running';
     job.startedAt = new Date();
     this.append(job, `Starting flash on ${job.port}`);
-
-    // Build esptool command
-    // We assume single binary at 0x0 for now.
-    const cmd = `esptool.py --chip ${job.chip} --port ${job.port} --baud 460800 write_flash -z 0x0 ${job.firmwarePath}`;
-    this.append(job, 'Command: ' + cmd);
-
     try {
-      // Spawn and capture output incrementally would be better; for simplicity use exec here.
-      const { stdout, stderr } = await execAsync(cmd, { timeout: 5 * 60 * 1000 });
-      if (stdout) this.append(job, stdout);
-      if (stderr) this.append(job, stderr);
-      job.progress = 100;
-      job.status = 'success';
-      job.endedAt = new Date();
-      this.append(job, 'Flash complete');
+      const esptoolCmd = await this.resolveEsptool();
+      const args = ['--chip', job.chip, '--port', job.port, '--baud', '460800', 'write_flash', '-z', '0x0', job.firmwarePath];
+      this.append(job, `Command: ${esptoolCmd} ${args.join(' ')}`);
+
+      const child = spawn(esptoolCmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+      let stderrBuf = '';
+
+      child.stdout.on('data', (d) => {
+        const text = d.toString();
+        text.split(/\r?\n/).filter((l: string)=>l.trim().length).forEach((l: string) => {
+          this.append(job, l);
+          // naive progress hints
+          if (/Writing at /i.test(l)) job.progress = Math.min(95, job.progress + 5);
+          if (/Hash of data verified/gi.test(l)) job.progress = 98;
+        });
+      });
+      child.stderr.on('data', (d) => {
+        const text = d.toString();
+        stderrBuf += text;
+        text.split(/\r?\n/).filter((l: string)=>l.trim().length).forEach((l: string) => this.append(job, '[err] ' + l));
+      });
+      child.on('error', (err) => {
+        this.append(job, 'Spawn error: ' + err.message);
+      });
+
+      child.on('close', (code) => {
+        if (code === 0) {
+          job.progress = 100;
+          job.status = 'success';
+          job.endedAt = new Date();
+          this.append(job, 'Flash complete');
+        } else {
+          job.status = 'error';
+          job.endedAt = new Date();
+          job.error = `Exit code ${code}${stderrBuf ? ': ' + stderrBuf.split('\n').slice(-3).join(' | ') : ''}`;
+          this.append(job, 'Error: ' + job.error);
+        }
+      });
     } catch (error: any) {
       job.status = 'error';
       job.endedAt = new Date();
       job.error = error?.message || String(error);
       this.append(job, 'Error: ' + job.error);
     }
+  }
+
+  private async resolveEsptool(): Promise<string> {
+    if (this.resolvedEsptool) return this.resolvedEsptool;
+    // Try direct esptool.py
+    try {
+      await execAsync('esptool.py version');
+      this.resolvedEsptool = 'esptool.py';
+      return this.resolvedEsptool;
+    } catch {}
+    // Try python3 -m esptool
+    try {
+      await execAsync('python3 -m esptool version');
+      this.resolvedEsptool = 'python3';
+      return this.resolvedEsptool;
+    } catch {}
+    throw new Error('esptool.py not found in PATH. Install with: pip install esptool');
+  }
+
+  async diagnostics(): Promise<{ esptool: { found: boolean; mode?: string; version?: string; error?: string }; ports: string[]; user: string; groups?: string[]; os: string; baseFirmwareDir: string; }>{
+    const result: any = { esptool: { found: false }, ports: [], user: os.userInfo().username, os: `${os.platform()} ${os.release()}`, baseFirmwareDir: this.baseFirmwareDir };
+    try {
+      const tool = await this.resolveEsptool();
+      result.esptool.found = true;
+      result.esptool.mode = tool === 'python3' ? 'python3 -m esptool' : 'esptool.py';
+      try {
+        const { stdout } = await execAsync(tool === 'python3' ? 'python3 -m esptool version' : 'esptool.py version');
+        result.esptool.version = stdout.trim();
+      } catch (e:any){ result.esptool.error = e.message; }
+    } catch (e:any) {
+      result.esptool.error = e.message;
+    }
+    try {
+      result.ports = await this.detectPorts();
+    } catch (e:any) {
+      result.ports = []; result.portError = e.message;
+    }
+    // Try reading groups (Linux only)
+    try {
+      const { stdout } = await execAsync('id -nG');
+      result.groups = stdout.trim().split(/\s+/);
+    } catch {}
+    return result;
   }
 }
 
