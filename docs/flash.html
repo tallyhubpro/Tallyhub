@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Tally Hub – Web Serial Flasher</title>
+<style>
+ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;padding:2rem;background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);color:#fff;min-height:100vh}
+ h1{margin:0 0 .5rem;font-size:2.1rem;text-align:center}
+ p.lead{text-align:center;opacity:.85;margin:0 0 2rem}
+ .card{max-width:900px;margin:0 auto 2rem;background:rgba(255,255,255,.08);padding:2rem 2.2rem;border-radius:20px;backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.15)}
+ .grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin:1rem 0 1.5rem}
+ .device{background:rgba(255,255,255,.1);padding:1rem 1rem 1.1rem;border-radius:14px;cursor:pointer;transition:.3s;border:2px solid transparent;display:flex;flex-direction:column;justify-content:space-between}
+ .device:hover{background:rgba(255,255,255,.18);transform:translateY(-2px)}
+ .device.selected{border-color:#4caf50;background:rgba(76,175,80,.25)}
+ .device h3{margin:.2rem 0 .35rem;font-size:1.05rem}
+ .device p{margin:0;font-size:.72rem;line-height:1.3;opacity:.8}
+ .section-title{margin:1.8rem 0 .75rem;font-size:1.05rem;text-transform:uppercase;letter-spacing:.08em;opacity:.9}
+ .fw-options{display:flex;flex-direction:column;gap:.75rem}
+ .fw-option{display:flex;align-items:center;gap:.6rem;padding:.75rem 1rem;border-radius:10px;background:rgba(255,255,255,.08);cursor:pointer;transition:.25s}
+ .fw-option:hover{background:rgba(255,255,255,.14)}
+ .fw-option input{margin:0}
+ .hidden{display:none !important}
+ .file-box{margin-top:.5rem}
+ .file-label{display:inline-block;padding:.55rem 1rem;background:rgba(33,150,243,.25);border:1px solid rgba(33,150,243,.4);border-radius:8px;font-size:.78rem;cursor:pointer;transition:.25s}
+ .file-label:hover{background:rgba(33,150,243,.35)}
+ .file-chosen{margin-top:.4rem;font-size:.7rem;background:rgba(76,175,80,.14);padding:.4rem .6rem;border:1px solid rgba(76,175,80,.4);border-radius:6px;color:#9be7a1}
+ button.flash{margin-top:1.4rem;width:100%;padding:1rem 1.2rem;font-size:1rem;font-weight:600;border:none;border-radius:14px;background:linear-gradient(45deg,#4caf50,#2e7d32);color:#fff;cursor:pointer;box-shadow:0 6px 20px -5px rgba(76,175,80,.45);transition:.35s}
+ button.flash:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 10px 28px -6px rgba(76,175,80,.6)}
+ button.flash:disabled{opacity:.55;cursor:not-allowed;background:#555}
+ .progress-wrap{margin:1.2rem 0;display:none}
+ .bar{background:rgba(255,255,255,.15);height:18px;border-radius:9px;overflow:hidden}
+ .fill{height:100%;width:0%;background:linear-gradient(90deg,#66bb6a,#43a047);transition:width .35s}
+ .pct{text-align:center;margin-top:.4rem;font-size:.8rem;letter-spacing:.05em}
+ .status{margin-top:1rem;padding:.85rem 1rem;font-size:.78rem;border-radius:10px;line-height:1.45;display:none;border:1px solid transparent;white-space:pre-line}
+ .status.info{background:rgba(33,150,243,.18);border-color:rgba(33,150,243,.35);color:#64b5f6}
+ .status.success{background:rgba(76,175,80,.22);border-color:rgba(76,175,80,.45);color:#81c784}
+ .status.error{background:rgba(244,67,54,.18);border-color:rgba(244,67,54,.45);color:#ef9a9a}
+ .status.warn{background:rgba(255,193,7,.22);border-color:rgba(255,193,7,.5);color:#ffe082}
+ .meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.6rem;margin-top:1.2rem;font-size:.7rem;opacity:.85}
+ footer{text-align:center;margin-top:2rem;font-size:.65rem;opacity:.5}
+ @media (max-width:680px){body{padding:1.2rem} h1{font-size:1.7rem}}
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>🔧 Tally Hub Web Flasher</h1>
+    <p class="lead">Secure HTTPS flashing via Web Serial – choose your device, pick firmware, and go.</p>
+
+    <div>
+      <div class="section-title">Device</div>
+      <div class="grid" id="deviceGrid"></div>
+    </div>
+
+    <div id="fwSection" class="hidden">
+      <div class="section-title">Firmware Source</div>
+      <div class="fw-options">
+        <label class="fw-option"><input type="radio" name="fwSource" value="online" checked><span>Latest (GitHub Manifest)</span></label>
+        <label class="fw-option"><input type="radio" name="fwSource" value="builtin"><span>Built-in (Bundled Path)</span></label>
+        <label class="fw-option"><input type="radio" name="fwSource" value="custom"><span>Custom .bin File</span></label>
+      </div>
+
+      <div id="customBox" class="file-box hidden">
+        <input type="file" id="customInput" accept=".bin" hidden />
+        <label for="customInput" class="file-label">📁 Browse .bin File</label>
+        <div id="fileChosen" class="file-chosen hidden"></div>
+      </div>
+
+      <div class="meta" id="metaBox" style="display:none;">
+        <div><strong>Device:</strong> <span id="mDevice">—</span></div>
+        <div><strong>Size:</strong> <span id="mSize">—</span></div>
+        <div><strong>Version:</strong> <span id="mVersion">—</span></div>
+        <div><strong>Source:</strong> <span id="mSource">—</span></div>
+      </div>
+
+      <button id="flashBtn" class="flash" disabled>📲 Flash Firmware</button>
+
+      <div class="progress-wrap" id="progressWrap">
+        <div class="bar"><div class="fill" id="fill"></div></div>
+        <div class="pct" id="pct">0%</div>
+      </div>
+
+      <div id="status" class="status info"></div>
+
+      <div style="margin-top:1.5rem;font-size:.65rem;opacity:.7;line-height:1.4;">
+        Requires Chromium-based browser with Web Serial. For devices with BOOT/RESET hold BOOT while flashing starts.
+      </div>
+    </div>
+
+  </div>
+  <footer>© Tally Hub – Flash at your own risk. Verify device and firmware version before production use.</footer>
+<script type="module">
+import { ESPLoader, Transport } from 'https://unpkg.com/esptool-js@0.4.6/bundle.js';
+
+// ---- Config ----
+const MANIFEST_URL = 'https://raw.githubusercontent.com/tallyhubpro/Tallyhub/main/public/firmware/firmware-manifest.json';
+const BUILTIN_PREFIX = 'firmware'; // relative path if you later copy firmware dirs under docs/
+
+const devices = {
+  'ESP32-1732S019': { name: 'ESP32-1732S019', builtin: `${BUILTIN_PREFIX}/ESP32-1732S019/firmware-merged.bin`, chip: 'esp32', flashSize: '8MB', notes: '1.9\" Touch Display' },
+  'M5Stick_Tally': { name: 'M5Stick C Plus 1.1', builtin: `${BUILTIN_PREFIX}/M5Stick_Tally/firmware-merged.bin`, chip: 'esp32', flashSize: '4MB', notes: '1.14\" Display + Buttons' },
+  'M5Stick_Tally_Plus2': { name: 'M5Stick C Plus2', builtin: `${BUILTIN_PREFIX}/M5Stick_Tally_Plus2/firmware-merged.bin`, chip: 'esp32', flashSize: '4MB', notes: 'Plus2 Variant' }
+};
+
+// ---- State ----
+let selected = null;
+let source = 'online';
+let manifest = null; let onlineEntry = null; let onlineBuffer = null;
+let customFile = null; let loader = null; let transport = null; let lastPort = null; let autoReset = false;
+
+// ---- DOM ----
+const grid = document.getElementById('deviceGrid');
+const fwSection = document.getElementById('fwSection');
+const flashBtn = document.getElementById('flashBtn');
+const statusEl = document.getElementById('status');
+const fill = document.getElementById('fill');
+const pct = document.getElementById('pct');
+const progressWrap = document.getElementById('progressWrap');
+const metaBox = document.getElementById('metaBox');
+const mDevice = document.getElementById('mDevice');
+const mSize = document.getElementById('mSize');
+const mVersion = document.getElementById('mVersion');
+const mSource = document.getElementById('mSource');
+
+// ---- Helpers ----
+function setStatus(msg, type='info'){
+  statusEl.textContent = msg;
+  statusEl.className = 'status '+type;
+  statusEl.style.display = 'block';
+}
+function setProgress(v){ progressWrap.style.display='block'; fill.style.width=v+'%'; pct.textContent=Math.round(v)+'%'; }
+function bytesKB(b){ return (b/1024).toFixed(1)+' KB'; }
+
+function renderDevices(){
+  Object.entries(devices).forEach(([key, d])=>{
+    const div = document.createElement('div');
+    div.className = 'device';
+    div.innerHTML = `<h3>${d.name}</h3><p>${d.notes}</p>`;
+    div.addEventListener('click', ()=> selectDevice(key, div));
+    grid.appendChild(div);
+  });
+}
+
+function selectDevice(key, el){
+  document.querySelectorAll('.device').forEach(n=>n.classList.remove('selected'));
+  el.classList.add('selected');
+  selected = key;
+  fwSection.classList.remove('hidden');
+  updateMeta();
+  if(source === 'online') ensureManifestThenDownload().catch(e=>setStatus('Online firmware error: '+e.message,'error'));
+  flashBtn.disabled = false;
+  setStatus('Device selected. Choose firmware source and click Flash.','info');
+}
+
+function updateMeta(size){
+  if(!selected){ metaBox.style.display='none'; return; }
+  metaBox.style.display='grid';
+  mDevice.textContent = devices[selected].name;
+  mVersion.textContent = onlineEntry?.version || '—';
+  mSize.textContent = size ? bytesKB(size) : (onlineBuffer ? bytesKB(onlineBuffer.byteLength) : '—');
+  mSource.textContent = source;
+}
+
+// Firmware source handling
+Array.from(document.querySelectorAll('input[name="fwSource"]')).forEach(r=>{
+  r.addEventListener('change', e=>{
+    source = e.target.value; onlineBuffer=null; customFile=null; onlineEntry=null; updateMeta();
+    document.getElementById('customBox').classList.toggle('hidden', source !== 'custom');
+    if(source === 'online' && selected) ensureManifestThenDownload().catch(err=>setStatus('Manifest/Download error: '+err.message,'error'));
+    if(source === 'builtin') setStatus('Built-in path selected. Will fetch file at flash time.','info');
+    if(source === 'custom') setStatus('Choose a local .bin file to continue.','info');
+  });
+});
+
+document.getElementById('customInput').addEventListener('change', e=>{
+  const f = e.target.files[0];
+  if(!f){ return; }
+  if(!f.name.toLowerCase().endsWith('.bin')){ setStatus('Please select a .bin file','error'); return; }
+  customFile = f; onlineBuffer=null; onlineEntry=null; updateMeta(f.size); setStatus('Custom file selected: '+f.name,'info');
+  const fc = document.getElementById('fileChosen');
+  fc.textContent = f.name + ' ('+ bytesKB(f.size)+')'; fc.classList.remove('hidden');
+});
+
+async function ensureManifestThenDownload(){
+  if(!manifest){
+    setStatus('Fetching manifest...','info');
+    const r = await fetch(MANIFEST_URL+'?t='+Date.now(), { cache:'no-store' });
+    if(!r.ok) throw new Error('Manifest HTTP '+r.status);
+    manifest = await r.json();
+  }
+  if(!selected) return;
+  const entry = manifest.devices?.[selected];
+  if(!entry){ throw new Error('No entry for '+selected); }
+  onlineEntry = entry; setStatus('Downloading '+selected+' (v'+(entry.version||'n/a')+')','info');
+  const rf = await fetch(entry.url+'?t='+Date.now(), { cache:'no-store' });
+  if(!rf.ok) throw new Error('Firmware HTTP '+rf.status);
+  const buf = await rf.arrayBuffer();
+  if(entry.sha256){
+    const hashBuf = await crypto.subtle.digest('SHA-256', buf);
+    const hex = Array.from(new Uint8Array(hashBuf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    if(hex.toLowerCase() !== entry.sha256.toLowerCase()) throw new Error('SHA256 mismatch');
+  }
+  onlineBuffer = buf; updateMeta(buf.byteLength); setStatus('Online firmware verified ✓ ('+bytesKB(buf.byteLength)+')','success');
+}
+
+async function flash(){
+  if(!selected){ setStatus('Select a device first','error'); return; }
+  if(!navigator.serial){ setStatus('Web Serial not supported in this browser. Use Chrome/Edge.','error'); return; }
+  let dataBuf; let sizeLabel; let srcLabel = source;
+  try {
+    flashBtn.disabled = true; flashBtn.textContent = 'Connecting...'; setStatus('Requesting serial device...','info');
+    const port = await navigator.serial.requestPort();
+    transport = new Transport(port, true); lastPort = port;
+    loader = new ESPLoader({ transport, baudrate:115200, romBaudrate:115200, terminal:{clean:()=>{}, writeLine:console.log, write:console.log} });
+    const chip = await loader.main(); setStatus('Connected to '+chip+' – preparing firmware','info'); setProgress(8);
+
+    if(source === 'custom'){
+      if(!customFile) throw new Error('No custom file chosen');
+      dataBuf = await customFile.arrayBuffer(); sizeLabel = bytesKB(dataBuf.byteLength);
+    } else if(source === 'online'){
+      if(!onlineBuffer) throw new Error('Online firmware not loaded');
+      dataBuf = onlineBuffer; sizeLabel = bytesKB(dataBuf.byteLength); srcLabel += ' (verified)';
+    } else { // builtin
+      const url = devices[selected].builtin;
+      setStatus('Fetching built-in firmware…','info');
+      const r = await fetch(url+'?t='+Date.now()); if(!r.ok) throw new Error('Builtin HTTP '+r.status);
+      dataBuf = await r.arrayBuffer(); sizeLabel = bytesKB(dataBuf.byteLength);
+    }
+
+    mSize.textContent = sizeLabel; mSource.textContent = srcLabel; setProgress(20);
+    setStatus('Flashing '+sizeLabel+' … Do not disconnect.','warn'); flashBtn.textContent = 'Flashing…';
+
+    const binStr = Array.from(new Uint8Array(dataBuf)).map(b=>String.fromCharCode(b)).join('');
+
+    await loader.writeFlash({
+      fileArray:[{ data: binStr, address: 0x0 }],
+      flashSize: devices[selected].flashSize,
+      flashMode:'dio', flashFreq:'80m', eraseAll:false, compress:true,
+      reportProgress: (idx,written,total)=>{
+        const p = 20 + (written/total)*75; setProgress(p);
+        if(written===total){ setProgress(100); setStatus('Flash complete – attempting reset','success'); }
+      }
+    });
+
+    flashBtn.textContent = '✅ Done'; setStatus('Firmware flashed successfully! Attempting reset…','success');
+    try { await attemptReset(); } catch(e){ console.warn('Reset failed', e); }
+    if(autoReset){ setStatus('Device reset signal sent. If screen stays blank, press power/reset.','info'); }
+  } catch(e){
+    console.error(e); setStatus('Flash failed: '+e.message,'error'); flashBtn.textContent='❌ Failed'; setProgress(0);
+  } finally {
+    setTimeout(()=>{ flashBtn.disabled=false; flashBtn.textContent='📲 Flash Firmware'; }, 3500);
+  }
+}
+
+async function attemptReset(){
+  if(!lastPort || !lastPort.setSignals) return; // Web Serial only
+  try {
+    await lastPort.setSignals({ dataTerminalReady:false, requestToSend:true }); await delay(110);
+    await lastPort.setSignals({ dataTerminalReady:false, requestToSend:false }); await delay(70);
+    await lastPort.setSignals({ dataTerminalReady:true, requestToSend:false });
+    autoReset = true;
+  } catch(e){ /* ignore */ }
+}
+
+function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+flashBtn.addEventListener('click', flash);
+
+renderDevices();
+
+// Pre-fetch manifest quietly after 1.5s to warm cache.
+setTimeout(()=>{ fetch(MANIFEST_URL+'?t='+Date.now()).then(r=>r.ok?r.json():null).then(j=>{ manifest=j; }).catch(()=>{}); },1500);
+
+</script>
+</body>
+</html>
