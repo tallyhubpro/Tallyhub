@@ -491,6 +491,33 @@ class TallyHubServer {
         });
       }
     });
+
+    // Server restart endpoint (graceful). If managed by systemd, service will come back.
+    this.app.post('/api/restart', async (req, res) => {
+      try {
+        logger.warn('Restart request received from admin panel');
+        res.json({ success: true, message: 'Server restart initiated' });
+        setTimeout(() => {
+          (async () => {
+            try {
+              logger.warn('Performing graceful restart sequence...');
+              await this.stop();
+              // Exit with special code so systemd or process manager can restart
+              process.exit(0);
+            } catch (error) {
+              console.error('🚨 Error during restart sequence:', error);
+              process.exit(1);
+            }
+          })().catch((error) => {
+            console.error('🚨 Unhandled error in restart process:', error);
+            process.exit(1);
+          });
+        }, 800);
+      } catch (error) {
+        console.error('[ERROR] Restart failed:', error instanceof Error ? error.message : error);
+        res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Failed to restart server' });
+      }
+    });
   }
 
   private async killProcessOnPort(port: number): Promise<void> {
