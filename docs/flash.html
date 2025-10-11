@@ -202,7 +202,18 @@ async function ensureManifestThenDownload(){
   try {
     rf = await fetch(entry.url+'?t='+Date.now(), { cache:'no-store' });
   } catch(fetchErr){
-    setStatus('Network error fetching firmware: '+ fetchErr.message +'\nUse "Retry Firmware" or verify Release asset exists.', 'error');
+    let msg = 'Network error fetching firmware: '+ fetchErr.message;
+    // Common case: GitHub Release asset blocked by CORS -> fetch surfaces generic TypeError
+    if(fetchErr instanceof TypeError) {
+      msg += '\nLikely CORS restriction on GitHub Release assets (no Access-Control-Allow-Origin).';
+      msg += '\nFix options:'+
+        '\n  1. Mirror *.bin under a CORS host (e.g. add docs/firmware/... and point manifest there).'+
+        '\n  2. Serve via your own proxy endpoint (server downloads GitHub asset then sets CORS).'+
+        '\n  3. Commit binaries into repo and reference a jsDelivr URL (tagged commit, not release asset).'+
+        '\n  4. Use S3/Cloudflare R2 with proper CORS headers.';
+    }
+    msg += '\nUse "Retry Firmware" after applying one of the fixes.';
+    setStatus(msg, 'error');
     showRetryControls();
     throw fetchErr;
   }

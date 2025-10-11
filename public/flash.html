@@ -519,7 +519,8 @@
         const deviceConfigs = {
             'ESP32-1732S019': {
                 name: 'ESP32-1732S019',
-                firmware: '/firmware/ESP32-1732S019/firmware-merged.bin',
+                // Relative path so it works whether hosted at root or /Tallyhub/
+                firmware: 'firmware/ESP32-1732S019/firmware-merged.bin',
                 chip: 'esp32',
                 flashSize: '8MB',
                 instructions: [
@@ -531,7 +532,7 @@
             },
             'M5Stick_Tally': {
                 name: 'M5Stick C Plus 1.1',
-                firmware: '/firmware/M5Stick_Tally/firmware-merged.bin',
+                firmware: 'firmware/M5Stick_Tally/firmware-merged.bin',
                 chip: 'esp32',
                 flashSize: '4MB',
                 instructions: [
@@ -544,7 +545,7 @@
             },
             'M5Stick_Tally_Plus2': {
                 name: 'M5Stick C Plus2',
-                firmware: '/firmware/M5Stick_Tally_Plus2/firmware-merged.bin',
+                firmware: 'firmware/M5Stick_Tally_Plus2/firmware-merged.bin',
                 chip: 'esp32',
                 flashSize: '4MB',
                 instructions: [
@@ -687,6 +688,13 @@
                     showStatus('Downloading built-in firmware...', 'info');
                     const response = await fetch(config.firmware + '?t=' + Date.now());
                     if (!response.ok) {
+                        if(response.status === 404){
+                            const here = location.pathname;
+                            const hint = here.startsWith('/Tallyhub/')
+                                ? 'Ensure firmware directory exists under docs/ and was published to Pages.'
+                                : 'If hosted under a sub-path (e.g. /Tallyhub/), remove leading slash from firmware paths.';
+                            throw new Error(`Failed to download firmware: 404\nFile: ${config.firmware}\nHint: ${hint}`);
+                        }
                         throw new Error(`Failed to download firmware: ${response.status}`);
                     }
                     firmwareData = await response.arrayBuffer();

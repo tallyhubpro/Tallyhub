@@ -1,0 +1,14 @@
+{
+  "name": "tallyhub-pi",
+  "version": "1.0.0",
+  "description": "Raspberry Pi server for Tally Hub flasher with manifest/firmware proxy to avoid CORS issues",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server/server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "morgan": "^1.10.0"
+  }
+}

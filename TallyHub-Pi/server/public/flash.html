@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Tally Hub – Web Serial Flasher (Pi)</title>
+<style>
+ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;padding:2rem;background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);color:#fff;min-height:100vh}
+ .card{max-width:900px;margin:0 auto;background:rgba(255,255,255,.08);padding:2rem 2.2rem;border-radius:20px;backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.15)}
+ .grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin:1rem 0 1.5rem}
+ .device{background:rgba(255,255,255,.1);padding:1rem 1.1rem;border-radius:14px;cursor:pointer;transition:.3s;border:2px solid transparent}
+ .device:hover{background:rgba(255,255,255,.18);transform:translateY(-2px)}
+ .device.selected{border-color:#4caf50;background:rgba(76,175,80,.25)}
+ .status{margin-top:1rem;padding:.85rem 1rem;font-size:.85rem;border-radius:10px;display:none;border:1px solid transparent;white-space:pre-line}
+ .status.info{background:rgba(33,150,243,.18);border-color:rgba(33,150,243,.35);color:#64b5f6}
+ .status.success{background:rgba(76,175,80,.22);border-color:rgba(76,175,80,.45);color:#81c784}
+ .status.error{background:rgba(244,67,54,.18);border-color:rgba(244,67,54,.45);color:#ef9a9a}
+ button.flash{margin-top:1.2rem;width:100%;padding:1rem 1.2rem;font-size:1rem;border:none;border-radius:14px;background:linear-gradient(45deg,#4caf50,#2e7d32);color:#fff;cursor:pointer}
+ .meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.6rem;margin-top:1.2rem;font-size:.8rem;opacity:.9}
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>🔧 Tally Hub Web Flasher (Pi)</h1>
+    <p>Firmware fetched through this Pi server to avoid CORS.</p>
+
+    <div class="grid" id="deviceGrid"></div>
+
+    <div id="fwSection" style="display:none;">
+      <div style="margin:1rem 0 .5rem;opacity:.85;">Firmware Source</div>
+      <label><input type="radio" name="src" value="online" checked /> Online (via /manifest)</label>
+      <label><input type="radio" name="src" value="custom" /> Custom .bin</label>
+
+      <div id="customBox" style="margin-top:.5rem;display:none;">
+        <input type="file" id="file" accept=".bin" />
+      </div>
+
+      <div class="meta" id="meta" style="display:none;">
+        <div><strong>Device:</strong> <span id="mDev">—</span></div>
+        <div><strong>Size:</strong> <span id="mSize">—</span></div>
+        <div><strong>Version:</strong> <span id="mVer">—</span></div>
+        <div><strong>Source:</strong> <span id="mSrc">—</span></div>
+      </div>
+
+      <button id="flash" class="flash" disabled>📲 Flash Firmware</button>
+      <div id="status" class="status info"></div>
+    </div>
+  </div>
+
+<script type="module">
+import { ESPLoader, Transport } from 'https://unpkg.com/esptool-js@0.4.6/bundle.js';
+
+const MANIFEST_URL = '/manifest';
+const devices = {
+  'ESP32-1732S019': { name: 'ESP32-1732S019', notes: '1.9" Touch Display', chip: 'esp32', flashSize: '8MB' },
+  'M5Stick_Tally': { name: 'M5Stick C Plus 1.1', notes: '1.14" Display + Buttons', chip: 'esp32', flashSize: '4MB' },
+  'M5Stick_Tally_Plus2': { name: 'M5Stick C Plus2', notes: 'Plus2 Variant', chip: 'esp32', flashSize: '4MB' }
+};
+
+let selected=null, manifest=null, entry=null, buf=null, src='online';
+const grid=document.getElementById('deviceGrid');
+const fw=document.getElementById('fwSection');
+const statusEl=document.getElementById('status');
+const flashBtn=document.getElementById('flash');
+const meta=document.getElementById('meta');
+const mDev=document.getElementById('mDev');
+const mSize=document.getElementById('mSize');
+const mVer=document.getElementById('mVer');
+const mSrc=document.getElementById('mSrc');
+
+function setStatus(t,kind='info'){statusEl.textContent=t;statusEl.className='status '+kind;statusEl.style.display='block'}
+function kb(b){return (b/1024).toFixed(1)+' KB'}
+
+function render(){
+  Object.entries(devices).forEach(([k,d])=>{
+    const div=document.createElement('div');div.className='device';div.innerHTML=`<h3>${d.name}</h3><p>${d.notes}</p>`;div.onclick=()=>select(k,div);grid.appendChild(div);
+  });
+}
+
+function select(k,el){
+  document.querySelectorAll('.device').forEach(n=>n.classList.remove('selected'));
+  el.classList.add('selected'); selected=k; fw.style.display='block'; flashBtn.disabled=false; setStatus('Selected '+devices[k].name,'info');
+  if(src==='online') ensure().catch(e=>setStatus('Online error: '+e.message,'error'));
+}
+
+Array.from(document.querySelectorAll('input[name="src"]')).forEach(r=>{
+  r.onchange=e=>{src=e.target.value; buf=null; entry=null; document.getElementById('customBox').style.display=(src==='custom')?'block':'none'; updateMeta(); if(src==='online'&&selected) ensure().catch(err=>setStatus('Manifest/Download error: '+err.message,'error'))};
+});
+
+document.getElementById('file').addEventListener('change', async (e)=>{
+  const f=e.target.files[0]; if(!f) return; if(!f.name.toLowerCase().endsWith('.bin')){ setStatus('Pick a .bin','error'); return; }
+  buf=await f.arrayBuffer(); entry=null; updateMeta(buf.byteLength); setStatus('Custom file selected: '+f.name,'info');
+});
+
+function updateMeta(sz){ if(!selected){meta.style.display='none';return;} meta.style.display='grid'; mDev.textContent=devices[selected].name; mVer.textContent=entry?.version||'—'; mSize.textContent=sz?kb(sz):(buf?kb(buf.byteLength):'—'); mSrc.textContent=src; }
+
+async function ensure(){
+  if(!manifest){ const r=await fetch(MANIFEST_URL+'?t='+Date.now(),{cache:'no-store'}); if(!r.ok) throw new Error('Manifest HTTP '+r.status); manifest=await r.json(); }
+  entry=manifest.devices?.[selected]; if(!entry) throw new Error('No entry for '+selected);
+  const rf = await fetch(entry.url+'?t='+Date.now(), { cache:'no-store' });
+  if(!rf.ok){ throw new Error('Firmware HTTP '+rf.status); }
+  const ab = await rf.arrayBuffer();
+  if(entry.sha256){
+    const hashBuf=await crypto.subtle.digest('SHA-256',ab); const hex=Array.from(new Uint8Array(hashBuf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    if(hex.toLowerCase()!==entry.sha256.toLowerCase()) throw new Error('SHA256 mismatch');
+  }
+  buf=ab; updateMeta(buf.byteLength); setStatus('Online firmware verified ✓ ('+kb(buf.byteLength)+')','success');
+}
+
+async function flash(){
+  if(!selected) return setStatus('Select device','error');
+  if(!navigator.serial) return setStatus('Web Serial not supported. Use Chrome/Edge.','error');
+  try{
+    flashBtn.disabled=true; setStatus('Requesting serial…','info');
+    const port=await navigator.serial.requestPort(); const transport=new Transport(port,true);
+    const loader=new ESPLoader({ transport, baudrate:115200, romBaudrate:115200, terminal:{clean:()=>{}, writeLine:console.log, write:console.log} });
+    const chip=await loader.main(); setStatus('Connected to '+chip+' – flashing…','info');
+    let data=buf; if(src==='custom'&&!buf) return setStatus('No custom file','error');
+    const binStr=Array.from(new Uint8Array(data)).map(b=>String.fromCharCode(b)).join('');
+    await loader.writeFlash({ fileArray:[{ data:binStr, address:0x0 }], flashSize:devices[selected].flashSize, flashMode:'dio', flashFreq:'80m', eraseAll:false, compress:true });
+    setStatus('✅ Done – if screen stays blank, press power/reset.','success');
+  }catch(e){ console.error(e); setStatus('Flash failed: '+e.message,'error'); }
+  finally{ setTimeout(()=>{flashBtn.disabled=false;}, 2500); }
+}
+
+flashBtn.onclick=flash; render();
+</script>
+</body>
+</html>
