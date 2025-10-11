@@ -58,32 +58,56 @@ mkdir -p .git/info
 git fetch --depth=1 origin "$BRANCH"
 git checkout "$BRANCH"
 
-# Move subfolder to final location
+mkdir -p "$APP_DIR"
+
+# Copy Pi folder
 if [ ! -d "$SUBDIR" ]; then
   err "Subdirectory $SUBDIR not found in repo. Aborting."; exit 1
 fi
-mv "$SUBDIR" "$APP_DIR"
-cd ~
-rm -rf "$APP_DIR.tmp"
+cp -r "$SUBDIR" "$APP_DIR"
 
-# Install dependencies
-cd "$APP_DIR"
-log "Installing dependencies..."
-npm install --omit=dev
-
-# Build and stage full server into tallyhub-full
+# Stage full server into tallyhub-full from temp checkout
 log "Staging full Tally Hub server..."
 mkdir -p "$APP_DIR/tallyhub-full"
-rsync -a --delete "$APP_DIR.tmp/src/" "$APP_DIR/tallyhub-full/src/" 2>/dev/null || true
-rsync -a --delete "$APP_DIR.tmp/public/" "$APP_DIR/tallyhub-full/public/" 2>/dev/null || true
+rsync -a "$APP_DIR.tmp/src/" "$APP_DIR/tallyhub-full/src/" 2>/dev/null || true
+rsync -a "$APP_DIR.tmp/public/" "$APP_DIR/tallyhub-full/public/" 2>/dev/null || true
 rsync -a "$APP_DIR.tmp/bin/" "$APP_DIR/tallyhub-full/bin/" 2>/dev/null || true
 cp -f "$APP_DIR.tmp/package.json" "$APP_DIR/tallyhub-full/package.json" || true
 cp -f "$APP_DIR.tmp/tsconfig.json" "$APP_DIR/tallyhub-full/tsconfig.json" || true
 
+# Fallback: if package.json missing for full server, create one
+if [ ! -f "$APP_DIR/tallyhub-full/package.json" ]; then
+  cat > "$APP_DIR/tallyhub-full/package.json" <<'PKG'
+{
+  "name": "tallyhub-full",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}
+PKG
+fi
+
+# Remove temp checkout
+cd ~
+rm -rf "$APP_DIR.tmp"
+
+# Install Pi server deps
+cd "$APP_DIR"
+log "Installing Pi server dependencies..."
+npm install --omit=dev
+
+# Install and build full server with dev deps
 log "Installing full server deps and building..."
 cd "$APP_DIR/tallyhub-full"
-npm install --omit=dev
-npm run build || npx tsc
+npm install
+npm run build
 cd "$APP_DIR"
 
 log "Installation complete."
