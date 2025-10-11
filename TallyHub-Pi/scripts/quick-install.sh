@@ -60,11 +60,11 @@ git checkout "$BRANCH"
 
 mkdir -p "$APP_DIR"
 
-# Copy Pi folder
+# Copy Pi folder contents into target root
 if [ ! -d "$SUBDIR" ]; then
   err "Subdirectory $SUBDIR not found in repo. Aborting."; exit 1
 fi
-cp -r "$SUBDIR" "$APP_DIR"
+cp -r "$SUBDIR"/. "$APP_DIR"/
 
 # Stage full server into tallyhub-full from temp checkout
 log "Staging full Tally Hub server..."
