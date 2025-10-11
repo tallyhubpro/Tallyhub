@@ -9,6 +9,7 @@ REPO="https://github.com/tallyhubpro/Tallyhub.git"
 BRANCH="main"
 APP_DIR="$HOME/tallyhub-pi"
 SUBDIR="TallyHub-Pi"
+FULLSRC="." # fetch root for building into subfolder with sparse include list
 
 log(){ echo -e "\033[1;32m[+]\033[0m $*"; }
 err(){ echo -e "\033[1;31m[!]\033[0m $*" >&2; }
@@ -44,9 +45,15 @@ git init
 git remote add origin "$REPO"
 git config core.sparseCheckout true
 mkdir -p .git/info
-echo "$SUBDIR/*" > .git/info/sparse-checkout
-# include root file for license if desired (optional)
-# echo "LICENSE" >> .git/info/sparse-checkout
+{
+  echo "$SUBDIR/*"
+  echo "bin/*"
+  echo "dist/*"
+  echo "public/*"
+  echo "src/*"
+  echo "package.json"
+  echo "tsconfig.json"
+} > .git/info/sparse-checkout
 
 git fetch --depth=1 origin "$BRANCH"
 git checkout "$BRANCH"
@@ -63,6 +70,21 @@ rm -rf "$APP_DIR.tmp"
 cd "$APP_DIR"
 log "Installing dependencies..."
 npm install --omit=dev
+
+# Build and stage full server into tallyhub-full
+log "Staging full Tally Hub server..."
+mkdir -p "$APP_DIR/tallyhub-full"
+rsync -a --delete "$APP_DIR.tmp/src/" "$APP_DIR/tallyhub-full/src/" 2>/dev/null || true
+rsync -a --delete "$APP_DIR.tmp/public/" "$APP_DIR/tallyhub-full/public/" 2>/dev/null || true
+rsync -a "$APP_DIR.tmp/bin/" "$APP_DIR/tallyhub-full/bin/" 2>/dev/null || true
+cp -f "$APP_DIR.tmp/package.json" "$APP_DIR/tallyhub-full/package.json" || true
+cp -f "$APP_DIR.tmp/tsconfig.json" "$APP_DIR/tallyhub-full/tsconfig.json" || true
+
+log "Installing full server deps and building..."
+cd "$APP_DIR/tallyhub-full"
+npm install --omit=dev
+npm run build || npx tsc
+cd "$APP_DIR"
 
 log "Installation complete."
 cat <<EOT

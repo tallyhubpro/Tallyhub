@@ -1,6 +1,9 @@
 import express from 'express';
 import morgan from 'morgan';
 import { createServer } from 'http';
+import { spawn } from 'child_process';
+import { fileURLToPath } from 'url';
+import path from 'path';
 
 const app = express();
 const server = createServer(app);
@@ -8,6 +11,13 @@ const server = createServer(app);
 const PORT = process.env.PORT || 8080;
 const UPSTREAM_MANIFEST = process.env.UPSTREAM_MANIFEST || 'https://raw.githubusercontent.com/tallyhubpro/Tallyhub/main/public/firmware/firmware-manifest.json';
 const CACHE_TTL_MS = Number(process.env.CACHE_TTL_MS || 60_000);
+const RUN_FULL_SERVER = String(process.env.FULL_SERVER ?? 'true') !== 'false';
+const FULL_SERVER_PORT = process.env.TALLYHUB_PORT || 3000;
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const APP_ROOT = path.resolve(__dirname, '..');
+const FULL_DIR = path.join(APP_ROOT, 'tallyhub-full');
 
 app.use(morgan('dev'));
 app.use(express.static(new URL('./public', import.meta.url).pathname, { fallthrough: true }));
@@ -80,3 +90,28 @@ app.get('/firmware/:device', async (req, res) => {
 server.listen(PORT, () => {
   console.log(`TallyHub-Pi listening on http://localhost:${PORT}`);
 });
+
+// Optionally start the full Tally Hub server (built into tallyhub-full)
+let fullProc = null;
+if (RUN_FULL_SERVER) {
+  try {
+    const distEntry = path.join(FULL_DIR, 'dist', 'index.js');
+    console.log(`[TallyHub-Pi] Launching full server at ${distEntry} on port ${FULL_SERVER_PORT}...`);
+    fullProc = spawn('node', [distEntry], {
+      cwd: FULL_DIR,
+      env: { ...process.env, PORT: String(FULL_SERVER_PORT), HOST: process.env.HOST || '0.0.0.0', NODE_ENV: process.env.NODE_ENV || 'production' },
+      stdio: ['ignore', 'inherit', 'inherit']
+    });
+    fullProc.on('exit', (code) => console.log(`[TallyHub] exited with code ${code}`));
+  } catch (e) {
+    console.error('[TallyHub-Pi] Failed to launch full server:', e);
+  }
+}
+
+function shutdown(){
+  console.log('[TallyHub-Pi] Shutting down...');
+  if (fullProc && !fullProc.killed) try { fullProc.kill('SIGTERM'); } catch {}
+  server.close(()=>process.exit(0));
+}
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
