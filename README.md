@@ -15,6 +15,20 @@
 
 ## 🚀 Quick Start
 
+### One-liner install on Raspberry Pi (Docker)
+
+Copy and paste this on your Pi to install Docker (if needed), pull the image, and run Tally Hub with host networking and persistent volumes:
+
+```bash
+bash -c 'set -e; command -v docker >/dev/null || (curl -fsSL https://get.docker.com | sh); sudo mkdir -p /opt/tallyhub/logs /opt/tallyhub/public/firmware; sudo touch /opt/tallyhub/device-storage.json /opt/tallyhub/device-assignments.json; sudo docker pull ghcr.io/tallyhubpro/tallyhub:latest; sudo docker rm -f tallyhub 2>/dev/null || true; sudo docker run -d --name tallyhub --restart unless-stopped --network host -e NODE_ENV=production -e TZ=UTC -v /opt/tallyhub/device-storage.json:/app/device-storage.json -v /opt/tallyhub/device-assignments.json:/app/device-assignments.json -v /opt/tallyhub/logs:/app/logs -v /opt/tallyhub/public/firmware:/app/public/firmware:ro ghcr.io/tallyhubpro/tallyhub:latest'
+```
+
+Then open: `http://<pi-ip>:3000/` (admin at `/admin`, tally at `/tally`). If the package is private, login first:
+
+```bash
+echo <TOKEN> | docker login ghcr.io -u <USER> --password-stdin
+```
+
 ### Prerequisites
 - Node.js 18+ 
 - NPM or Yarn
