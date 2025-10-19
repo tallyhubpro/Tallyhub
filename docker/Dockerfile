@@ -8,14 +8,15 @@ RUN apk add --no-cache python3 make g++
 # Copy manifests first for better layer caching
 COPY package*.json ./
 
-# Install dependencies (use npm ci if lockfile is present)
-RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+# Install dependencies without running lifecycle scripts yet (prepare/postinstall)
+# This avoids running "prepare": "npm run build" before sources are copied.
+RUN if [ -f package-lock.json ]; then npm ci --ignore-scripts; else npm install --ignore-scripts; fi
 
 # Copy the rest of the project
 COPY . .
 
-# Build TypeScript -> dist
-RUN npm run build
+# Now that sources are present, run lifecycle scripts and build
+RUN npm rebuild --no-fund --no-audit && npm run build
 
 # Prune dev dependencies for runtime image
 RUN npm prune --omit=dev
