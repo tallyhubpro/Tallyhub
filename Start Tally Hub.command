@@ -11,7 +11,35 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 BOLD='\033[1m'
 
-# Placeholder for any future helper functions
+# Helper: Check firmware presence in a directory (prefers firmware-merged.bin, then firmware.bin, then latest *.bin)
+check_firmware_dir() {
+    local dir="$1"
+    local label="$2"
+    local file=""
+
+    if [ -f "$dir/firmware-merged.bin" ]; then
+        file="$dir/firmware-merged.bin"
+    elif [ -f "$dir/firmware.bin" ]; then
+        file="$dir/firmware.bin"
+    else
+        # pick the newest .bin if any exist
+        local latest
+        latest=$(ls -t "$dir"/*.bin 2>/dev/null | head -n 1)
+        if [ -n "$latest" ]; then
+            file="$latest"
+        fi
+    fi
+
+    if [ -n "$file" ]; then
+        echo "${GREEN}✅ ${label} firmware: Found${NC}"
+        # macOS stat (-f). Fallback to GNU stat (-c) if needed
+        FIRMWARE_DATE=$(stat -f "%Sm" -t "%Y-%m-%d" "$file" 2>/dev/null || stat -c "%y" "$file" 2>/dev/null)
+        echo "   File: $(basename "$file")"
+        echo "   Last updated: $FIRMWARE_DATE"
+    else
+        echo "${YELLOW}⚠️ ${label} firmware: Missing${NC}"
+    fi
+}
 
 # Print header
 printf "\n${BOLD}${BLUE}┌───────────────────────────────────┐${NC}\n"
@@ -49,23 +77,11 @@ if [ $NODE_MAJOR -lt 16 ]; then
     echo
 fi
 
-# Check for firmware updates
+# Check for firmware updates (supports firmware-merged.bin or firmware.bin)
 echo "${BLUE}🔍 Checking firmware versions...${NC}"
-if [ -f "public/firmware/M5Stick_Tally/firmware.bin" ]; then
-    echo "${GREEN}✅ M5Stick Tally firmware: Found${NC}"
-    FIRMWARE_DATE=$(stat -f "%Sm" -t "%Y-%m-%d" "public/firmware/M5Stick_Tally/firmware.bin")
-    echo "   Last updated: $FIRMWARE_DATE"
-else
-    echo "${YELLOW}⚠️ M5Stick Tally firmware: Missing${NC}"
-fi
-
-if [ -f "public/firmware/ESP32-1732S019/firmware.bin" ]; then
-    echo "${GREEN}✅ ESP32-1732S019 firmware: Found${NC}"
-    FIRMWARE_DATE=$(stat -f "%Sm" -t "%Y-%m-%d" "public/firmware/ESP32-1732S019/firmware.bin")
-    echo "   Last updated: $FIRMWARE_DATE"
-else
-    echo "${YELLOW}⚠️ ESP32-1732S019 firmware: Missing${NC}"
-fi
+check_firmware_dir "public/firmware/M5Stick_Tally" "M5Stick Tally"
+check_firmware_dir "public/firmware/M5Stick_Tally_Plus2" "M5Stick Tally Plus2"
+check_firmware_dir "public/firmware/ESP32-1732S019" "ESP32-1732S019"
 
 # Check for required global packages and install if missing
 echo "${BLUE}🔍 Checking for required global packages...${NC}"
@@ -328,8 +344,8 @@ if kill -0 $SERVER_PID 2>/dev/null && curl -s http://localhost:$PORT >/dev/null;
     echo 
     echo "${BOLD}Available interfaces:${NC}"
     echo "  • Main Dashboard: ${BOLD}http://localhost:$PORT${NC}"
-    echo "  • Admin Panel: ${BOLD}http://localhost:$PORT/admin.html${NC}"
-    echo "  • Tally Display: ${BOLD}http://localhost:$PORT/tally.html${NC}"
+    echo "  • Admin Panel: ${BOLD}http://localhost:$PORT/admin${NC}"
+    echo "  • Tally Display: ${BOLD}http://localhost:$PORT/tally${NC}"
     echo "  • Flash Tool: ${BOLD}http://localhost:$PORT/flash.html${NC}"
     echo 
     echo "${BOLD}To stop the server:${NC}"

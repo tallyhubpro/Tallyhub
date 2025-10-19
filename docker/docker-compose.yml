@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  tallyhub:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: tallyhub:local
+    container_name: tallyhub
+    restart: unless-stopped
+
+    # Host networking recommended on Raspberry Pi so mDNS/UDP broadcast works properly
+    network_mode: host
+
+    environment:
+      - NODE_ENV=production
+      - TZ=UTC
+      # Optional toggles used by the app
+      # - DISABLE_MDNS=1
+      # - DISABLE_UDP_DISCOVERY=1
+
+    # Persist runtime state and logs; mount firmware as read-only so updates don't require rebuild
+    volumes:
+      - ../device-storage.json:/app/device-storage.json
+      - ../device-assignments.json:/app/device-assignments.json
+      - ../logs:/app/logs
+      - ../public/firmware:/app/public/firmware:ro
+
+    # If you cannot use host networking, comment network_mode above and uncomment ports below
+    # ports:
+    #   - "3000:3000"
+    #   - "7411:7411/udp"
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/ >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s

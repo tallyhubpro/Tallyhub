@@ -1,0 +1,22 @@
+# Git
+.git
+.gitignore
+
+# Node
+node_modules
+npm-debug.log
+yarn.lock
+pnpm-lock.yaml
+
+# Build output
+dist
+
+# OS/editor
+.DS_Store
+.vscode
+.idea
+
+# Runtime data (mounted via volumes)
+logs
+device-storage.json
+device-assignments.json
