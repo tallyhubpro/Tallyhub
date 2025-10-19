@@ -7,7 +7,6 @@
     "dist",
     "README.md",
     "LICENSE",
-    "scripts/run-on-pi.sh",
     "bin/tallyhub.js"
   ],
   "bin": {
@@ -49,9 +48,7 @@
     "format": "prettier --write .",
     "logs:prune": "node scripts/clean-logs.js",
   "generate:manifest": "node scripts/generate-firmware-manifest.js --version 2025.10.07 --release v2025.10.07 --pretty",
-    "prepare": "npm run build",
-    "pi:run": "bash scripts/run-on-pi.sh",
-    "pi:service": "bash scripts/run-on-pi.sh --service",
+  "prepare": "npm run build",
     "postinstall": "node scripts/postinstall-check.js || echo 'Postinstall check failed (non-fatal)'"
   },
   "devDependencies": {

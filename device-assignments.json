@@ -106,17 +106,17 @@
   },
   {
     "deviceId": "m5-tally-fabb50",
-    "sourceId": "atem-input-4",
-    "sourceName": "Camera 4",
+    "sourceId": "obs-scene-Atem device",
+    "sourceName": "Atem device",
     "assignedBy": "admin",
-    "assignedAt": "2025-09-20T16:17:41.600Z"
+    "assignedAt": "2025-10-11T17:06:43.854Z"
   },
   {
     "deviceId": "m5-tally-c4b6b4",
-    "sourceId": "atem-input-3",
-    "sourceName": "Camera 3",
+    "sourceId": "obs-scene-Audi Montor",
+    "sourceName": "Audi Montor",
     "assignedBy": "admin",
-    "assignedAt": "2025-09-20T16:17:35.428Z"
+    "assignedAt": "2025-10-19T18:38:02.558Z"
   },
   {
     "deviceId": "web-1759697234190-rb6m25kvv",

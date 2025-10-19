@@ -1,9 +1,16 @@
 [
   {
+    "id": "m5-tally-c4b6b4",
+    "name": "M5 Tally Light",
+    "type": "m5stick",
+    "ipAddress": "192.168.0.127",
+    "lastSeen": "2025-10-19T18:39:46.938Z"
+  },
+  {
     "id": "m5-tally-fabb50",
     "name": "M5 Tally Light",
     "type": "m5stick",
     "ipAddress": "192.168.0.196",
-    "lastSeen": "2025-10-07T22:05:20.611Z"
+    "lastSeen": "2025-10-19T18:39:44.486Z"
   }
 ]
