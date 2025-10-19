@@ -5,12 +5,11 @@
 **Professional Tally Light System for Video Production**
 
 [![GitHub Release](https://img.shields.io/github/v/release/tallyhubpro/Tallyhub?style=for-the-badge)](https://github.com/tallyhubpro/Tallyhub/releases)
-[![Documentation](https://img.shields.io/badge/docs-website-brightgreen?style=for-the-badge)](https://tallyhubpro.github.io)
 [![License](https://img.shields.io/github/license/tallyhubpro/Tallyhub?style=for-the-badge)](LICENSE)
 
 *Transform your video production with professional tally lights at a fraction of traditional costs*
 
-**[📖 Documentation Website](https://tallyhubpro.github.io)** | **[⬇️ Download](https://tallyhubpro.github.io/download/)** | **[🚀 Quick Start](https://tallyhubpro.github.io/getting-started/)**
+**[⬇️ Releases](https://github.com/tallyhubpro/Tallyhub/releases)**
 
 </div>
 
@@ -81,11 +80,7 @@ Tally Hub is a professional tally light system that works with OBS Studio, vMix,
 - Removed legacy battery calibration/debug mode for a leaner build.
 - Overlap-safe layout for battery percent and Wi‑Fi icon.
 
-## 📖 Documentation
-
-The documentation is hosted separately at the project website:
-
-**[🌐 tallyhubpro.github.io](https://tallyhubpro.github.io)**
+<!-- Documentation site intentionally not linked; refer to repo and releases. -->
 
 
 
@@ -145,7 +140,7 @@ We welcome contributions! Start by reading `CONTRIBUTING.md` in the repository r
 - Code quality gates (lint, typecheck, formatting)
 - Release & versioning notes
 
-Full user documentation remains at the website: [Contributing Guide](https://tallyhubpro.github.io/contributing/)
+<!-- Contributing guide is in-repo. -->
 
 ## � Raspberry Pi
 
@@ -175,7 +170,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 💬 Community & Support
 
-- **📖 Documentation**: [tallyhubpro.github.io](https://tallyhubpro.github.io)
+<!-- Documentation link removed intentionally -->
 - **🐛 Issues**: [GitHub Issues](https://github.com/tallyhubpro/Tallyhub/issues)
 - **💡 Discussions**: [GitHub Discussions](https://github.com/tallyhubpro/Tallyhub/discussions)
 - **📧 Contact**: [hello@tallyhub.pro](mailto:hello@tallyhub.pro)
