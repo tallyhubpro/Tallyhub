@@ -1,15 +1,6 @@
-name: Publish Docker image
+name: Publish Docker image (on release)
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'docker/**'
-      - 'src/**'
-      - 'public/**'
-      - 'package.json'
-      - 'tsconfig.json'
-      - '.github/workflows/docker-publish.yml'
   release:
     types: [ published ]
   workflow_dispatch:
@@ -41,19 +32,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract Docker metadata
+      - name: Extract Docker metadata (release tags)
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: |
             ghcr.io/tallyhubpro/tallyhub
           tags: |
-            type=ref,event=branch
-            type=ref,event=tag
+            # vX.Y.Z tag
             type=semver,pattern={{version}}
+            # vX.Y tag
             type=semver,pattern={{major}}.{{minor}}
-            type=sha,format=long
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            # latest tag for released versions
+            type=raw,value=latest
 
       - name: Build and push
         uses: docker/build-push-action@v6
