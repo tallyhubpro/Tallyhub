@@ -1,0 +1,50 @@
+name: Sync Flasher and Firmware to Website
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'public/flash.html'
+      - 'public/firmware/**'
+      - '.github/workflows/sync-docs-site.yml'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    name: Copy flasher and firmware to tallyhubpro.github.io
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout website repo
+        uses: actions/checkout@v4
+        with:
+          repository: tallyhubpro/tallyhubpro.github.io
+          path: user-site
+          token: ${{ secrets.PAGES_SYNC_TOKEN }}
+          fetch-depth: 0
+
+      - name: Sync flasher page and firmware
+        run: |
+          set -e
+          mkdir -p user-site/firmware
+          cp public/flash.html user-site/flash.html
+          rsync -av --delete public/firmware/ user-site/firmware/
+          echo "Synced flash.html and firmware directory"
+
+      - name: Commit & push if changed
+        working-directory: user-site
+        run: |
+          if git status --porcelain | grep -qE '^(M|A|D) '; then
+            git config user.name "tallyhub-bot"
+            git config user.email "actions@users.noreply.github.com"
+            git add .
+            git commit -m "chore: sync flasher and firmware from Tallyhub repo"
+            git push origin HEAD:main
+            echo "Changes pushed to website repo" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No changes to sync" >> $GITHUB_STEP_SUMMARY
+          fi
