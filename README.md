@@ -5,12 +5,12 @@
 **Professional Tally Light System for Video Production**
 
 [![GitHub Release](https://img.shields.io/github/v/release/tallyhubpro/Tallyhub?style=for-the-badge)](https://github.com/tallyhubpro/Tallyhub/releases)
-[![Documentation](https://img.shields.io/badge/docs-live-brightgreen?style=for-the-badge)](https://tallyhubpro.github.io)
+[![Documentation](https://img.shields.io/badge/docs-website-brightgreen?style=for-the-badge)](https://tallyhubpro.github.io)
 [![License](https://img.shields.io/github/license/tallyhubpro/Tallyhub?style=for-the-badge)](LICENSE)
 
 *Transform your video production with professional tally lights at a fraction of traditional costs*
 
-**[📖 Full Documentation](https://tallyhubpro.github.io)** | **[⬇️ Download](https://tallyhubpro.github.io/download/)** | **[🚀 Quick Start](https://tallyhubpro.github.io/getting-started/)**
+**[📖 Documentation Website](https://tallyhubpro.github.io)** | **[⬇️ Download](https://tallyhubpro.github.io/download/)** | **[🚀 Quick Start](https://tallyhubpro.github.io/getting-started/)**
 
 </div>
 
@@ -83,7 +83,7 @@ Tally Hub is a professional tally light system that works with OBS Studio, vMix,
 
 ## 📖 Documentation
 
-For complete setup guides, hardware recommendations, troubleshooting, and more, visit our comprehensive documentation:
+The documentation is hosted separately at the project website:
 
 **[🌐 tallyhubpro.github.io](https://tallyhubpro.github.io)**
 
@@ -143,7 +143,7 @@ We welcome contributions! Start by reading `CONTRIBUTING.md` in the repository r
 - Code quality gates (lint, typecheck, formatting)
 - Release & versioning notes
 
-Full user documentation remains at the docs site: [Contributing Guide (Docs)](https://tallyhubpro.github.io/contributing/)
+Full user documentation remains at the website: [Contributing Guide](https://tallyhubpro.github.io/contributing/)
 
 ## � Raspberry Pi
 
