@@ -64,6 +64,58 @@ Core commands:
 
 Editor integration: the repo includes `.editorconfig`, `.prettierrc`, and ESLint config for consistent formatting. Enable “Format on Save” in your IDE for best results.
 
+## 🐳 Run with Docker (Raspberry Pi ready)
+
+You can run Tally Hub in Docker on Raspberry Pi (armv7/arm64) or any Linux/x86_64 host.
+
+### Option 1: Use the prebuilt image
+
+Images are published to GitHub Container Registry on releases.
+
+```bash
+# Pull the latest release image
+docker pull ghcr.io/tallyhubpro/tallyhub:latest
+
+# Run with host networking (recommended on Pi so mDNS/UDP work)
+sudo mkdir -p /opt/tallyhub/logs /opt/tallyhub/public/firmware
+sudo touch /opt/tallyhub/device-storage.json /opt/tallyhub/device-assignments.json
+
+docker run -d \
+   --name tallyhub \
+   --restart unless-stopped \
+   --network host \
+   -e NODE_ENV=production \
+   -e TZ=UTC \
+   -v /opt/tallyhub/device-storage.json:/app/device-storage.json \
+   -v /opt/tallyhub/device-assignments.json:/app/device-assignments.json \
+   -v /opt/tallyhub/logs:/app/logs \
+   -v /opt/tallyhub/public/firmware:/app/public/firmware:ro \
+   ghcr.io/tallyhubpro/tallyhub:latest
+```
+
+Notes:
+- If the package is private, authenticate first: `echo <TOKEN> | docker login ghcr.io -u <USER> --password-stdin`.
+- Host networking is preferred on Raspberry Pi so Bonjour/mDNS and UDP discovery work correctly. If you cannot use host networking, publish ports instead:
+
+```bash
+-p 3000:3000 -p 7411:7411/udp
+```
+
+### Option 2: Build locally with Docker Compose
+
+```bash
+cd docker
+docker compose up -d --build
+docker compose logs -f
+```
+
+This uses `network_mode: host` by default and mounts:
+- `device-storage.json`, `device-assignments.json` (persistent state)
+- `logs/` (persistent logs)
+- `public/firmware` (read-only so you can drop new `.bin` files without rebuilding)
+
+See `docker/README.md` for more details and troubleshooting.
+
 ## 🎯 What is Tally Hub?
 
 Tally Hub is a professional tally light system that works with OBS Studio, vMix, and other video mixers. It provides:
