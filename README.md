@@ -36,48 +36,14 @@
 3. **Start the development server**
    ```bash
    npm run dev
-   ## 🔐 Firmware Manifest Generation
+   ## � Firmware Flashing
 
-   The flashing UI can pull online firmware via a signed manifest (`public/firmware/firmware-manifest.json`). To regenerate the manifest after building new firmware binaries:
+   The project now supports two firmware sources only:
 
-   1. Ensure merged binaries exist at:
-      - `public/firmware/ESP32-1732S019/firmware-merged.bin`
-      - `public/firmware/M5Stick_Tally/firmware-merged.bin`
-      - `public/firmware/M5Stick_Tally_Plus2/firmware-merged.bin`
-   2. Run the generator (updates hash, size & timestamp):
-      ```bash
-      npm run generate:manifest
-      ```
-      The default script currently uses version `2025.10.07`. For a new release, run manually:
-      ```bash
-      node scripts/generate-firmware-manifest.js \
-        --version 2025.11.15 \
-        --release v2025.11.15 \
-        --pretty
-      ```
-   3. Commit the updated manifest.
+   - Built-in firmware bundled under `public/firmware/<device>/firmware-merged.bin`
+   - Custom `.bin` uploaded from your computer
 
-   ### Script Flags
-   ```
-   --version <ver>    Version string stored under each device + latest
-   --release <tag>    GitHub Release tag containing <device>.bin assets
-   --base-url <url>   Override GitHub base URL (advanced / mirrors)
-   --local-path       Use local relative /firmware/... URLs (offline mode)
-   --pretty           Pretty-print JSON
-   --dry-run          Print to stdout only
-   ```
-
-   ### Release Asset Naming
-   Each device expects an asset named `<DeviceName>.bin` in the GitHub Release (e.g. `ESP32-1732S019.bin`). Internally we still store & build `firmware-merged.bin`; the release upload step should rename/copy it accordingly.
-
-   ### Integrity
-   The manifest includes SHA256 checksums. The web flasher downloads the binary, recomputes its hash in the browser, and rejects the flash if it doesn't match.
-
-   Optional future hardening:
-   - Detached signature (e.g. manifest.sig) + public key pinning
-   - Multi-segment address map (currently single merged image)
-
-   ```
+   Online flashing via GitHub manifest has been removed to simplify the flow and avoid CORS/network issues.
 
 4. **Open your browser**
    - Navigate to `http://localhost:3000`
@@ -179,47 +145,9 @@ We welcome contributions! Start by reading `CONTRIBUTING.md` in the repository r
 
 Full user documentation remains at the docs site: [Contributing Guide (Docs)](https://tallyhubpro.github.io/contributing/)
 
-## 🍓 Raspberry Pi Quick Install
+## � Raspberry Pi
 
-You can deploy Tally Hub on a Raspberry Pi (Pi 3B+, 4, 5 recommended) with a single command:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/tallyhubpro/Tallyhub/main/scripts/install-pi.sh | bash
-```
-
-Install as a background service (systemd):
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/tallyhubpro/Tallyhub/main/scripts/install-pi.sh | bash -s -- --service
-```
-
-After installation:
-
-```bash
-curl http://<pi-host-or-ip>:3000/health
-```
-
-Update later:
-```bash
-cd ~/Tallyhub
-git pull
-npm ci
-npm run build
-sudo systemctl restart tallyhub  # if installed as service
-```
-
-### Environment Overrides (.env)
-```
-PORT=3000
-HOST=0.0.0.0
-LOG_LEVEL=info
-NODE_ENV=production
-```
-
-### Service Logs
-```bash
-journalctl -u tallyhub -f
-```
+Raspberry Pi-specific installers and scripts have been removed from this repository. You can still run Tally Hub on a Pi by cloning the repo, installing dependencies, building, and starting the server manually.
 
 ## 🧪 CLI Launcher
 

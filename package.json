@@ -47,7 +47,7 @@
     "lint:fix": "eslint 'src/**/*.{ts,tsx}' --fix",
     "format": "prettier --write .",
     "logs:prune": "node scripts/clean-logs.js",
-  "generate:manifest": "node scripts/generate-firmware-manifest.js --version 2025.10.07 --release v2025.10.07 --pretty",
+  
   "prepare": "npm run build",
     "postinstall": "node scripts/postinstall-check.js || echo 'Postinstall check failed (non-fatal)'"
   },
