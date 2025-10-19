@@ -1,25 +1,5 @@
 {
-  "schema": 1,
-  "generated": "2025-10-07T22:50:07.140Z",
-  "latest": "2025.11.01",
-  "devices": {
-    "ESP32-1732S019": {
-      "version": "2025.11.01",
-      "url": "https://github.com/tallyhubpro/Tallyhub/releases/download/v2025.11.01/ESP32-1732S019.bin",
-      "sha256": "5c56daef9a37d06898da18d28c3a8c5b281eaff04ae3fb5f88734e0bb95538c6",
-      "size": 1012512
-    },
-    "M5Stick_Tally": {
-      "version": "2025.11.01",
-      "url": "https://github.com/tallyhubpro/Tallyhub/releases/download/v2025.11.01/M5Stick_Tally.bin",
-      "sha256": "a6131826569abcc62dc6eff68be080ec5f5da68327ffbf5d4df751b5c1ffe8e0",
-      "size": 1158704
-    },
-    "M5Stick_Tally_Plus2": {
-      "version": "2025.11.01",
-      "url": "https://github.com/tallyhubpro/Tallyhub/releases/download/v2025.11.01/M5Stick_Tally_Plus2.bin",
-      "sha256": "ba3fbce38e3796569db7781210900a9253c23c087e4515b4e4331c92d66e007f",
-      "size": 1158720
-    }
-  }
+  "deprecated": true,
+  "note": "Online flashing/manifest flow has been removed. Use built-in or custom firmware options in flasher.",
+  "devices": {}
 }

@@ -426,10 +426,6 @@
                         <input type="radio" name="firmwareSource" value="custom">
                         <span>Browse for Custom .bin File</span>
                     </label>
-                    <label class="firmware-option">
-                        <input type="radio" name="firmwareSource" value="online">
-                        <span>Fetch Latest from GitHub (Signed/Hashed)</span>
-                    </label>
                 </div>
                 
                 <div id="customFileSection" style="display: none; margin-top: 1rem;">
@@ -509,9 +505,6 @@
         let esploader = null;
         let transport = null;
         let customFirmwareFile = null;
-    let manifest = null; // remote manifest
-    let manifestEntry = null; // selected device entry
-    let onlineFirmwareBuffer = null; // ArrayBuffer after download
     let lastPort = null; // retain port for post-flash reset attempt
     let autoResetPerformed = false;
 
@@ -622,10 +615,6 @@
                 showStatus('Please select a custom firmware file first', 'error');
                 return;
             }
-            if (firmwareSource === 'online' && !onlineFirmwareBuffer) {
-                showStatus('Please fetch online firmware first (it will auto-fetch after selecting device).', 'error');
-                return;
-            }
 
             if (!navigator.serial) {
                 showStatus('Web Serial API not supported. Please use Chrome, Edge, or Opera browser.', 'error');
@@ -675,12 +664,6 @@
                     flashButton.textContent = '📁 Reading File...';
                     showStatus('Reading custom firmware file...', 'info');
                     firmwareData = await customFirmwareFile.arrayBuffer();
-                    firmwareSize = (firmwareData.byteLength / 1024).toFixed(1);
-                } else if (firmwareSource === 'online') {
-                    if (!onlineFirmwareBuffer) throw new Error('Online firmware not loaded');
-                    flashButton.textContent = '✅ Verified';
-                    showStatus('Using verified online firmware (SHA256 OK)', 'info');
-                    firmwareData = onlineFirmwareBuffer;
                     firmwareSize = (firmwareData.byteLength / 1024).toFixed(1);
                 } else {
                     // Download built-in firmware
@@ -737,7 +720,7 @@
 
                 // Success!
                 flashButton.textContent = '✅ Flash Complete';
-                const firmwareType = firmwareSource === 'custom' ? 'custom' : (firmwareSource === 'online' ? 'online' : 'built-in');
+                const firmwareType = firmwareSource === 'custom' ? 'custom' : 'built-in';
                 showStatus(`✅ ${firmwareType} firmware flashed successfully! Attempting automatic reset...`, 'success');
 
                 // Try auto reset using transport toggling DTR/RTS
@@ -814,78 +797,6 @@
 
         function delay(ms){ return new Promise(r=>setTimeout(r, ms)); }
 
-        // ---- Online Manifest Support ----
-        const MANIFEST_URL = 'https://raw.githubusercontent.com/tallyhubpro/Tallyhub/main/public/firmware/firmware-manifest.json'; // adjust if hosting elsewhere
-
-        async function fetchManifest(){
-            try {
-                showStatus('Fetching firmware manifest...', 'info');
-                const res = await fetch(MANIFEST_URL + '?t=' + Date.now(), { cache: 'no-store' });
-                if(!res.ok) throw new Error('Manifest HTTP '+res.status);
-                manifest = await res.json();
-                showStatus('Manifest loaded. Latest version: ' + (manifest.latest || 'n/a'), 'info');
-                if(selectedDevice){
-                    await prepareOnlineFirmware();
-                }
-            } catch(e){
-                console.warn('Manifest fetch failed', e);
-                showStatus('Manifest fetch failed: '+ e.message, 'warning');
-            }
-        }
-
-        async function prepareOnlineFirmware(){
-            if(!manifest || !selectedDevice) return;
-            const devKey = selectedDevice;
-            const devEntry = manifest.devices?.[devKey];
-            if(!devEntry){
-                showStatus('No online firmware entry for '+ devKey, 'warning');
-                return;
-            }
-            manifestEntry = devEntry;
-            showStatus('Downloading online firmware for '+ devKey + ' (version '+ (devEntry.version||'n/a') +')', 'info');
-            try {
-                const buf = await downloadAndVerify(devEntry);
-                onlineFirmwareBuffer = buf;
-                showStatus('Online firmware ready ('+ (buf.byteLength/1024).toFixed(1)+' KB) ✓ hash verified', 'success');
-                document.getElementById('firmwareSize').textContent = (buf.byteLength/1024).toFixed(1) + ' KB';
-            } catch(e){
-                showStatus('Online firmware download failed: '+ e.message, 'error');
-            }
-        }
-
-        async function downloadAndVerify(entry){
-            const r = await fetch(entry.url + '?t=' + Date.now(), { cache: 'no-store' });
-            if(!r.ok) throw new Error('Firmware HTTP '+ r.status);
-            const buf = await r.arrayBuffer();
-            if(entry.sha256){
-                const hashBuf = await crypto.subtle.digest('SHA-256', buf);
-                const hex = Array.from(new Uint8Array(hashBuf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-                if(hex.toLowerCase() !== entry.sha256.toLowerCase()){
-                    throw new Error('SHA256 mismatch expected '+ entry.sha256 +' got '+ hex);
-                }
-            }
-            return buf;
-        }
-
-        // React to firmware source selection for 'online'
-        document.querySelectorAll('input[name="firmwareSource"]').forEach(r => {
-            r.addEventListener('change', async (e) => {
-                if(e.target.value === 'online'){
-                    if(!manifest) await fetchManifest(); else await prepareOnlineFirmware();
-                }
-            });
-        });
-
-        // Enhance selectDevice to auto-download when online is chosen
-        const _origSelectDevice = window.selectDevice;
-        window.selectDevice = function(deviceType){
-            _origSelectDevice(deviceType);
-            const src = document.querySelector('input[name="firmwareSource"]:checked')?.value;
-            if(src === 'online'){
-                prepareOnlineFirmware();
-            }
-        };
-
         // ---- Insecure Context Messaging ----
         (function(){
             const insecure = !window.isSecureContext && location.protocol !== 'https:' && location.hostname !== 'localhost';
@@ -898,9 +809,6 @@
                 }
             }
         })();
-
-        // Initial manifest (lazy) fetch in background
-        setTimeout(()=>{ fetchManifest().catch(()=>{}); }, 1500);
 
         // ---- Web Serial vs Server Fallback ----
         const serverFlashEl = document.getElementById('serverFlashContainer');

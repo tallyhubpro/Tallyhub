@@ -4,13 +4,13 @@
     "name": "M5 Tally Light",
     "type": "m5stick",
     "ipAddress": "192.168.0.127",
-    "lastSeen": "2025-10-19T18:39:46.938Z"
+    "lastSeen": "2025-10-19T19:14:51.718Z"
   },
   {
     "id": "m5-tally-fabb50",
     "name": "M5 Tally Light",
     "type": "m5stick",
     "ipAddress": "192.168.0.196",
-    "lastSeen": "2025-10-19T18:39:44.486Z"
+    "lastSeen": "2025-10-19T19:14:47.314Z"
   }
 ]

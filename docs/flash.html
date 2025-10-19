@@ -55,8 +55,7 @@
     <div id="fwSection" class="hidden">
       <div class="section-title">Firmware Source</div>
       <div class="fw-options">
-        <label class="fw-option"><input type="radio" name="fwSource" value="online" checked><span>Latest (GitHub Manifest)</span></label>
-        <label class="fw-option"><input type="radio" name="fwSource" value="builtin"><span>Built-in (Bundled Path)</span></label>
+        <label class="fw-option"><input type="radio" name="fwSource" value="builtin" checked><span>Built-in (Bundled Path)</span></label>
         <label class="fw-option"><input type="radio" name="fwSource" value="custom"><span>Custom .bin File</span></label>
       </div>
 
@@ -93,7 +92,6 @@
 import { ESPLoader, Transport } from 'https://unpkg.com/esptool-js@0.4.6/bundle.js';
 
 // ---- Config ----
-const MANIFEST_URL = 'https://raw.githubusercontent.com/tallyhubpro/Tallyhub/main/public/firmware/firmware-manifest.json';
 const BUILTIN_PREFIX = 'firmware'; // relative path if you later copy firmware dirs under docs/
 
 const devices = {
@@ -104,8 +102,7 @@ const devices = {
 
 // ---- State ----
 let selected = null;
-let source = 'online';
-let manifest = null; let onlineEntry = null; let onlineBuffer = null;
+let source = 'builtin';
 let customFile = null; let loader = null; let transport = null; let lastPort = null; let autoReset = false;
 
 // ---- DOM ----
@@ -147,7 +144,6 @@ function selectDevice(key, el){
   selected = key;
   fwSection.classList.remove('hidden');
   updateMeta();
-  if(source === 'online') ensureManifestThenDownload().catch(e=>setStatus('Online firmware error: '+e.message,'error'));
   flashBtn.disabled = false;
   setStatus('Device selected. Choose firmware source and click Flash.','info');
 }
@@ -156,17 +152,16 @@ function updateMeta(size){
   if(!selected){ metaBox.style.display='none'; return; }
   metaBox.style.display='grid';
   mDevice.textContent = devices[selected].name;
-  mVersion.textContent = onlineEntry?.version || '—';
-  mSize.textContent = size ? bytesKB(size) : (onlineBuffer ? bytesKB(onlineBuffer.byteLength) : '—');
+  mVersion.textContent = '—';
+  mSize.textContent = size ? bytesKB(size) : '—';
   mSource.textContent = source;
 }
 
 // Firmware source handling
 Array.from(document.querySelectorAll('input[name="fwSource"]')).forEach(r=>{
   r.addEventListener('change', e=>{
-    source = e.target.value; onlineBuffer=null; customFile=null; onlineEntry=null; updateMeta();
+    source = e.target.value; customFile=null; updateMeta();
     document.getElementById('customBox').classList.toggle('hidden', source !== 'custom');
-    if(source === 'online' && selected) ensureManifestThenDownload().catch(err=>setStatus('Manifest/Download error: '+err.message,'error'));
     if(source === 'builtin') setStatus('Built-in path selected. Will fetch file at flash time.','info');
     if(source === 'custom') setStatus('Choose a local .bin file to continue.','info');
   });
@@ -181,66 +176,7 @@ document.getElementById('customInput').addEventListener('change', e=>{
   fc.textContent = f.name + ' ('+ bytesKB(f.size)+')'; fc.classList.remove('hidden');
 });
 
-async function ensureManifestThenDownload(){
-  if(!manifest){
-    setStatus('Fetching manifest...','info');
-    try {
-      const r = await fetch(MANIFEST_URL+'?t='+Date.now(), { cache:'no-store' });
-      if(!r.ok) throw new Error('Manifest HTTP '+r.status);
-      manifest = await r.json();
-    } catch(err){
-      setStatus('Manifest fetch failed: '+ err.message +'\nClick "Retry Manifest" or check network.', 'error');
-      showRetryControls();
-      throw err;
-    }
-  }
-  if(!selected) return;
-  const entry = manifest.devices?.[selected];
-  if(!entry){ throw new Error('No entry for '+selected); }
-  onlineEntry = entry; setStatus('Downloading '+selected+' (v'+(entry.version||'n/a')+')','info');
-  let rf;
-  try {
-    rf = await fetch(entry.url+'?t='+Date.now(), { cache:'no-store' });
-  } catch(fetchErr){
-    let msg = 'Network error fetching firmware: '+ fetchErr.message;
-    // Common case: GitHub Release asset blocked by CORS -> fetch surfaces generic TypeError
-    if(fetchErr instanceof TypeError) {
-      msg += '\nLikely CORS restriction on GitHub Release assets (no Access-Control-Allow-Origin).';
-      msg += '\nFix options:'+
-        '\n  1. Mirror *.bin under a CORS host (e.g. add docs/firmware/... and point manifest there).'+
-        '\n  2. Serve via your own proxy endpoint (server downloads GitHub asset then sets CORS).'+
-        '\n  3. Commit binaries into repo and reference a jsDelivr URL (tagged commit, not release asset).'+
-        '\n  4. Use S3/Cloudflare R2 with proper CORS headers.';
-    }
-    msg += '\nUse "Retry Firmware" after applying one of the fixes.';
-    setStatus(msg, 'error');
-    showRetryControls();
-    throw fetchErr;
-  }
-  if(!rf.ok){
-    setStatus('Firmware HTTP '+rf.status+' – asset missing or tag mismatch. Ensure release tag '+ entry.version +' has '+ selected +'.bin', 'error');
-    showRetryControls();
-    throw new Error('Firmware HTTP '+rf.status);
-  }
-  let buf;
-  try {
-    buf = await rf.arrayBuffer();
-  } catch(bufErr){
-    setStatus('Read error: '+bufErr.message, 'error');
-    showRetryControls();
-    throw bufErr;
-  }
-  if(entry.sha256){
-    const hashBuf = await crypto.subtle.digest('SHA-256', buf);
-    const hex = Array.from(new Uint8Array(hashBuf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-    if(hex.toLowerCase() !== entry.sha256.toLowerCase()){
-      setStatus('SHA256 mismatch expected '+ entry.sha256 +' got '+ hex, 'error');
-      showRetryControls();
-      throw new Error('SHA256 mismatch');
-    }
-  }
-  onlineBuffer = buf; updateMeta(buf.byteLength); setStatus('Online firmware verified ✓ ('+bytesKB(buf.byteLength)+')','success');
-}
+// Online manifest/download removed
 
 async function flash(){
   if(!selected){ setStatus('Select a device first','error'); return; }
@@ -256,9 +192,6 @@ async function flash(){
     if(source === 'custom'){
       if(!customFile) throw new Error('No custom file chosen');
       dataBuf = await customFile.arrayBuffer(); sizeLabel = bytesKB(dataBuf.byteLength);
-    } else if(source === 'online'){
-      if(!onlineBuffer) throw new Error('Online firmware not loaded');
-      dataBuf = onlineBuffer; sizeLabel = bytesKB(dataBuf.byteLength); srcLabel += ' (verified)';
     } else { // builtin
       const url = devices[selected].builtin;
       setStatus('Fetching built-in firmware…','info');
@@ -317,17 +250,9 @@ function showRetryControls(){
   panel.style.flexWrap = 'wrap';
   panel.style.gap = '0.5rem';
   panel.innerHTML = `
-    <button id="retryManifest" style="flex:1;min-width:140px;padding:.6rem;border:none;border-radius:8px;cursor:pointer;background:#1976d2;color:#fff;">Retry Manifest</button>
-    <button id="retryFirmware" style="flex:1;min-width:140px;padding:.6rem;border:none;border-radius:8px;cursor:pointer;background:#388e3c;color:#fff;">Retry Firmware</button>
     <button id="diagBtn" style="flex:1;min-width:140px;padding:.6rem;border:none;border-radius:8px;cursor:pointer;background:#ffa000;color:#222;">Diagnostics</button>
   `;
   statusEl.parentNode.insertBefore(panel, statusEl.nextSibling);
-  document.getElementById('retryManifest').onclick = ()=>{
-    manifest = null; onlineBuffer=null; onlineEntry=null; ensureManifestThenDownload().catch(()=>{});
-  };
-  document.getElementById('retryFirmware').onclick = ()=>{
-    if(selected && manifest){ onlineBuffer=null; ensureManifestThenDownload().catch(()=>{}); }
-  };
   document.getElementById('diagBtn').onclick = runDiagnostics;
 }
 
@@ -339,27 +264,10 @@ function runDiagnostics(){
   lines.push('Secure Context: '+ (window.isSecureContext?'yes':'no'));
   lines.push('Navigator.onLine: '+navigator.onLine);
   lines.push('Selected device: '+ (selected||'none'));
-  lines.push('Manifest loaded: '+ (!!manifest));
-  lines.push('Manifest URL: '+ MANIFEST_URL);
-  if(onlineEntry){
-    lines.push('Firmware URL: '+ onlineEntry.url);
-  }
+  lines.push('Manifest: disabled (online flashing removed)');
   setStatus(lines.join('\n'), 'info');
 }
 
-// Pre-fetch manifest quietly after 1.5s to warm cache (with silent failure)
-setTimeout(()=>{ fetch(MANIFEST_URL+'?t='+Date.now()).then(r=>r.ok?r.json():null).then(j=>{ if(j) manifest=j; }).catch(()=>{}); },1500);
-
-// Guidance if user is at user root but project path needed
-(() => {
-  const likelyProjectPath = '/Tallyhub/flash.html';
-  if(location.pathname === '/flash.html' && !manifest){
-    // Provide a hint but don't block
-    setTimeout(()=>{
-      setStatus('If online fetch keeps failing here, try: '+ location.origin + likelyProjectPath +' (project site path).', 'warn');
-    }, 800);
-  }
-})();
 
 </script>
 </body>
