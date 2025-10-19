@@ -171,7 +171,7 @@ document.getElementById('customInput').addEventListener('change', e=>{
   const f = e.target.files[0];
   if(!f){ return; }
   if(!f.name.toLowerCase().endsWith('.bin')){ setStatus('Please select a .bin file','error'); return; }
-  customFile = f; onlineBuffer=null; onlineEntry=null; updateMeta(f.size); setStatus('Custom file selected: '+f.name,'info');
+  customFile = f; updateMeta(f.size); setStatus('Custom file selected: '+f.name,'info');
   const fc = document.getElementById('fileChosen');
   fc.textContent = f.name + ' ('+ bytesKB(f.size)+')'; fc.classList.remove('hidden');
 });

@@ -1,5 +1,1 @@
-{
-  "deprecated": true,
-  "note": "Online flashing/manifest flow has been removed. Use built-in or custom firmware options in flasher.",
-  "devices": {}
-}
+{}
