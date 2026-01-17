@@ -15,6 +15,8 @@ services:
     environment:
       - NODE_ENV=production
       - TZ=UTC
+      # Optional: GitHub token for firmware downloads (higher rate limits & private repos)
+      # - GITHUB_TOKEN=ghp_your_token_here
       # Optional toggles used by the app
       # - DISABLE_MDNS=1
       # - DISABLE_UDP_DISCOVERY=1

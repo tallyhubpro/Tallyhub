@@ -1,0 +1,18 @@
+version: "3.9"
+
+# macOS override for docker-compose.yml
+# Docker Desktop on Mac doesn't support host networking
+# Use this with: docker compose -f docker-compose.yml -f docker-compose.mac.yml up -d
+
+services:
+  tallyhub:
+    # Override host networking with bridge mode and port mapping
+    network_mode: bridge
+    
+    ports:
+      - "3000:3000"      # HTTP server
+      - "7411:7411/udp"  # UDP discovery
+    
+    # Note: mDNS/Bonjour discovery works differently on Mac
+    # Devices should be configured with your Mac's IP address
+    # Find it with: ifconfig | grep "inet " | grep -v 127.0.0.1
