@@ -6,7 +6,9 @@ This Docker setup builds the TypeScript app and runs it on Raspberry Pi (armv7/a
 - Bonjour/mDNS and UDP discovery work best with `network_mode: host` on Linux (Raspberry Pi). Bridge networks can block or limit multicast/broadcast.
 
 ## Prerequisites
-- Raspberry Pi OS (Bookworm or Bullseye)
+
+### Linux / Raspberry Pi
+- Raspberry Pi OS (Bookworm or Bullseye) or any Linux distribution
 - Docker and Docker Compose plugin:
 
 ```bash
@@ -17,7 +19,14 @@ sudo usermod -aG docker $USER
 sudo apt-get install -y docker-compose-plugin
 ```
 
+### macOS
+- Docker Desktop for Mac (Intel or Apple Silicon)
+- **See [MACOS_GUIDE.md](MACOS_GUIDE.md) for complete macOS instructions**
+- Note: Host networking is not supported on Mac - use port mapping instead
+
 ## Build and run
+
+### On Linux / Raspberry Pi
 ```bash
 cd docker
 # First time (or after changes)
@@ -27,27 +36,46 @@ docker compose up -d --build
 docker compose logs -f
 ```
 
+### On macOS (Docker Desktop)
+```bash
+cd docker
+# Use macOS-specific override (disables host networking)
+docker compose -f docker-compose.yml -f docker-compose.mac.yml up -d --build
+
+# View logs
+docker compose logs -f
+```
+
+**For detailed macOS instructions, see [MACOS_GUIDE.md](MACOS_GUIDE.md)**
+
 ## Use prebuilt image (no build on Pi)
 You can pull a prebuilt multi-arch image from GitHub Container Registry (GHCR):
 
 ```bash
-# Log in (optional for public repos)
-echo $GITHUB_TOKEN | docker login ghcr.io -u <your-username> --password-stdin
-
-# Pull the latest image
-docker pull ghcr.io/tallyhubpro/tallyhub:latest
-
-# Run with host networking (recommended on Pi)
+# One-liner installation (recommended for Raspberry Pi)
+# This creates directories and starts TallyHub with host networking
+mkdir -p ~/tallyhub/logs ~/tallyhub/public/firmware && \
+cd ~/tallyhub && \
+touch device-storage.json device-assignments.json && \
+docker pull ghcr.io/tallyhubpro/tallyhub:latest && \
 docker run -d \
-	--name tallyhub \
-	--network host \
-	-e NODE_ENV=production \
-	-e TZ=UTC \
-	-v $(pwd)/../device-storage.json:/app/device-storage.json \
-	-v $(pwd)/../device-assignments.json:/app/device-assignments.json \
-	-v $(pwd)/../logs:/app/logs \
-	-v $(pwd)/../public/firmware:/app/public/firmware:ro \
-	ghcr.io/tallyhubpro/tallyhub:latest
+  --name tallyhub \
+  --restart unless-stopped \
+  --network host \
+  -e NODE_ENV=production \
+  -e TZ=UTC \
+  -v ~/tallyhub/device-storage.json:/app/device-storage.json \
+  -v ~/tallyhub/device-assignments.json:/app/device-assignments.json \
+  -v ~/tallyhub/logs:/app/logs \
+  ghcr.io/tallyhubpro/tallyhub:latest
+
+# Optional: Add GitHub token for firmware downloads (higher rate limits)
+# docker rm -f tallyhub && docker run -d --name tallyhub --restart unless-stopped --network host \
+#   -e NODE_ENV=production -e TZ=UTC -e GITHUB_TOKEN=ghp_your_token_here \
+#   -v ~/tallyhub/device-storage.json:/app/device-storage.json \
+#   -v ~/tallyhub/device-assignments.json:/app/device-assignments.json \
+#   -v ~/tallyhub/logs:/app/logs \
+#   ghcr.io/tallyhubpro/tallyhub:latest
 ```
 
 If you cannot use host networking, replace `--network host` with:
@@ -69,10 +97,25 @@ App URLs (on the Pi):
 ## Non-host networking (optional)
 If you cannot use host networking, comment `network_mode: host` and uncomment the `ports:` section. Note that mDNS/Bonjour discovery may not function the same under bridge mode.
 
-## Environment toggles
+## Environment variables
 You can set these in `docker-compose.yml`:
+- `GITHUB_TOKEN=ghp_xxx` — Optional GitHub Personal Access Token for firmware downloads (enables higher rate limits and private repo access)
 - `DISABLE_MDNS=1` — disables mDNS advertising if your network blocks it
 - `DISABLE_UDP_DISCOVERY=1` — disables UDP broadcast discovery
+
+### GitHub Token Setup
+For GitHub firmware downloads with higher rate limits (5000/hour vs 60/hour) or private repository access:
+
+1. Generate a token at https://github.com/settings/tokens
+2. Add to `docker-compose.yml`:
+   ```yaml
+   environment:
+     - GITHUB_TOKEN=ghp_your_token_here
+   ```
+3. Or pass when running:
+   ```bash
+   docker run -e GITHUB_TOKEN=ghp_xxx ...
+   ```
 
 ## Updating
 ```bash
