@@ -622,10 +622,12 @@
         // Resolve firmware path for GitHub Pages project sites where absolute paths break
         function resolveFirmwarePath(p){
             if (!p) return p;
+            // For root site (tallyhubpro.github.io), use paths as-is
+            // For project site (tallyhubpro.github.io/Tallyhub), prefix with /Tallyhub
             if (p.startsWith('/')){
                 const parts = location.pathname.split('/').filter(Boolean);
-                // If served as a project page (e.g., /RepoName/flash.html), prefix with repo segment
-                if (parts.length >= 1){
+                // Only add prefix if we're in a project subdirectory (not root site)
+                if (parts.length >= 1 && parts[0] !== 'flash.html'){
                     const base = '/' + parts[0];
                     return base + p;
                 }
