@@ -55,8 +55,8 @@ mkdir -p /opt/tallyhub/logs /opt/tallyhub/public/firmware
 touch /opt/tallyhub/device-storage.json /opt/tallyhub/device-assignments.json
 echo ""
 
-# Determine which Docker tag to use (default: latest, or edge for development)
-DOCKER_TAG="${TALLYHUB_TAG:-latest}"
+# Determine which Docker tag to use (default: edge for latest main, or specify version)
+DOCKER_TAG="${TALLYHUB_TAG:-edge}"
 echo "📥 Pulling TallyHub image (tag: $DOCKER_TAG)..."
 docker pull ghcr.io/tallyhubpro/tallyhub:$DOCKER_TAG
 echo ""
@@ -103,8 +103,12 @@ echo "📊 View logs:"
 echo "   sudo docker logs -f tallyhub"
 echo ""
 echo "🔄 Update TallyHub:"
-echo "   curl -fsSL https://raw.githubusercontent.com/tallyhubpro/Tallyhub/main/install.sh | bash"
-echo "   (use TALLYHUB_TAG=edge for latest development build)"
+echo "   curl -fsSL https://raw.githubusercontent.com/tallyhubpro/Tallyhub/main/install.sh | sudo bash"
+echo ""
+echo "💡 Install specific version:"
+echo "   TALLYHUB_TAG=latest - Stable release"
+echo "   TALLYHUB_TAG=edge - Latest development (default)"
+echo "   TALLYHUB_TAG=v1.2.3 - Specific version"
 echo ""
 echo "🛑 Stop TallyHub:"
 echo "   sudo docker stop tallyhub"

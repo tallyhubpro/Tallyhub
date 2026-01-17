@@ -39,8 +39,6 @@ jobs:
           images: |
             ghcr.io/tallyhubpro/tallyhub
           tags: |
-            # Latest tag for main branch builds
-            type=raw,value=latest,enable={{is_default_branch}}
             # Edge tag for latest main commit builds
             type=raw,value=edge
             # Branch name tag (e.g., main)
