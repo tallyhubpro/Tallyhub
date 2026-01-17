@@ -48,34 +48,39 @@ docker compose logs -f
 
 **For detailed macOS instructions, see [MACOS_GUIDE.md](MACOS_GUIDE.md)**
 
-## Use prebuilt image (no build on Pi)
-You can pull a prebuilt multi-arch image from GitHub Container Registry (GHCR):
+## Quick Install (Raspberry Pi / Linux)
+
+### One-liner installation (recommended)
+This single command installs Docker (if needed) and starts TallyHub:
 
 ```bash
-# One-liner installation (recommended for Raspberry Pi)
-# This creates directories and starts TallyHub with host networking
-mkdir -p ~/tallyhub/logs ~/tallyhub/public/firmware && \
-cd ~/tallyhub && \
-touch device-storage.json device-assignments.json && \
-docker pull ghcr.io/tallyhubpro/tallyhub:latest && \
-docker run -d \
+bash -c 'set -e; command -v docker >/dev/null || (curl -fsSL https://get.docker.com | sh); sudo mkdir -p /opt/tallyhub/logs /opt/tallyhub/public/firmware; sudo touch /opt/tallyhub/device-storage.json /opt/tallyhub/device-assignments.json; sudo docker pull ghcr.io/tallyhubpro/tallyhub:latest; sudo docker rm -f tallyhub 2>/dev/null || true; sudo docker run -d --name tallyhub --restart unless-stopped --network host -e NODE_ENV=production -e TZ=UTC -v /opt/tallyhub/device-storage.json:/app/device-storage.json -v /opt/tallyhub/device-assignments.json:/app/device-assignments.json -v /opt/tallyhub/logs:/app/logs -v /opt/tallyhub/public/firmware:/app/public/firmware:ro ghcr.io/tallyhubpro/tallyhub:latest'
+```
+
+**What it does:**
+- ✅ Installs Docker if not present
+- ✅ Creates `/opt/tallyhub` directory structure
+- ✅ Pulls latest TallyHub image from GitHub
+- ✅ Removes old container if exists (safe updates)
+- ✅ Starts TallyHub with host networking (best for mDNS/UDP)
+- ✅ Auto-restart on reboot
+
+**Optional: Add GitHub token for firmware downloads**
+```bash
+# Stop existing container and add GitHub token (higher rate limits for firmware downloads)
+sudo docker rm -f tallyhub && \
+sudo docker run -d \
   --name tallyhub \
   --restart unless-stopped \
   --network host \
   -e NODE_ENV=production \
   -e TZ=UTC \
-  -v ~/tallyhub/device-storage.json:/app/device-storage.json \
-  -v ~/tallyhub/device-assignments.json:/app/device-assignments.json \
-  -v ~/tallyhub/logs:/app/logs \
+  -e GITHUB_TOKEN=ghp_your_token_here \
+  -v /opt/tallyhub/device-storage.json:/app/device-storage.json \
+  -v /opt/tallyhub/device-assignments.json:/app/device-assignments.json \
+  -v /opt/tallyhub/logs:/app/logs \
+  -v /opt/tallyhub/public/firmware:/app/public/firmware:ro \
   ghcr.io/tallyhubpro/tallyhub:latest
-
-# Optional: Add GitHub token for firmware downloads (higher rate limits)
-# docker rm -f tallyhub && docker run -d --name tallyhub --restart unless-stopped --network host \
-#   -e NODE_ENV=production -e TZ=UTC -e GITHUB_TOKEN=ghp_your_token_here \
-#   -v ~/tallyhub/device-storage.json:/app/device-storage.json \
-#   -v ~/tallyhub/device-assignments.json:/app/device-assignments.json \
-#   -v ~/tallyhub/logs:/app/logs \
-#   ghcr.io/tallyhubpro/tallyhub:latest
 ```
 
 If you cannot use host networking, replace `--network host` with:
