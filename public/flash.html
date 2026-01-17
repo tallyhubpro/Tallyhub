@@ -426,6 +426,10 @@
                         <input type="radio" name="firmwareSource" value="custom">
                         <span>Browse for Custom .bin File</span>
                     </label>
+                    <label class="firmware-option">
+                        <input type="radio" name="firmwareSource" value="github">
+                        <span>Download from GitHub (online)</span>
+                    </label>
                 </div>
                 
                 <div id="customFileSection" style="display: none; margin-top: 1rem;">
@@ -438,6 +442,14 @@
                     <div id="fileSelected" class="file-selected" style="display: none;">
                         <span>📄 Selected: </span><span id="selectedFileName"></span>
                         <span> (</span><span id="selectedFileSize"></span><span>)</span>
+                    </div>
+                </div>
+                <div id="githubOptions" style="display:none; margin-top:1rem;">
+                    <label style="font-size:0.85rem; display:block; margin-bottom:0.25rem;">GitHub branch (optional)</label>
+                    <input id="githubBranch" type="text" placeholder="main" style="padding:0.5rem; width:100%; border-radius:6px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.03); color:#fff;" />
+                    <div style="font-size:0.8rem; opacity:0.9; margin-top:0.5rem;">
+                        Downloads firmware from <code>tallyhubpro/Tallyhub</code> repository. 
+                        Leave blank to use the <code>main</code> branch.
                     </div>
                 </div>
             </div>
@@ -466,7 +478,7 @@
                 <div id="status" class="status"></div>
             </div>
 
-            <div class="note">
+            <div class="note" id="browserRequirements">
                 <h4>💡 Browser Requirements & Usage</h4>
                 <p><strong>Browser:</strong> This flasher requires a Chromium-based browser (Chrome, Edge, Opera) with Web Serial API support.</p>
                 <p><strong>Built-in Firmware:</strong> Use the recommended firmware that comes with IP display improvements.</p>
@@ -474,9 +486,13 @@
                 <p><strong>Connection:</strong> Make sure your device is connected via USB and the appropriate drivers are installed.</p>
             </div>
 
-            <div id="serverFlashContainer" class="card" style="background:rgba(0,0,0,0.25);">
-                <h3>🖥️ Server Flash Mode <span class="badge">BETA</span></h3>
-                <p style="opacity:0.85; font-size:0.9rem; margin-bottom:0.75rem;">Use this when Web Serial is unavailable or the device is plugged into the Tally Hub server (e.g. Raspberry Pi). The server must have <code>esptool.py</code> installed.</p>
+            <div id="serverFlashContainer" class="card" style="background:rgba(0,0,0,0.25); display:none;">
+                <h3>🖥️ Server Flash Mode <span class="badge">Raspberry Pi</span></h3>
+                <p style="opacity:0.85; font-size:0.9rem; margin-bottom:0.75rem;">
+                    <strong>✅ Using Server-Side Flashing</strong><br>
+                    Your browser doesn't support Web Serial API (expected on Raspberry Pi). 
+                    Devices connected to the server's USB ports can be flashed using this mode.
+                </p>
                 <div class="inline-group">
                     <div style="flex:1; min-width:160px;">
                         <label style="font-size:0.75rem; opacity:0.8;">Serial Port</label>
@@ -665,6 +681,40 @@
                     showStatus('Reading custom firmware file...', 'info');
                     firmwareData = await customFirmwareFile.arrayBuffer();
                     firmwareSize = (firmwareData.byteLength / 1024).toFixed(1);
+                } else if (firmwareSource === 'github') {
+                    // Download from GitHub using server proxy
+                    flashButton.textContent = '⬇️ Downloading from GitHub...';
+                    showStatus('Downloading firmware from GitHub via server...', 'info');
+                    try {
+                        const branchInput = document.getElementById('githubBranch').value || 'main';
+                        
+                        // Use server proxy endpoint
+                        const apiUrl = `/api/flash/github-firmware?device=${encodeURIComponent(selectedDevice)}&branch=${encodeURIComponent(branchInput)}`;
+                        const response = await fetch(apiUrl);
+                        
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.error || `Server error: ${response.status}`);
+                        }
+                        
+                        const result = await response.json();
+                        if (!result.success || !result.firmware?.url) {
+                            throw new Error('Invalid response from server');
+                        }
+                        
+                        showStatus(`Found firmware: ${result.firmware.file} (${(result.firmware.size / 1024).toFixed(1)} KB)`, 'info');
+                        
+                        // Download the binary from GitHub
+                        const binResponse = await fetch(result.firmware.url);
+                        if (!binResponse.ok) {
+                            throw new Error(`Failed to download binary: ${binResponse.status}`);
+                        }
+                        
+                        firmwareData = await binResponse.arrayBuffer();
+                        firmwareSize = (firmwareData.byteLength / 1024).toFixed(1);
+                    } catch (ghErr) {
+                        throw new Error('GitHub download failed: ' + ghErr.message);
+                    }
                 } else {
                     // Download built-in firmware
                     flashButton.textContent = '⬇️ Downloading...';
@@ -820,8 +870,13 @@
             serverFlashEl.style.display = 'block';
             toggleModeBtn.style.display = navigator.serial ? 'inline-block' : 'none';
             document.getElementById('flashButton').disabled = true;
+            
+            // Hide browser requirements note when in server mode
+            const browserReqEl = document.getElementById('browserRequirements');
+            if (browserReqEl) browserReqEl.style.display = 'none';
+            
             if(autoReason){
-                showStatus(autoReason + ' – switched to Server Flash Mode.', 'warning');
+                showStatus(autoReason + ' – using Server Flash Mode.', 'info');
             }
             refreshServerLists();
         }
@@ -834,9 +889,11 @@
         }
 
         toggleModeBtn?.addEventListener('click', () => {
+            const browserReqEl = document.getElementById('browserRequirements');
             if(serverMode){
                 serverMode = false;
                 serverFlashEl.style.display = 'none';
+                if (browserReqEl) browserReqEl.style.display = 'block';
                 showStatus('Returned to Web Serial mode. Select device and flash via browser.', 'info');
                 if(selectedDevice) document.getElementById('flashButton').disabled = false;
                 toggleModeBtn.textContent = 'Use Server Flash Mode';
@@ -940,16 +997,24 @@
         refreshBtn?.addEventListener('click', refreshServerLists);
         startBtn?.addEventListener('click', startServerFlash);
 
-        // Handle firmware source selection
+        // Handle firmware source selection (show/hide custom/github sections)
         document.querySelectorAll('input[name="firmwareSource"]').forEach(radio => {
             radio.addEventListener('change', function() {
                 const customSection = document.getElementById('customFileSection');
+                const githubSection = document.getElementById('githubOptions');
                 if (this.value === 'custom') {
                     customSection.style.display = 'block';
+                    githubSection.style.display = 'none';
+                } else if (this.value === 'github') {
+                    customSection.style.display = 'none';
+                    document.getElementById('fileSelected').style.display = 'none';
+                    customFirmwareFile = null;
+                    githubSection.style.display = 'block';
                 } else {
                     customSection.style.display = 'none';
                     customFirmwareFile = null;
                     document.getElementById('fileSelected').style.display = 'none';
+                    githubSection.style.display = 'none';
                 }
             });
         });
