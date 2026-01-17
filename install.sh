@@ -11,6 +11,13 @@ echo "  TallyHub Installer"
 echo "=========================================="
 echo ""
 
+# Check if running as root or with sudo
+if [ "$EUID" -ne 0 ]; then 
+    echo "⚠️  This script requires sudo privileges."
+    echo "   Please run: curl -fsSL https://raw.githubusercontent.com/tallyhubpro/Tallyhub/main/install.sh | sudo bash"
+    exit 1
+fi
+
 # Check if running on Linux
 if [[ "$OSTYPE" != "linux-gnu"* ]]; then
     echo "❌ Error: This installer is for Linux/Raspberry Pi only."
@@ -36,7 +43,10 @@ if ! command -v docker &> /dev/null; then
     echo ""
 else
     echo "✅ Docker already installed"
-    echo ""
+    e'{}' > /opt/tallyhub/device-storage.json
+echo '[]' > /opt/tallyhub/device-assignments.json
+chmod 666 /opt/tallyhub/device-storage.json /opt/tallyhub/device-assignments.json
+echo cho ""
 fi
 
 # Create directories
