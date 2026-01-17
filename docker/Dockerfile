@@ -31,9 +31,20 @@ ENV TZ=UTC
 
 # Install esptool for server-side flashing (needed for Raspberry Pi browser)
 # Keep build dependencies as they're small and avoid cleanup complexity
-RUN apk add --no-cache python3 py3-pip gcc musl-dev python3-dev libffi-dev && \
-    pip3 install --break-system-packages --no-cache-dir esptool && \
-    rm -rf /root/.cache
+# Alpine + ARM/v7 needs Rust/Cargo and OpenSSL headers to build cryptography
+RUN apk add --no-cache \
+    python3 \
+    py3-pip \
+    gcc \
+    musl-dev \
+    python3-dev \
+    libffi-dev \
+    openssl-dev \
+    pkgconf \
+    rust \
+    cargo \
+  && pip3 install --break-system-packages --no-cache-dir esptool \
+  && rm -rf /root/.cache
 
 # Copy built app, production deps, and static assets
 COPY --from=builder /app/dist ./dist
