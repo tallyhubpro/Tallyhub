@@ -43,16 +43,16 @@ if ! command -v docker &> /dev/null; then
     echo ""
 else
     echo "✅ Docker already installed"
-    e'{}' > /opt/tallyhub/device-storage.json
-echo '[]' > /opt/tallyhub/device-assignments.json
-chmod 666 /opt/tallyhub/device-storage.json /opt/tallyhub/device-assignments.json
-echo cho ""
+    echo ""
 fi
 
 # Create directories
 echo "📁 Creating TallyHub directories in /opt/tallyhub..."
 mkdir -p /opt/tallyhub/logs /opt/tallyhub/public/firmware
-touch /opt/tallyhub/device-storage.json /opt/tallyhub/device-assignments.json
+echo '{}' > /opt/tallyhub/device-storage.json
+echo '[]' > /opt/tallyhub/device-assignments.json
+chmod 666 /opt/tallyhub/device-storage.json /opt/tallyhub/device-assignments.json
+echo ""
 echo ""
 
 # Determine which Docker tag to use (default: edge for latest main, or specify version)
