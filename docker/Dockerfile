@@ -31,7 +31,7 @@ ENV TZ=UTC
 
 # Install esptool for server-side flashing (needed for Raspberry Pi browser)
 RUN apk add --no-cache python3 py3-pip && \
-    pip3 install --no-cache-dir esptool && \
+    pip3 install --break-system-packages --no-cache-dir esptool && \
     rm -rf /root/.cache
 
 # Copy built app, production deps, and static assets
