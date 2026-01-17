@@ -4,13 +4,13 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'docs/flash.html'
+      - 'public/flash.html'
       - '.github/workflows/sync-flasher.yml'
   workflow_dispatch:
 
 jobs:
   sync:
-    name: Copy docs/flash.html to tallyhubpro.github.io
+    name: Copy public/flash.html to tallyhubpro.github.io
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source repo
@@ -28,8 +28,8 @@ jobs:
 
       - name: Copy flasher page
         run: |
-          cp docs/flash.html user-site/flash.html
-          echo "Copied flash.html to user-site repo root"
+          cp public/flash.html user-site/flash.html
+          echo "Copied flash.html from public/ to user-site repo root"
 
       - name: Commit & push if changed
         working-directory: user-site
