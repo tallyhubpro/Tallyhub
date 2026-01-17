@@ -633,7 +633,11 @@
             }
 
             if (!navigator.serial) {
-                // Gracefully switch to Server Flash Mode rather than erroring
+                if (/\.github\.io$/.test(location.hostname)) {
+                    showStatus('Web Serial API not available. Please use Chrome, Edge, or Opera.', 'error');
+                    return;
+                }
+                // Server available case (non-GitHub Pages)
                 enableServerMode('⚠️ Web Serial API not available');
                 showStatus('Web Serial unavailable — switched to Server Flash Mode.', 'info');
                 return;
@@ -866,9 +870,17 @@
         // ---- Web Serial vs Server Fallback ----
         const serverFlashEl = document.getElementById('serverFlashContainer');
         const toggleModeBtn = document.getElementById('toggleModeBtn');
+        const isGitHubPages = /\.github\.io$/.test(location.hostname);
         let serverMode = false;
 
         function enableServerMode(autoReason){
+            if (isGitHubPages) {
+                // GitHub Pages has no server endpoints; keep Web Serial only
+                showStatus((autoReason || 'Info') + ' – Web Serial only on GitHub Pages. Use Chrome/Edge/Opera.', 'info');
+                const browserReqEl = document.getElementById('browserRequirements');
+                if (browserReqEl) browserReqEl.style.display = 'block';
+                return;
+            }
             serverMode = true;
             serverFlashEl.style.display = 'block';
             toggleModeBtn.style.display = navigator.serial ? 'inline-block' : 'none';
@@ -885,7 +897,11 @@
         }
 
         if (!navigator.serial) {
-            enableServerMode('⚠️ Web Serial API not available');
+            if (isGitHubPages) {
+                showStatus('Web Serial API not available. Please use Chrome, Edge, or Opera.', 'error');
+            } else {
+                enableServerMode('⚠️ Web Serial API not available');
+            }
         } else {
             toggleModeBtn.textContent = 'Use Server Flash Mode';
             toggleModeBtn.style.display = 'inline-block';
@@ -911,7 +927,11 @@
                 if(selectedDevice) document.getElementById('flashButton').disabled = false;
                 toggleModeBtn.textContent = 'Use Server Flash Mode';
             } else {
-                enableServerMode('🔁 Manual switch');
+                if (isGitHubPages) {
+                    showStatus('Server mode not available on GitHub Pages. Use Web Serial in Chrome/Edge/Opera.', 'warning');
+                } else {
+                    enableServerMode('🔁 Manual switch');
+                }
                 toggleModeBtn.textContent = 'Switch to Web Serial Mode';
             }
         });

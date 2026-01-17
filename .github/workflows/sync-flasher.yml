@@ -29,7 +29,9 @@ jobs:
       - name: Copy flasher page
         run: |
           cp public/flash.html user-site/flash.html
-          echo "Copied flash.html from public/ to user-site repo root"
+          mkdir -p user-site/firmware
+          cp -r public/firmware/* user-site/firmware/ 2>/dev/null || true
+          echo "Copied flash.html and firmware/ to user-site repo"
 
       - name: Commit & push if changed
         working-directory: user-site
