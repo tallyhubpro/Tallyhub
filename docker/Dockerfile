@@ -29,6 +29,11 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV TZ=UTC
 
+# Install esptool for server-side flashing (needed for Raspberry Pi browser)
+RUN apk add --no-cache python3 py3-pip && \
+    pip3 install --no-cache-dir esptool && \
+    rm -rf /root/.cache
+
 # Copy built app, production deps, and static assets
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/public ./public
