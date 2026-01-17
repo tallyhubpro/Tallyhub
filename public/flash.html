@@ -619,6 +619,20 @@
             progressText.textContent = `${Math.round(percent)}%`;
         }
 
+        // Resolve firmware path for GitHub Pages project sites where absolute paths break
+        function resolveFirmwarePath(p){
+            if (!p) return p;
+            if (p.startsWith('/')){
+                const parts = location.pathname.split('/').filter(Boolean);
+                // If served as a project page (e.g., /RepoName/flash.html), prefix with repo segment
+                if (parts.length >= 1){
+                    const base = '/' + parts[0];
+                    return base + p;
+                }
+            }
+            return p;
+        }
+
         window.flashFirmware = async function() {
             if (!selectedDevice) {
                 showStatus('Please select a device type first', 'error');
@@ -725,14 +739,15 @@
                     // Download built-in firmware
                     flashButton.textContent = '⬇️ Downloading...';
                     showStatus('Downloading built-in firmware...', 'info');
-                    const response = await fetch(config.firmware + '?t=' + Date.now());
+                    const fwPath = resolveFirmwarePath(config.firmware);
+                    const response = await fetch(fwPath + '?t=' + Date.now());
                     if (!response.ok) {
                         if(response.status === 404){
                             const here = location.pathname;
                             const hint = here.startsWith('/Tallyhub/')
                                 ? 'Ensure firmware directory exists under docs/ and was published to Pages.'
                                 : 'If hosted under a sub-path (e.g. /Tallyhub/), remove leading slash from firmware paths.';
-                            throw new Error(`Failed to download firmware: 404\nFile: ${config.firmware}\nHint: ${hint}`);
+                            throw new Error(`Failed to download firmware: 404\nFile: ${fwPath}\nHint: ${hint}`);
                         }
                         throw new Error(`Failed to download firmware: ${response.status}`);
                     }
