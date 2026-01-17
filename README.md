@@ -15,15 +15,25 @@
 
 ## 🚀 Quick Start
 
-### One-liner install on Raspberry Pi (Docker)
+### Raspberry Pi / Linux (Recommended)
 
-Copy and paste this on your Pi to install Docker (if needed), pull the image, and run Tally Hub with host networking and persistent volumes:
+Install TallyHub with a single command:
 
 ```bash
-bash -c 'set -e; command -v docker >/dev/null || (curl -fsSL https://get.docker.com | sh); sudo mkdir -p /opt/tallyhub/logs /opt/tallyhub/public/firmware; sudo touch /opt/tallyhub/device-storage.json /opt/tallyhub/device-assignments.json; sudo docker pull ghcr.io/tallyhubpro/tallyhub:latest; sudo docker rm -f tallyhub 2>/dev/null || true; sudo docker run -d --name tallyhub --restart unless-stopped --network host -e NODE_ENV=production -e TZ=UTC -v /opt/tallyhub/device-storage.json:/app/device-storage.json -v /opt/tallyhub/device-assignments.json:/app/device-assignments.json -v /opt/tallyhub/logs:/app/logs -v /opt/tallyhub/public/firmware:/app/public/firmware:ro ghcr.io/tallyhubpro/tallyhub:latest'
+curl -fsSL https://raw.githubusercontent.com/tallyhubpro/Tallyhub/main/install.sh | sudo bash
 ```
 
-Then open: `http://<pi-ip>:3000/` (admin at `/admin`, tally at `/tally`). If the package is private, login first:
+This will:
+- ✅ Install Docker (if needed)
+- ✅ Pull latest TallyHub image
+- ✅ Create directories and volumes
+- ✅ Start TallyHub with auto-restart
+
+Then open: `http://<pi-ip>:3000/` (admin at `/admin`, tally at `/tally`, flasher at `/flash.html`)
+
+**Update TallyHub:** Re-run the same command to pull the latest version. 
+
+If the package is private, login first:
 
 ```bash
 echo <TOKEN> | docker login ghcr.io -u <USER> --password-stdin
@@ -49,14 +59,7 @@ echo <TOKEN> | docker login ghcr.io -u <USER> --password-stdin
 3. **Start the development server**
    ```bash
    npm run dev
-   ## � Firmware Flashing
-
-   The project now supports two firmware sources only:
-
-   - Built-in firmware bundled under `public/firmware/<device>/firmware-merged.bin`
-   - Custom `.bin` uploaded from your computer
-
-   Online flashing via GitHub manifest has been removed to simplify the flow and avoid CORS/network issues.
+   ```
 
 4. **Open your browser**
    - Navigate to `http://localhost:3000`
@@ -100,6 +103,7 @@ docker run -d \
    --network host \
    -e NODE_ENV=production \
    -e TZ=UTC \
+   -e GITHUB_TOKEN=ghp_your_token_here \
    -v /opt/tallyhub/device-storage.json:/app/device-storage.json \
    -v /opt/tallyhub/device-assignments.json:/app/device-assignments.json \
    -v /opt/tallyhub/logs:/app/logs \
@@ -108,6 +112,7 @@ docker run -d \
 ```
 
 Notes:
+- `GITHUB_TOKEN` is optional - only needed for GitHub firmware downloads (higher rate limits & private repos). Remove if not needed.
 - If the package is private, authenticate first: `echo <TOKEN> | docker login ghcr.io -u <USER> --password-stdin`.
 - Host networking is preferred on Raspberry Pi so Bonjour/mDNS and UDP discovery work correctly. If you cannot use host networking, publish ports instead:
 
@@ -148,7 +153,58 @@ Tally Hub is a professional tally light system that works with OBS Studio, vMix,
 
 <!-- Documentation site intentionally not linked; refer to repo and releases. -->
 
+## 🔧 Firmware Flashing
 
+Tally Hub includes a built-in web-based firmware flasher at `/flash.html` that supports three firmware sources:
+
+### Firmware Sources
+
+1. **Built-in Firmware** (Recommended)
+   - Latest stable firmware bundled with Tally Hub
+   - Located at `public/firmware/<device>/firmware-merged.bin`
+   - No internet connection required
+
+2. **GitHub Download** (Online)
+   - Downloads latest firmware directly from GitHub repository
+   - Always up-to-date with main branch
+   - Optional branch selection for testing
+   - Server-side proxy for security and reliability
+
+3. **Custom .bin File**
+   - Upload your own compiled firmware
+   - Perfect for development and testing
+   - Supports any ESP32-compatible .bin file
+
+### Supported Devices
+
+- **ESP32-1732S019** - 1.9" display, budget-friendly option
+- **M5Stick C Plus 1.1** - 1.14" display, premium build
+- **M5Stick C Plus2** - Latest hardware with improved battery
+
+### Usage
+
+1. Navigate to `http://<hub-ip>:3000/flash.html`
+2. Select your device type
+3. Choose firmware source:
+   - **Built-in**: Recommended for most users
+   - **GitHub**: Get the latest from `tallyhubpro/Tallyhub` repository
+   - **Custom**: Upload your own .bin file
+4. Connect device via USB-C
+5. Click "Flash Firmware" and follow on-screen instructions
+
+### GitHub Firmware Configuration
+
+The server supports optional `GITHUB_TOKEN` environment variable for:
+- Higher API rate limits (5000/hour vs 60/hour)
+- Private repository access
+- Improved reliability
+
+```bash
+# Optional: Set GitHub token
+export GITHUB_TOKEN=ghp_your_token_here
+```
+
+For more details, see [GITHUB_FIRMWARE_FEATURE.md](GITHUB_FIRMWARE_FEATURE.md).
 
 ## 🏭 Production Run
 
