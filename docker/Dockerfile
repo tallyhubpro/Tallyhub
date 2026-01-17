@@ -30,9 +30,11 @@ ENV NODE_ENV=production
 ENV TZ=UTC
 
 # Install esptool for server-side flashing (needed for Raspberry Pi browser)
-# Build deps required for cffi (esptool dependency) on ARM platforms
-RUN apk add --no-cache python3 py3-pip gcc musl-dev python3-dev libffi-dev && \
-    pip3 install --break-system-packages --no-cache-dir esptool && \
+# Use virtual environment to avoid PEP 668 restrictions
+RUN apk add --no-cache python3 py3-pip py3-virtualenv gcc musl-dev python3-dev libffi-dev && \
+    python3 -m venv /opt/esptool && \
+    /opt/esptool/bin/pip install --no-cache-dir esptool && \
+    ln -s /opt/esptool/bin/esptool.py /usr/local/bin/esptool.py && \
     apk del gcc musl-dev python3-dev libffi-dev && \
     rm -rf /root/.cache
 
