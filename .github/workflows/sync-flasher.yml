@@ -13,6 +13,16 @@ jobs:
     name: Copy public/flash.html to tallyhubpro.github.io
     runs-on: ubuntu-latest
     steps:
+      - name: Check for required token
+        run: |
+          if [ -z "${{ secrets.PAGES_SYNC_TOKEN }}" ]; then
+            echo "::error::PAGES_SYNC_TOKEN secret is not set. Please add it in repository settings."
+            echo "::error::Go to Settings → Secrets and variables → Actions → New repository secret"
+            echo "::error::Name: PAGES_SYNC_TOKEN"
+            echo "::error::Value: A Personal Access Token with 'repo' scope"
+            exit 1
+          fi
+      
       - name: Checkout source repo
         uses: actions/checkout@v4
         with:
@@ -36,13 +46,17 @@ jobs:
       - name: Commit & push if changed
         working-directory: user-site
         run: |
-          if git diff --quiet --exit-code flash.html; then
-            echo "No changes to flash.html; skipping commit."; exit 0; fi
           git config user.name "tallyhub-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add flash.html
-          git commit -m "chore: sync flash.html from Tallyhub repo" || echo "Nothing to commit"
-          git push origin HEAD:main
+          git add flash.html firmware/
+          
+          if git diff --quiet --staged; then
+            echo "No changes detected; skipping commit."
+          else
+            git commit -m "chore: sync flash.html and firmware from Tallyhub repo"
+            git push origin HEAD:main
+            echo "✅ Successfully synced files to tallyhubpro.github.io"
+          fi
 
       - name: Summary
         run: |
