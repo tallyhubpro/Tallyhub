@@ -849,15 +849,16 @@
 
         function delay(ms){ return new Promise(r=>setTimeout(r, ms)); }
 
-        // ---- Insecure Context Messaging ----
+        // ---- Insecure Context Messaging ---- (moved below initialization)
+        // Defer insecure-context handling until after server mode helpers are initialized
+        let _pendingInsecureReason = null;
         (function(){
             const insecure = !window.isSecureContext && location.protocol !== 'https:' && location.hostname !== 'localhost';
             if(insecure){
                 if(navigator.serial){
-                    showStatus('⚠️ This page is not a secure context. Some serial features may be blocked soon by browsers.', 'warning');
+                    _pendingInsecureReason = '⚠️ This page is not a secure context. Some serial features may be blocked soon by browsers.';
                 } else {
-                    enableServerMode('🌐 Insecure remote origin blocks Web Serial');
-                    showStatus('Remote HTTP origin prevents Web Serial. Using Server Flash Mode. For direct flashing, host this page over HTTPS or use localhost.', 'warning');
+                    _pendingInsecureReason = '🌐 Insecure remote origin blocks Web Serial';
                 }
             }
         })();
@@ -888,6 +889,16 @@
         } else {
             toggleModeBtn.textContent = 'Use Server Flash Mode';
             toggleModeBtn.style.display = 'inline-block';
+        }
+
+        // Now apply any pending insecure-context messaging or fallback
+        if (_pendingInsecureReason){
+            if(navigator.serial){
+                showStatus(_pendingInsecureReason, 'warning');
+            } else {
+                enableServerMode(_pendingInsecureReason);
+                showStatus('Remote HTTP origin prevents Web Serial. Using Server Flash Mode. For direct flashing, host this page over HTTPS or use localhost.', 'warning');
+            }
         }
 
         toggleModeBtn?.addEventListener('click', () => {
