@@ -61,6 +61,8 @@ docker run -d \
   --name tallyhub \
   --restart unless-stopped \
   --network host \
+    --privileged \
+    -v /dev:/dev \
   -e NODE_ENV=production \
   -e TZ=UTC \
   -v /opt/tallyhub/device-storage.json:/app/device-storage.json \
@@ -82,6 +84,9 @@ echo "📱 Access TallyHub at:"
 echo "   http://$IP:3000"
 echo "   http://$IP:3000/admin"
 echo "   http://$IP:3000/flash.html"
+echo ""
+echo "🔌 Flashing tip:"
+echo "   Plug your ESP32 via USB; ports appear in Server Flash Mode."
 echo ""
 echo "📊 View logs:"
 echo "   sudo docker logs -f tallyhub"

@@ -123,10 +123,12 @@ export class FlashManager {
     this.append(job, `Starting flash on ${job.port}`);
     try {
       const esptoolCmd = await this.resolveEsptool();
-      const args = ['--chip', job.chip, '--port', job.port, '--baud', '460800', 'write_flash', '-z', '0x0', job.firmwarePath];
-      this.append(job, `Command: ${esptoolCmd} ${args.join(' ')}`);
+      const baseArgs = ['--chip', job.chip, '--port', job.port, '--baud', '460800', 'write_flash', '-z', '0x0', job.firmwarePath];
+      const isPythonModule = esptoolCmd === 'python3';
+      const spawnArgs = isPythonModule ? ['-m', 'esptool', ...baseArgs] : baseArgs;
+      this.append(job, `Command: ${esptoolCmd} ${spawnArgs.join(' ')}`);
 
-      const child = spawn(esptoolCmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+      const child = spawn(esptoolCmd, spawnArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
       let stderrBuf = '';
 
       child.stdout.on('data', (d) => {

@@ -633,7 +633,9 @@
             }
 
             if (!navigator.serial) {
-                showStatus('Web Serial API not supported. Please use Chrome, Edge, or Opera browser.', 'error');
+                // Gracefully switch to Server Flash Mode rather than erroring
+                enableServerMode('⚠️ Web Serial API not available');
+                showStatus('Web Serial unavailable — switched to Server Flash Mode.', 'info');
                 return;
             }
 

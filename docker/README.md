@@ -54,7 +54,7 @@ docker compose logs -f
 This single command installs Docker (if needed) and starts TallyHub:
 
 ```bash
-bash -c 'set -e; command -v docker >/dev/null || (curl -fsSL https://get.docker.com | sh); sudo mkdir -p /opt/tallyhub/logs /opt/tallyhub/public/firmware; sudo touch /opt/tallyhub/device-storage.json /opt/tallyhub/device-assignments.json; sudo docker pull ghcr.io/tallyhubpro/tallyhub:latest; sudo docker rm -f tallyhub 2>/dev/null || true; sudo docker run -d --name tallyhub --restart unless-stopped --network host -e NODE_ENV=production -e TZ=UTC -v /opt/tallyhub/device-storage.json:/app/device-storage.json -v /opt/tallyhub/device-assignments.json:/app/device-assignments.json -v /opt/tallyhub/logs:/app/logs -v /opt/tallyhub/public/firmware:/app/public/firmware:ro ghcr.io/tallyhubpro/tallyhub:latest'
+bash -c 'set -e; command -v docker >/dev/null || (curl -fsSL https://get.docker.com | sh); sudo mkdir -p /opt/tallyhub/logs /opt/tallyhub/public/firmware; sudo touch /opt/tallyhub/device-storage.json /opt/tallyhub/device-assignments.json; sudo docker pull ghcr.io/tallyhubpro/tallyhub:latest; sudo docker rm -f tallyhub 2>/dev/null || true; sudo docker run -d --name tallyhub --restart unless-stopped --network host --privileged -v /dev:/dev -e NODE_ENV=production -e TZ=UTC -v /opt/tallyhub/device-storage.json:/app/device-storage.json -v /opt/tallyhub/device-assignments.json:/app/device-assignments.json -v /opt/tallyhub/logs:/app/logs -v /opt/tallyhub/public/firmware:/app/public/firmware:ro ghcr.io/tallyhubpro/tallyhub:latest'
 ```
 
 **What it does:**
@@ -73,6 +73,8 @@ sudo docker run -d \
   --name tallyhub \
   --restart unless-stopped \
   --network host \
+  --privileged \
+  -v /dev:/dev \
   -e NODE_ENV=production \
   -e TZ=UTC \
   -e GITHUB_TOKEN=ghp_your_token_here \
@@ -134,3 +136,4 @@ docker compose up -d
 - Healthcheck failing: ensure the app is reachable at `http://127.0.0.1:3000/` inside the container.
 - mDNS not visible: make sure you are using `network_mode: host` on Raspberry Pi.
 - Permissions on volumes: if you see permission errors, adjust ownership on the host files (e.g., `sudo chown -R $USER:$USER logs`).
+- No serial ports for flashing: ensure the container runs with `--privileged` and mounts `/dev` (`-v /dev:/dev`). Plug your ESP32 via USB; it should show as `/dev/ttyUSB0` or `/dev/ttyACM0`.
