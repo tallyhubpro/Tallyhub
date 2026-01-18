@@ -26,6 +26,15 @@ jobs:
       - name: Install dependencies
         run: npm install
       
+      - name: Copy server files to Windows app
+        run: |
+          # Copy server source to Windows platform
+          mkdir -p platforms/windows/server/src
+          cp -r src/* platforms/windows/server/src/
+          cp -r public platforms/windows/server/
+          cp package.json platforms/windows/server/
+          cp tsconfig.json platforms/windows/server/
+      
       - name: Build Windows app
         run: |
           cd platforms/windows
@@ -59,6 +68,15 @@ jobs:
       
       - name: Install dependencies
         run: npm install
+      
+      - name: Copy server files to macOS app
+        run: |
+          # Copy server source to macOS platform
+          mkdir -p platforms/macos/server/src
+          cp -r src/* platforms/macos/server/src/
+          cp -r public platforms/macos/server/
+          cp package.json platforms/macos/server/
+          cp tsconfig.json platforms/macos/server/
       
       - name: Build macOS app
         run: |
