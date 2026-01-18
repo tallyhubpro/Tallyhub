@@ -80,16 +80,7 @@
       ],
       "darkModeSupport": true,
       "gatekeeperAssess": false,
-      "hardenedRuntime": false,
-      "identity": null,
-      "signIgnore": [
-        ".*"
-      ],
-      "extendInfo": {
-        "NSAppleEventsUsageDescription": "TallyHub needs to control system events for tally light management.",
-        "NSCameraUsageDescription": "TallyHub may access camera for device management.",
-        "NSMicrophoneUsageDescription": "TallyHub may access microphone for production workflows."
-      }
+      "hardenedRuntime": false
     },
     "dmg": {
       "title": "TallyHub Installer",
