@@ -48,7 +48,7 @@ fi
 
 # Create directories
 echo "📁 Creating TallyHub directories in /opt/tallyhub..."
-mkdir -p /opt/tallyhub/logs /opt/tallyhub/public/firmware
+mkdir -p /opt/tallyhub/logs
 echo '{}' > /opt/tallyhub/device-storage.json
 echo '[]' > /opt/tallyhub/device-assignments.json
 chmod 666 /opt/tallyhub/device-storage.json /opt/tallyhub/device-assignments.json
@@ -79,7 +79,6 @@ docker run -d \
   -v /opt/tallyhub/device-storage.json:/app/device-storage.json \
   -v /opt/tallyhub/device-assignments.json:/app/device-assignments.json \
   -v /opt/tallyhub/logs:/app/logs \
-  -v /opt/tallyhub/public/firmware:/app/public/firmware:ro \
   ghcr.io/tallyhubpro/tallyhub:$DOCKER_TAG
 
 echo ""
