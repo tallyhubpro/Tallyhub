@@ -21,8 +21,8 @@ export class TallyHub extends EventEmitter {
   private deviceAssignments: Map<string, DeviceAssignment> = new Map();
   // Missing properties that are referenced in the code
   private mixerConnections: Map<string, MixerConnection> = new Map();
-  private configPath: string = path.join(__dirname, '../../mixer-config.json');
-  private deviceStoragePath: string = path.join(__dirname, '../../device-storage.json');
+  private configPath: string = path.join(__dirname, '../../data/mixer-config.json');
+  private deviceStoragePath: string = path.join(__dirname, '../../data/device-storage.json');
   private deviceStorageSaveTimer: NodeJS.Timeout | null = null;
   private deviceStorageNeedsSave: boolean = false;
   private periodicSaveInterval: NodeJS.Timeout | null = null;
@@ -988,7 +988,7 @@ export class TallyHub extends EventEmitter {
     try {
       const assignments = Array.from(this.deviceAssignments.values());
       fs.writeFileSync(
-        path.join(__dirname, '../../device-assignments.json'),
+        path.join(__dirname, '../../data/device-assignments.json'),
         JSON.stringify(assignments, null, 2)
       );
       console.log('💾 Device assignments saved');
@@ -999,7 +999,7 @@ export class TallyHub extends EventEmitter {
 
   private loadDeviceAssignments(): void {
     try {
-      const assignmentsPath = path.join(__dirname, '../../device-assignments.json');
+      const assignmentsPath = path.join(__dirname, '../../data/device-assignments.json');
       if (fs.existsSync(assignmentsPath)) {
         const data = fs.readFileSync(assignmentsPath, 'utf8');
         const assignments: DeviceAssignment[] = JSON.parse(data);

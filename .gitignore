@@ -162,6 +162,12 @@ logs/
 tmp/
 temp/
 
+# Runtime data directory
+data/
+device-assignments.json
+device-storage.json
+mixer-config.json
+
 # Project-specific ignores
 .server.pid
 .venv/
