@@ -2,6 +2,7 @@ import { EventEmitter } from 'events';
 import { TallyState, TallyUpdate, MixerConnection, MixerStatusUpdate, TallyDevice, DeviceAssignment, MixerConfig } from '../types';
 import { OBSConnector } from './mixers/OBSConnector';
 import { VMixConnector } from './mixers/VMixConnector';
+import { ATEMConnector } from './mixers/ATEMConnector';
 import { WebSocketManager } from './WebSocketManager';
 import { UDPServer } from './UDPServer';
 import * as fs from 'fs';
@@ -10,7 +11,7 @@ import * as dgram from 'dgram';
 import * as net from 'net';
 
 export class TallyHub extends EventEmitter {
-  private mixers: Map<string, OBSConnector | VMixConnector> = new Map();
+  private mixers: Map<string, OBSConnector | VMixConnector | ATEMConnector> = new Map();
   private tallies: Map<string, TallyState> = new Map();
   private devices: Map<string, TallyDevice> = new Map();
   private webSocketManager!: WebSocketManager;
@@ -288,6 +289,9 @@ export class TallyHub extends EventEmitter {
       case 'vmix':
         mixer = new VMixConnector(connection);
         break;
+      case 'atem':
+        mixer = new ATEMConnector(connection);
+        break;
       default:
         throw new Error(`Unsupported mixer type: ${connection.type}`);
     }
@@ -385,10 +389,53 @@ export class TallyHub extends EventEmitter {
 
   private handleTallyUpdate(update: TallyUpdate): void {
     const existingTally = this.tallies.get(update.deviceId);
-    
+
+    // Derive a nicer display name for ATEM inputs if possible
+    let derivedName: string | undefined = existingTally?.name;
+    if (!derivedName) {
+      if (update.deviceId.startsWith('atem-input-')) {
+        // Attempt to map the numeric part to a friendlier label
+        const rawId = update.deviceId.replace('atem-input-', '');
+        // Common ATEM defaults – these were logged during input discovery
+        const defaultNameMap: Record<string, string> = {
+          '0': 'Black',
+          '1000': 'Color Bars',
+          '2001': 'Color 1',
+          '2002': 'Color 2',
+          '3010': 'Media Player 1',
+          '3011': 'Media Player 1 Key',
+          '8001': 'Output',
+          '8200': 'Webcam Out',
+          '9001': 'Multiview',
+          '9101': 'Recording Status',
+          '9102': 'Streaming Status',
+          '9103': 'Audio Status',
+          '10010': 'Program',
+          '10011': 'Preview'
+        };
+        // Camera inputs: 1..8 typical – label as Camera N if not in map and numeric
+        if (defaultNameMap[rawId]) {
+          derivedName = defaultNameMap[rawId];
+        } else if (/^\d+$/.test(rawId)) {
+          const camNum = parseInt(rawId, 10);
+            if (camNum >= 1 && camNum <= 12) {
+              derivedName = `Camera ${camNum}`;
+            }
+        }
+        // Fallback if still undefined
+        if (!derivedName) {
+          derivedName = `ATEM ${rawId}`;
+        }
+      } else if (update.deviceId.startsWith('obs-scene-')) {
+        derivedName = update.deviceId.replace('obs-scene-', '');
+      } else if (update.deviceId.startsWith('vmix-input-')) {
+        derivedName = update.deviceId.replace('vmix-input-', 'vMix ');
+      }
+    }
+
     const newTallyState: TallyState = {
       id: update.deviceId,
-      name: existingTally?.name || `Source ${update.deviceId}`,
+      name: derivedName || existingTally?.name || `Source ${update.deviceId}`,
       preview: update.preview,
       program: update.program,
       connected: true,
@@ -397,7 +444,7 @@ export class TallyHub extends EventEmitter {
       streaming: update.streaming
     };
 
-    // Overlay global OBS recording/streaming status (if available) on all sources, OR-merging with mixer flags
+    // Overlay global OBS recording/streaming status (if available) on all sources
     const obsStatus = this.getObsGlobalStatus();
     if (obsStatus) {
       const baseRec = typeof update.recording === 'boolean' ? update.recording : (existingTally?.recording ?? false);
@@ -428,15 +475,15 @@ export class TallyHub extends EventEmitter {
     // Emit status update to all connected clients
     this.emit('status:update', statusUpdate);
 
-      // If OBS status changed, push updated status to all assigned devices immediately
-      const changedConn = this.mixerConnections.get(statusUpdate.mixerId);
-      if (changedConn && changedConn.type === 'obs') {
-        for (const device of this.devices.values()) {
-          if (device.assignmentMode === 'assigned' && device.assignedSource) {
-            this.sendTallyToAssignedDevice(device.id, device.assignedSource);
-          }
+    // If OBS status changed, push updated status to all assigned devices immediately
+    const changedConn = this.mixerConnections.get(statusUpdate.mixerId);
+    if (changedConn && changedConn.type === 'obs') {
+      for (const device of this.devices.values()) {
+        if (device.assignmentMode === 'assigned' && device.assignedSource) {
+          this.sendTallyToAssignedDevice(device.id, device.assignedSource);
         }
       }
+    }
   }
 
   private notifyDevices(tallyState: TallyState): void {
@@ -461,6 +508,7 @@ export class TallyHub extends EventEmitter {
 
   // Return the latest global OBS recording/streaming status if any OBS mixer is configured
   private getObsGlobalStatus(): { recording: boolean; streaming: boolean } | null {
+    // Only use OBS status if there is an active OBS connection
     const obs = Array.from(this.mixerConnections.values()).find(m => m.type === 'obs' && m.connected);
     if (!obs) return null;
     if (typeof obs.recording === 'boolean' || typeof obs.streaming === 'boolean') {
@@ -505,15 +553,15 @@ export class TallyHub extends EventEmitter {
       // Send only the assigned source state
       const assignedTally = this.tallies.get(device.assignedSource);
       if (assignedTally) {
-          const obsStatus = this.getObsGlobalStatus();
-          const tallied = { ...assignedTally } as TallyState;
-          if (obsStatus) {
-            const baseRec = typeof tallied.recording === 'boolean' ? tallied.recording : false;
-            const baseStr = typeof tallied.streaming === 'boolean' ? tallied.streaming : false;
-            tallied.recording = !!(baseRec || obsStatus.recording);
-            tallied.streaming = !!(baseStr || obsStatus.streaming);
-          }
-          this.emit('device:notify', { device, tallyState: tallied });
+        const obsStatus = this.getObsGlobalStatus();
+        const tallied = { ...assignedTally };
+        if (obsStatus) {
+          const baseRec = typeof tallied.recording === 'boolean' ? tallied.recording : false;
+          const baseStr = typeof tallied.streaming === 'boolean' ? tallied.streaming : false;
+          tallied.recording = !!(baseRec || obsStatus.recording);
+          tallied.streaming = !!(baseStr || obsStatus.streaming);
+        }
+        this.emit('device:notify', { device, tallyState: tallied });
       }
     }
     // If device is not assigned, it will show "unassigned" state
@@ -558,7 +606,7 @@ export class TallyHub extends EventEmitter {
   }
 
   // Public method to get a mixer instance by ID
-  public getMixerById(id: string): OBSConnector | VMixConnector | undefined {
+  public getMixerById(id: string): OBSConnector | VMixConnector | ATEMConnector | undefined {
     return this.mixers.get(id);
   }
 
@@ -887,7 +935,7 @@ export class TallyHub extends EventEmitter {
       console.log(`📡 Creating default tally state for ${sourceId} (${sourceName})`);
     }
 
-    // Ensure OBS global status overlays before sending (OR-merge)
+    // Ensure OBS global status overlays before sending
     const obsStatus = this.getObsGlobalStatus();
     if (obsStatus) {
       const baseRec = typeof tallyState.recording === 'boolean' ? tallyState.recording : false;

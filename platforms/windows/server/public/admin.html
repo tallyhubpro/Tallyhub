@@ -1005,6 +1005,22 @@
                 </svg>
                 Flash ESP32
             </button>
+            <a class="refresh-button" href="https://tallyhubpro.github.io/flash.html" target="_blank" rel="noopener" style="text-decoration:none; display:inline-flex; align-items:center; gap:0.4rem; background: rgba(33, 150, 243, 0.25); border-color: rgba(33, 150, 243, 0.45);">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 2h10a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H9l-3 3v-3H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Z" fill="currentColor"/>
+                </svg>
+                Web Flasher (GitHub Pages)
+            </a>
+            <button class="refresh-button" onclick="restartServer()" style="background: rgba(255, 193, 7, 0.3); border-color: rgba(255, 193, 7, 0.5);">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M8 1.333c3.68 0 6.667 2.986 6.667 6.667 0 3.68-2.987 6.667-6.667 6.667A6.654 6.654 0 0 1 2.4 12.8l1.18-1.18A5 5 0 0 0 13 8a5 5 0 0 0-8.533-3.533l2.2 2.2H1.333V1.333l2.067 2.067A6.654 6.654 0 0 1 8 1.333Z" fill="currentColor"/>
+                </svg>
+                Restart Server
+            </button>
+            <button class="refresh-button" onclick="shutdownServer()" style="background: rgba(255, 59, 48, 0.25); border-color: rgba(255, 59, 48, 0.45);">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 1h2v7H7V1Zm1 14a6 6 0 0 1-3.78-10.68l1.42 1.42A4 4 0 1 0 12 8c0-1.1-.45-2.1-1.17-2.83l1.42-1.42A6 6 0 0 1 8 15Z" fill="currentColor"/></svg>
+                Shutdown
+            </button>
         </div>
 
     <div class="container">
@@ -1062,6 +1078,7 @@
                             <select id="mixerType" class="form-select">
                                 <option value="obs">OBS Studio</option>
                                 <option value="vmix">vMix</option>
+                                <option value="atem">ATEM Mini Pro</option>
                             </select>
                         </div>
                         <div class="form-field">
@@ -1630,7 +1647,7 @@
                                 </div>
                             </div>
                             <div class="mixer-connection-info">
-                                ${mixer.type.toUpperCase()} • ${mixer.host}:${mixer.port}
+                                ${this.getMixerTypeIcon(mixer.type)} ${mixer.type.toUpperCase()} • ${mixer.host}:${mixer.port}
                             </div>
                             ${errorDisplay}
                             <div class="mixer-actions">
@@ -1752,6 +1769,20 @@
                 }
             }
 
+            // Helper function to get mixer type icon
+            getMixerTypeIcon(mixerType) {
+                switch (mixerType.toLowerCase()) {
+                    case 'obs':
+                        return '📺';
+                    case 'vmix':
+                        return '🎬';
+                    case 'atem':
+                        return '🎛️';
+                    default:
+                        return '📡';
+                }
+            }
+
             // Helper function to create user-friendly error messages
             getFriendlyErrorMessage(errorMessage, mixerType) {
                 const lowerError = errorMessage.toLowerCase();
@@ -1761,6 +1792,8 @@
                         return `OBS Studio is not running or WebSocket server is disabled. Please start OBS and enable WebSocket server in Tools → WebSocket Server Settings.`;
                     } else if (mixerType === 'vmix') {
                         return `vMix is not running or Web Controller is disabled. Please start vMix and enable Web Controller in Settings → Web Controller.`;
+                    } else if (mixerType === 'atem') {
+                        return `ATEM Mini Pro is not powered on or not connected to the network. Check power and Ethernet connection.`;
                     }
                     return `${mixerType.toUpperCase()} software is not running or network connection is blocked.`;
                 }
@@ -1801,6 +1834,7 @@
                         const scenes = [];
                         const sources = [];
                         const vmixInputs = [];
+                        const atemInputs = [];
                         
                         tallies.forEach(tally => {
                             if (tally.id.startsWith('obs-scene-')) {
@@ -1809,6 +1843,8 @@
                                 sources.push(tally);
                             } else if (tally.id.startsWith('vmix-input-')) {
                                 vmixInputs.push(tally);
+                            } else if (tally.id.startsWith('atem-input-')) {
+                                atemInputs.push(tally);
                             }
                         });
 
@@ -1828,6 +1864,11 @@
 
                         // Sort vMix inputs alphabetically
                         const sortedVMixInputs = vmixInputs.sort((a, b) => {
+                            const nameA = this.cleanSourceName(a.id, a.name);
+                            const nameB = this.cleanSourceName(b.id, b.name);
+                            return nameA.localeCompare(nameB);
+                        });
+                        const sortedATEMInputs = atemInputs.sort((a, b) => {
                             const nameA = this.cleanSourceName(a.id, a.name);
                             const nameB = this.cleanSourceName(b.id, b.name);
                             return nameA.localeCompare(nameB);
@@ -1941,6 +1982,33 @@
                                 });
                                 
                                 select.appendChild(vmixGroup);
+                            }
+
+                            // Add ATEM Inputs section
+                            if (sortedATEMInputs.length > 0) {
+                                const atemGroup = document.createElement('optgroup');
+                                atemGroup.label = '🎛️ ATEM Inputs';
+
+                                sortedATEMInputs.forEach(atemInput => {
+                                    const option = document.createElement('option');
+                                    option.value = atemInput.id;
+                                    let displayName = this.cleanSourceName(atemInput.id, atemInput.name);
+                                    option.textContent = displayName;
+                                    if (atemInput.program) {
+                                        option.textContent += ' (LIVE)';
+                                        option.style.color = '#ff4444';
+                                        option.style.fontWeight = 'bold';
+                                    } else if (atemInput.preview) {
+                                        option.textContent += ' (PVW)';
+                                        option.style.color = '#44ff44';
+                                    }
+                                    if (atemInput.id === currentValue) {
+                                        option.selected = true;
+                                    }
+                                    atemGroup.appendChild(option);
+                                });
+
+                                select.appendChild(atemGroup);
                             }
                             
                             // Add event listeners to track when dropdowns are being used
@@ -2272,6 +2340,9 @@
             } else if (type === 'vmix') {
                 passwordField.style.display = 'none';
                 portField.value = '8088';
+            } else if (type === 'atem') {
+                passwordField.style.display = 'none';
+                portField.value = '9910';
             }
         }
 
@@ -2592,148 +2663,8 @@
 
         // Browser compatibility check for ESP32 flasher
         function openFlasherInSupportedBrowser() {
-            // Check if the browser supports Web Serial API (required for ESP32 flashing)
-            if ('serial' in navigator) {
-                // Browser supports Web Serial API - open the flasher
-                window.open('/flash.html', '_blank');
-            } else {
-                // Browser doesn't support Web Serial API
-                const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
-                const isEdge = /Edge/.test(navigator.userAgent) || /Edg/.test(navigator.userAgent);
-                const isOpera = /OPR/.test(navigator.userAgent);
-                const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-                
-                let supportedBrowser = 'Google Chrome';
-                let browserName = 'this browser';
-                if (isEdge) supportedBrowser = 'Microsoft Edge';
-                if (isOpera) supportedBrowser = 'Opera';
-                if (isSafari) browserName = 'Safari';
-                
-                // Show informative modal
-                const modal = document.createElement('div');
-                modal.style.cssText = `
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: rgba(0, 0, 0, 0.8);
-                    backdrop-filter: blur(8px);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    z-index: 10000;
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-                `;
-                
-                modal.innerHTML = `
-                    <div style="
-                        background: rgba(255, 255, 255, 0.95);
-                        backdrop-filter: blur(20px);
-                        border-radius: 16px;
-                        padding: 2rem;
-                        max-width: 500px;
-                        margin: 1rem;
-                        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-                        border: 1px solid rgba(255, 255, 255, 0.2);
-                        text-align: center;
-                    ">
-                        <div style="
-                            width: 60px;
-                            height: 60px;
-                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                            border-radius: 50%;
-                            margin: 0 auto 1.5rem;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            font-size: 24px;
-                            color: white;
-                        ">⚠️</div>
-                        
-                        <h3 style="
-                            margin: 0 0 1rem;
-                            color: #2d3748;
-                            font-size: 1.5rem;
-                            font-weight: 600;
-                        ">Browser Not Supported</h3>
-                        
-                        <p style="
-                            margin: 0 0 1.5rem;
-                            color: #4a5568;
-                            line-height: 1.6;
-                            font-size: 1rem;
-                        ">
-                            ${isSafari ? 
-                            'Safari does not support the Web Serial API required for ESP32 flashing.' : 
-                            'The ESP32 flasher requires the Web Serial API, which is not supported by ' + browserName + '.'}
-                            <br><br>
-                            <strong>Please use one of these browsers instead:</strong><br>
-                            • Google Chrome (recommended)<br>
-                            • Microsoft Edge<br>
-                            • Opera<br>
-                            • Brave
-                        </p>
-                        
-                        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                            <button onclick="this.parentElement.parentElement.parentElement.remove()" style="
-                                background: #e2e8f0;
-                                color: #4a5568;
-                                border: none;
-                                padding: 0.75rem 1.5rem;
-                                border-radius: 8px;
-                                font-weight: 500;
-                                cursor: pointer;
-                                transition: all 0.2s;
-                            " onmouseover="this.style.background='#cbd5e0'" onmouseout="this.style.background='#e2e8f0'">
-                                Close
-                            </button>
-                            <button onclick="openInChrome()" style="
-                                background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
-                                color: white;
-                                border: none;
-                                padding: 0.75rem 1.5rem;
-                                border-radius: 8px;
-                                font-weight: 500;
-                                cursor: pointer;
-                                transition: all 0.2s;
-                            " onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">
-                                📋 Copy Chrome URL
-                            </button>
-                            <button onclick="window.open('https://www.google.com/chrome/', '_blank')" style="
-                                background: #718096;
-                                color: white;
-                                border: none;
-                                padding: 0.75rem 1.5rem;
-                                border-radius: 8px;
-                                font-weight: 500;
-                                cursor: pointer;
-                                transition: all 0.2s;
-                            " onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">
-                                📥 Download Chrome
-                            </button>
-                        </div>
-                    </div>
-                `;
-                
-                document.body.appendChild(modal);
-                
-                // Close modal when clicking outside
-                modal.addEventListener('click', (e) => {
-                    if (e.target === modal) {
-                        modal.remove();
-                    }
-                });
-                
-                // Close modal with Escape key
-                const handleEscape = (e) => {
-                    if (e.key === 'Escape') {
-                        modal.remove();
-                        document.removeEventListener('keydown', handleEscape);
-                    }
-                };
-                document.addEventListener('keydown', handleEscape);
-            }
+            // flash.html will auto-detect browser capabilities and use Server Flash Mode if needed
+            window.open('/flash.html', '_blank');
         }
 
         // Function to attempt opening the flasher in Chrome specifically
@@ -2999,6 +2930,25 @@
             });
         }
 
+                function restartServer() {
+                        if (!confirm('Restart the Tally Hub server now?\n\nAll devices and mixer connections will briefly drop and then reconnect if the service restarts.')) {
+                                return;
+                        }
+                        adminPanel.addLog('[WARNING] Server restart initiated by admin', 'warning');
+                        fetch('/api/restart', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+                            .then(r => {
+                                if (!r.ok) throw new Error('HTTP ' + r.status);
+                                adminPanel.addLog('[INFO] Restart request sent', 'info');
+                                setTimeout(() => {
+                                    alert('Restart initiated. The page may disconnect for a short time. If it does not reconnect, manually reload after 10s.');
+                                }, 600);
+                            })
+                            .catch(e => {
+                                adminPanel.addLog('[ERROR] Failed to send restart request: ' + e.message, 'error');
+                                alert('Failed to initiate restart: ' + e.message);
+                            });
+                }
+
         function showConnectionHelp(mixerType, host, port) {
             const helpContent = getConnectionHelpContent(mixerType, host, port);
             
@@ -3203,6 +3153,52 @@
                             <strong>💡 Pro Tip:</strong> You can test the connection by opening 
                             <code style="background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">http://${host}:${port}/api</code> 
                             in your browser - it should show vMix API information.
+                        </div>
+                    </div>
+                `;
+            } else if (mixerType === 'atem') {
+                return `
+                    <div style="font-size: 14px; line-height: 1.6;">
+                        <div style="
+                            background: rgba(255, 149, 0, 0.1);
+                            border: 1px solid rgba(255, 149, 0, 0.2);
+                            border-radius: 8px;
+                            padding: 1rem;
+                            margin-bottom: 1.5rem;
+                        ">
+                            <strong>🎛️ ATEM Mini Pro Connection Issue</strong><br>
+                            <span style="opacity: 0.8;">Trying to connect to ${host}:${port}</span>
+                        </div>
+                        
+                        <h4 style="color: var(--system-blue); margin-bottom: 0.5rem;">✅ Quick Checklist:</h4>
+                        <ol style="margin-left: 1.5rem; margin-bottom: 1.5rem;">
+                            <li style="margin-bottom: 0.5rem;"><strong>Is ATEM Mini Pro powered on?</strong><br>
+                                <span style="opacity: 0.8;">Make sure the device is plugged in and the power LED is on.</span></li>
+                            <li style="margin-bottom: 0.5rem;"><strong>Network Connection:</strong><br>
+                                <span style="opacity: 0.8;">ATEM Mini Pro should be connected to your network via Ethernet.</span></li>
+                            <li style="margin-bottom: 0.5rem;"><strong>Check IP Address:</strong><br>
+                                <span style="opacity: 0.8;">Default IP is usually 192.168.10.240. Check ATEM Setup utility or your router.</span></li>
+                            <li style="margin-bottom: 0.5rem;"><strong>Port Settings:</strong><br>
+                                <span style="opacity: 0.8;">Default port is 9910. Make sure it matches your configuration.</span></li>
+                        </ol>
+                        
+                        <h4 style="color: var(--system-orange); margin-bottom: 0.5rem;">🔍 Troubleshooting Steps:</h4>
+                        <ul style="margin-left: 1.5rem; margin-bottom: 1.5rem;">
+                            <li style="margin-bottom: 0.5rem;">Use ATEM Setup utility to configure network settings</li>
+                            <li style="margin-bottom: 0.5rem;">Power cycle the ATEM Mini Pro (unplug for 10 seconds)</li>
+                            <li style="margin-bottom: 0.5rem;">Check Ethernet cable connection</li>
+                            <li style="margin-bottom: 0.5rem;">Verify your computer is on the same network</li>
+                            <li style="margin-bottom: 0.5rem;">Try connecting with ATEM Software Control first</li>
+                        </ul>
+                        
+                        <div style="
+                            background: rgba(52, 199, 89, 0.1);
+                            border: 1px solid rgba(52, 199, 89, 0.2);
+                            border-radius: 8px;
+                            padding: 1rem;
+                        ">
+                            <strong>💡 Pro Tip:</strong> Download the ATEM Setup utility from Blackmagic Design 
+                            to configure your ATEM Mini Pro's network settings and firmware updates.
                         </div>
                     </div>
                 `;

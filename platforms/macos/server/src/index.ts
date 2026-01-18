@@ -10,6 +10,7 @@ import { TallyHub } from './core/TallyHub';
 import { WebSocketManager } from './core/WebSocketManager';
 import { ATEMConnector } from './core/mixers/ATEMConnector';
 import { logger } from './core/logger';
+import { FlashManager } from './core/FlashManager';
 
 // Global error handlers to prevent crashes from unhandled rejections
 process.on('unhandledRejection', (reason, promise) => {
@@ -41,6 +42,7 @@ class TallyHubServer {
   private tallyHub: TallyHub;
   private wsManager: WebSocketManager;
   private udpServer: UDPServer;
+  private flashManager: FlashManager;
 
   constructor() {
     this.app = express();
@@ -54,6 +56,7 @@ class TallyHubServer {
     this.tallyHub = new TallyHub();
     this.wsManager = new WebSocketManager(this.wss, this.tallyHub);
     this.udpServer = new UDPServer(this.tallyHub);
+  this.flashManager = new FlashManager();
     
     // Set the references after creation
     this.tallyHub.setManagers(this.wsManager, this.udpServer);
@@ -238,7 +241,7 @@ class TallyHubServer {
       if (mixer instanceof ATEMConnector && typeof mixer.getInputSources === 'function') {
         try {
           const inputs = mixer.getInputSources();
-          logger.debug(`ATEM inputs: ${inputs.length}`);
+          logger.debug(`ATEM inputs returned: ${inputs.length}`);
           res.json({ inputs });
           return;
         } catch (error) {
@@ -300,7 +303,7 @@ class TallyHubServer {
         
         // If sourceId is missing, undefined, or null, return error
         if (sourceId === undefined || sourceId === null) {
-          logger.warn(`Assignment missing sourceId for device ${deviceId}`);
+          logger.warn(`Assignment failed: sourceId missing for device ${deviceId}`);
           return res.status(400).json({ error: 'sourceId is required' });
         }
         
@@ -374,7 +377,153 @@ class TallyHubServer {
       res.json({ status: 'healthy', timestamp: new Date() });
     });
 
-    // (Removed /api/test/status for production build)
+    // ---- Server-side firmware flashing API (experimental) ----
+    this.app.get('/api/flash/firmware', async (req, res) => {
+      try {
+        const files = await this.flashManager.listFirmwareFiles();
+        res.json({ success: true, files });
+      } catch (e: any) {
+        res.status(500).json({ success: false, error: e.message });
+      }
+    });
+
+    this.app.get('/api/flash/ports', async (req, res) => {
+      try {
+        const ports = await this.flashManager.detectPorts();
+        res.json({ success: true, ports });
+      } catch (e: any) {
+        res.status(500).json({ success: false, error: e.message });
+      }
+    });
+
+    // Flash diagnostics (esptool availability, ports, groups) for troubleshooting Pi issues
+    this.app.get('/api/flash/diagnostics', async (req, res) => {
+      try {
+        const diag = await this.flashManager.diagnostics();
+        res.json({ success: true, diagnostics: diag });
+      } catch (e: any) {
+        res.status(500).json({ success: false, error: e.message });
+      }
+    });
+
+    this.app.post('/api/flash/jobs', express.json(), async (req, res): Promise<void> => {
+      try {
+        const { port, firmware, chip } = req.body || {};
+        if (!port || !firmware) {
+          res.status(400).json({ success: false, error: 'port and firmware are required' });
+          return;
+        }
+        const job = this.flashManager.createJob({ port, firmwareRel: firmware, chip });
+        res.json({ success: true, job });
+      } catch (e: any) {
+        res.status(500).json({ success: false, error: e.message });
+      }
+    });
+
+    this.app.get('/api/flash/jobs', (req, res) => {
+      const jobs = this.flashManager.listJobs();
+      res.json({ success: true, jobs });
+    });
+
+    this.app.get('/api/flash/jobs/:id', (req, res): void => {
+      const job = this.flashManager.getJob(req.params.id);
+      if (!job) {
+        res.status(404).json({ success: false, error: 'job not found' });
+        return;
+      }
+      res.json({ success: true, job });
+    });
+
+    // GitHub firmware download proxy
+    this.app.get('/api/flash/github-firmware', async (req, res): Promise<void> => {
+      try {
+        const device = req.query.device as string;
+        if (!device) {
+          res.status(400).json({ success: false, error: 'device parameter is required' });
+          return;
+        }
+
+        // Device firmware mapping (matches flash.html deviceConfigs)
+        const firmwareMap: Record<string, string> = {
+          'ESP32-1732S019': 'public/firmware/ESP32-1732S019/firmware-merged.bin',
+          'M5Stick_Tally': 'public/firmware/M5Stick_Tally/firmware-merged.bin',
+          'M5Stick_Tally_Plus2': 'public/firmware/M5Stick_Tally_Plus2/firmware-merged.bin'
+        };
+
+        const firmwarePath = firmwareMap[device];
+        if (!firmwarePath) {
+          res.status(404).json({ success: false, error: 'Unknown device type' });
+          return;
+        }
+
+        // GitHub repository info
+        const owner = 'tallyhubpro';
+        const repo = 'Tallyhub';
+        const branch = (req.query.branch as string) || 'main';
+        
+        // Optional GitHub token from environment (for private repos / higher rate limits)
+        const token = process.env.GITHUB_TOKEN || '';
+        
+        // Fetch file info from GitHub Contents API
+        const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${firmwarePath}?ref=${branch}`;
+        const headers: Record<string, string> = {
+          'User-Agent': 'TallyHub-Server',
+          'Accept': 'application/vnd.github.v3+json'
+        };
+        if (token) {
+          headers['Authorization'] = `token ${token}`;
+        }
+
+        const response = await fetch(apiUrl, { headers });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`GitHub API error: ${response.status} - ${errorText}`);
+          res.status(response.status).json({ 
+            success: false, 
+            error: `GitHub API error: ${response.status}`,
+            details: errorText
+          });
+          return;
+        }
+
+        const fileInfo = await response.json() as {
+          name: string;
+          download_url: string;
+          size: number;
+          sha: string;
+        };
+        
+        if (!fileInfo.download_url) {
+          res.status(500).json({ 
+            success: false, 
+            error: 'No download URL found in GitHub response' 
+          });
+          return;
+        }
+
+        // Return firmware info with download URL
+        res.json({
+          success: true,
+          firmware: {
+            device,
+            file: fileInfo.name,
+            url: fileInfo.download_url,
+            size: fileInfo.size,
+            sha: fileInfo.sha,
+            path: firmwarePath
+          }
+        });
+      } catch (error) {
+        console.error('GitHub firmware fetch error:', error);
+        res.status(500).json({ 
+          success: false, 
+          error: error instanceof Error ? error.message : 'Failed to fetch firmware from GitHub' 
+        });
+      }
+    });
+
+    // (Removed test endpoint /api/test/status for production hardening)
 
     // Save mixer configurations endpoint
     this.app.post('/api/mixers/save', (req, res) => {
@@ -396,7 +545,7 @@ class TallyHubServer {
     // Server shutdown endpoint
     this.app.post('/api/shutdown', async (req, res) => {
       try {
-  logger.warn('Shutdown request received');
+  logger.warn('Shutdown request received from admin panel');
         
         // Send response first before shutting down
         res.json({ 
@@ -409,9 +558,9 @@ class TallyHubServer {
           // Wrap async operation to prevent unhandled rejections
           (async () => {
             try {
-              console.log('🛑 Initiating graceful shutdown...');
+              logger.warn('Initiating graceful shutdown...');
               await this.stop();
-              console.log('🛑 Server shutdown complete');
+              logger.info('Server shutdown complete');
               process.exit(0);
             } catch (error) {
               console.error('🚨 Error during graceful shutdown:', error);
@@ -431,41 +580,68 @@ class TallyHubServer {
         });
       }
     });
+
+    // Server restart endpoint (graceful). If managed by systemd, service will come back.
+    this.app.post('/api/restart', async (req, res) => {
+      try {
+        logger.warn('Restart request received from admin panel');
+        res.json({ success: true, message: 'Server restart initiated' });
+        setTimeout(() => {
+          (async () => {
+            try {
+              logger.warn('Performing graceful restart sequence...');
+              await this.stop();
+              // Exit with special code so systemd or process manager can restart
+              process.exit(0);
+            } catch (error) {
+              console.error('🚨 Error during restart sequence:', error);
+              process.exit(1);
+            }
+          })().catch((error) => {
+            console.error('🚨 Unhandled error in restart process:', error);
+            process.exit(1);
+          });
+        }, 800);
+      } catch (error) {
+        console.error('[ERROR] Restart failed:', error instanceof Error ? error.message : error);
+        res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Failed to restart server' });
+      }
+    });
   }
 
   private async killProcessOnPort(port: number): Promise<void> {
     try {
-      console.log(`🔍 Checking for processes on port ${port}...`);
+  logger.debug(`Checking for processes on port ${port}...`);
       
       // Find process using the port on macOS/Linux
       const { stdout } = await execAsync(`lsof -ti:${port}`);
       
       if (stdout.trim()) {
         const pids = stdout.trim().split('\n');
-        console.log(`⚠️  Found ${pids.length} process(es) using port ${port}: ${pids.join(', ')}`);
+  logger.warn(`Found ${pids.length} process(es) using port ${port}: ${pids.join(', ')}`);
         
         for (const pid of pids) {
           try {
             await execAsync(`kill -9 ${pid.trim()}`);
-            console.log(`💀 Killed process ${pid.trim()}`);
+            logger.warn(`Killed process ${pid.trim()}`);
           } catch (error) {
-            console.log(`⚠️  Process ${pid.trim()} may have already exited`);
+            logger.debug(`Process ${pid.trim()} may have already exited`);
           }
         }
         
         // Wait a moment for processes to fully terminate
         await new Promise(resolve => setTimeout(resolve, 1000));
-        console.log(`✅ Port ${port} is now available`);
+  logger.info(`Port ${port} is now available`);
       } else {
-        console.log(`✅ Port ${port} is available`);
+  logger.debug(`Port ${port} is available`);
       }
     } catch (error) {
       // If lsof fails, the port is likely available or we're on Windows
       if ((error as any).code === 1) {
-        console.log(`✅ Port ${port} is available`);
+  logger.debug(`Port ${port} is available`);
       } else {
-        console.log(`⚠️  Could not check port ${port}: ${(error as Error).message}`);
-        console.log(`ℹ️  Attempting to start server anyway...`);
+  logger.warn(`Could not check port ${port}: ${(error as Error).message}`);
+  logger.info('Attempting to start server anyway...');
       }
     }
   }
@@ -481,7 +657,7 @@ class TallyHubServer {
       // Initialize tally hub (will connect to mixers)
       await this.tallyHub.initialize();
       
-      console.log('✅ All services initialized successfully');
+  logger.info('All services initialized successfully');
     } catch (error) {
       console.error('❌ Failed to initialize services:', error);
     }
@@ -496,9 +672,9 @@ class TallyHubServer {
     
     return new Promise((resolve) => {
       this.server.listen(PORT, HOST, () => {
-        console.log(`🚀 Tally Hub server running on http://${HOST}:${PORT}`);
-        console.log(`📱 Web tally interface: http://${HOST}:${PORT}/tally`);
-        console.log(`⚙️  Admin interface: http://${HOST}:${PORT}/admin`);
+  logger.info(`Server running on http://${HOST}:${PORT}`);
+  logger.info(`Tally interface: http://${HOST}:${PORT}/tally`);
+  logger.info(`Admin interface: http://${HOST}:${PORT}/admin`);
         
         // Wrap async operation to prevent unhandled rejections
         (async () => {
@@ -540,7 +716,7 @@ server.start().catch(error => {
 
 // Handle graceful shutdown
 process.on('SIGINT', () => {
-  console.log('\n🛑 Shutting down gracefully...');
+  logger.warn('Shutting down gracefully...');
   (async () => {
     try {
       await server.stop();
@@ -556,7 +732,7 @@ process.on('SIGINT', () => {
 });
 
 process.on('SIGTERM', () => {
-  console.log('\n🛑 Shutting down gracefully...');
+  logger.warn('Shutting down gracefully...');
   (async () => {
     try {
       await server.stop();

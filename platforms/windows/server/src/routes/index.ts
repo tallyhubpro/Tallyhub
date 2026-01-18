@@ -3,6 +3,7 @@ import { ParsedQs } from 'qs';
 import { TallyHub } from '../core/TallyHub';
 import path from 'path';
 import { VMixConnector } from '../core/mixers/VMixConnector';
+import { ATEMConnector } from '../core/mixers/ATEMConnector';
 
 export function setupRoutes(app: Application, tallyHub: TallyHub): void {
   // API Routes
@@ -215,15 +216,18 @@ export function setupRoutes(app: Application, tallyHub: TallyHub): void {
   // Mixer inputs endpoint
   app.get('/api/mixers/:id/inputs', (async (req, res) => {
     const { id } = req.params;
+    console.log(`🔍 Mixer inputs request for ID: ${id}`);
     const mixer = tallyHub.getMixerById(id);
+    console.log(`🔍 Found mixer:`, mixer ? `${mixer.constructor.name}` : 'null');
     if (!mixer) {
       res.status(404).json({ error: 'Mixer not found' });
       return;
     }
+    
     // If VMix, get inputs
-    if (mixer instanceof VMixConnector && typeof mixer.getInputs === 'function') {
+    if (mixer instanceof VMixConnector && typeof (mixer as any).getInputs === 'function') {
       try {
-        const inputs = await mixer.getInputs();
+        const inputs = await (mixer as any).getInputs();
         res.json({ inputs });
         return;
       } catch (error) {
@@ -231,6 +235,19 @@ export function setupRoutes(app: Application, tallyHub: TallyHub): void {
         return;
       }
     }
+    
+    // If ATEM, get input sources
+    if (mixer instanceof ATEMConnector && typeof mixer.getInputSources === 'function') {
+      try {
+        const inputs = mixer.getInputSources();
+        res.json({ inputs });
+        return;
+      } catch (error) {
+        res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
+        return;
+      }
+    }
+    
     res.status(400).json({ error: 'Mixer does not support input listing' });
   }) as RequestHandler);
 }

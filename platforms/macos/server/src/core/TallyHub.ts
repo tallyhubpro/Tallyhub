@@ -508,6 +508,7 @@ export class TallyHub extends EventEmitter {
 
   // Return the latest global OBS recording/streaming status if any OBS mixer is configured
   private getObsGlobalStatus(): { recording: boolean; streaming: boolean } | null {
+    // Only use OBS status if there is an active OBS connection
     const obs = Array.from(this.mixerConnections.values()).find(m => m.type === 'obs' && m.connected);
     if (!obs) return null;
     if (typeof obs.recording === 'boolean' || typeof obs.streaming === 'boolean') {
@@ -553,7 +554,7 @@ export class TallyHub extends EventEmitter {
       const assignedTally = this.tallies.get(device.assignedSource);
       if (assignedTally) {
         const obsStatus = this.getObsGlobalStatus();
-        const tallied = { ...assignedTally } as TallyState;
+        const tallied = { ...assignedTally };
         if (obsStatus) {
           const baseRec = typeof tallied.recording === 'boolean' ? tallied.recording : false;
           const baseStr = typeof tallied.streaming === 'boolean' ? tallied.streaming : false;

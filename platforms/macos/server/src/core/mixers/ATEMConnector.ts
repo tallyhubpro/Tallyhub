@@ -25,7 +25,9 @@ export class ATEMConnector extends EventEmitter {
   private lastInTransition: boolean = false;
   private lastEmitTimestamp: number = 0;
   private MIN_EMIT_INTERVAL_MS = 150; // debounce identical stable states
+  // Verbose logging toggle (set ATEM_VERBOSE=true to enable detailed logs)
   private verbose: boolean = (process.env.ATEM_VERBOSE === '1' || process.env.ATEM_VERBOSE === 'true');
+  // Grace window timer to avoid immediate stop flicker for streaming
   private streamingStopTimer: NodeJS.Timeout | null = null;
 
   constructor(connection: MixerConnection) {
@@ -54,6 +56,7 @@ export class ATEMConnector extends EventEmitter {
             keys: this.currentState ? Object.keys(this.currentState) : []
           });
         }
+        // Initialize recording/streaming flags from initial state if available
         try {
           this.handleRecordingStateChange();
           this.handleStreamingStateChange();
@@ -64,6 +67,8 @@ export class ATEMConnector extends EventEmitter {
       
       // Initialize input tracking with multiple attempts
       this.attemptInputTracking(0);
+
+      // Start status polling as a fallback in case events aren't emitted
       this.startStatusPolling();
     });
 
@@ -111,7 +116,7 @@ export class ATEMConnector extends EventEmitter {
         this.handleTallyStateChange();
       }
       
-      // Relevant path filters for recording/streaming (ignore duration/stats spam)
+      // Relevant path filters for recording/streaming
       const recordingRelevant = pathToChange.some(p => (
         p === 'recording' ||
         p.includes('recording.status') || p.includes('recording.state') || p.includes('recording.onAir') || p.includes('recording.active')
@@ -121,10 +126,13 @@ export class ATEMConnector extends EventEmitter {
         p.includes('streaming.status') || p.includes('streaming.state') || p.includes('streaming.onAir') || p.includes('streaming.active')
       ));
 
+      // Handle recording state changes (ignore duration/counter/stat updates)
       if (recordingRelevant) {
         if (this.verbose) console.log('🔴 ATEM recording state path (relevant) detected');
         this.handleRecordingStateChange();
       }
+      
+      // Handle streaming state changes (ignore duration/counter/stat updates)
       if (streamingRelevant) {
         if (this.verbose) console.log('📡 ATEM streaming state path (relevant) detected');
         this.handleStreamingStateChange();
@@ -318,6 +326,7 @@ export class ATEMConnector extends EventEmitter {
           recording: this.isRecording,
           streaming: this.isStreaming
         };
+
         this.emit('tally:update', tallyUpdate);
         
         if (isProgram || isPreview) {
@@ -369,7 +378,7 @@ export class ATEMConnector extends EventEmitter {
 
     try {
   const wasRecording = this.isRecording;
-  // Robust detection
+  // Check if recording is active based on ATEM state (explicit)
   this.isRecording = this.isRecordingActive(this.currentState.recording);
       
       if (wasRecording !== this.isRecording) {
@@ -405,6 +414,7 @@ export class ATEMConnector extends EventEmitter {
     }
   }
 
+  // Apply streaming state with a short grace window on stop to avoid flicker
   private applyStreamingActive(newActive: boolean, source: 'event' | 'poll' = 'event'): void {
     const wasStreaming = this.isStreaming;
     if (this.verbose) {
@@ -414,23 +424,40 @@ export class ATEMConnector extends EventEmitter {
         console.log(`ℹ️  ATEM streaming apply (${source}): newActive=${newActive}, was=${wasStreaming}, rawState=`, rawState);
       } catch {}
     }
+
+    // If turning ON: emit immediately, cancel any pending stop timer
     if (newActive) {
-      if (this.streamingStopTimer) { clearTimeout(this.streamingStopTimer); this.streamingStopTimer = null; }
+      if (this.streamingStopTimer) {
+        clearTimeout(this.streamingStopTimer);
+        this.streamingStopTimer = null;
+      }
       if (!wasStreaming) {
         this.isStreaming = true;
-        const statusUpdate: MixerStatusUpdate = { mixerId: this.connection.id, recording: this.isRecording, streaming: this.isStreaming, timestamp: new Date() };
+        const statusUpdate: MixerStatusUpdate = {
+          mixerId: this.connection.id,
+          recording: this.isRecording,
+          streaming: this.isStreaming,
+          timestamp: new Date()
+        };
         this.emit('status:update', statusUpdate);
         this.handleTallyStateChange();
       }
       return;
     }
+
+    // If turning OFF: wait briefly to confirm still off (handles brief transitional blips)
     if (wasStreaming && !this.streamingStopTimer) {
       this.streamingStopTimer = setTimeout(() => {
         this.streamingStopTimer = null;
         const confirmActive = this.isStreamingActive(this.currentState?.streaming);
         if (!confirmActive && this.isStreaming) {
           this.isStreaming = false;
-          const statusUpdate: MixerStatusUpdate = { mixerId: this.connection.id, recording: this.isRecording, streaming: this.isStreaming, timestamp: new Date() };
+          const statusUpdate: MixerStatusUpdate = {
+            mixerId: this.connection.id,
+            recording: this.isRecording,
+            streaming: this.isStreaming,
+            timestamp: new Date()
+          };
           this.emit('status:update', statusUpdate);
           this.handleTallyStateChange();
         }
@@ -490,17 +517,24 @@ export class ATEMConnector extends EventEmitter {
         const st = this.currentState;
         const recObj: any = st?.recording;
         const strObj: any = st?.streaming;
+
         if (!recObj && !strObj) {
           if (!this.loggedNoStatusSupport) {
-            console.log('ℹ️  ATEM recording/streaming status not present in state (Mac bundle)');
+            console.log('ℹ️  ATEM recording/streaming status objects not present in state – model may not support these features.');
             this.loggedNoStatusSupport = true;
           }
           return;
         }
+
         const recActive = this.isRecordingActive(recObj);
         const strActive = this.isStreamingActive(strObj);
+
         let changed = false;
-        if (recActive !== this.isRecording) { this.isRecording = recActive; changed = true; }
+        if (recActive !== this.isRecording) {
+          this.isRecording = recActive;
+          changed = true;
+        }
+        // Apply streaming via helper (handles grace window); do not mark changed here for streaming
         this.applyStreamingActive(strActive, 'poll');
         if (changed) {
           const statusUpdate: MixerStatusUpdate = {
@@ -512,7 +546,9 @@ export class ATEMConnector extends EventEmitter {
           this.emit('status:update', statusUpdate);
           this.handleTallyStateChange();
         }
-      } catch {}
+      } catch (e) {
+        // Silent poll errors to avoid spam
+      }
     }, 2000);
   }
 
@@ -524,15 +560,17 @@ export class ATEMConnector extends EventEmitter {
     this.loggedNoStatusSupport = false;
   }
 
+  // Explicit detection for Streaming (treat only Streaming/LIVE as true)
   private isStreamingActive(streaming: any): boolean {
     if (!streaming) return false;
-    const s: any = (streaming as any).status || streaming;
+    const s = streaming.status || streaming;
     if (s && typeof s === 'object') {
-      if (typeof s.onAir === 'boolean') return s.onAir;
-      if (typeof s.active === 'boolean') return s.active;
-      if (typeof s.state === 'number') return s.state >= 2;
-      if (typeof s.state === 'string') {
-        const v = String(s.state).toLowerCase();
+      const so: any = s;
+      if (typeof so.onAir === 'boolean') return so.onAir;
+      if (typeof so.active === 'boolean') return so.active;
+      if (typeof so.state === 'number') return so.state >= 2; // 0/1 = idle/connecting, >=2 = on air on many models
+      if (typeof so.state === 'string') {
+        const v = String(so.state).toLowerCase();
         return v === 'streaming' || v === 'onair' || v === 'live';
       }
     }
@@ -545,11 +583,12 @@ export class ATEMConnector extends EventEmitter {
     return false;
   }
 
+  // Detection for Recording (most models: 0=Idle, 1=Recording)
   private isRecordingActive(recording: any): boolean {
     if (!recording) return false;
-    const s = (recording as any).status || recording;
-    const stateVal = (s && typeof s === 'object') ? (s as any).state ?? (s as any).onAir ?? (s as any).active : s as any;
-    if (typeof stateVal === 'number') return stateVal === 1 || stateVal === 2;
+    const s = recording.status || recording;
+    const stateVal = (s && typeof s === 'object') ? (s.state ?? s.onAir ?? s.active) : s;
+    if (typeof stateVal === 'number') return stateVal === 1 || stateVal === 2; // some firmwares use 1=Rec, accept 2 as active if present
     if (typeof stateVal === 'boolean') return stateVal === true;
     if (typeof stateVal === 'string') {
       const v = stateVal.toLowerCase();
@@ -559,10 +598,12 @@ export class ATEMConnector extends EventEmitter {
   }
 
   private isCameraSource(name: string): boolean {
+    // Relaxed: include all inputs except obvious system/utility sources
     if (!name) return false;
     const lower = name.toLowerCase();
     const excludedPatterns = [
-      'black','color','bars','media player','multiview','program','preview','output','recording status','streaming status','audio status','direct'
+      'black', 'color', 'bars', 'media player', 'multiview', 'program', 'preview',
+      'output', 'recording status', 'streaming status', 'audio status', 'direct'
     ];
     return !excludedPatterns.some(p => lower.includes(p));
   }

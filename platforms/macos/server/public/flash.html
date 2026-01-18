@@ -354,6 +354,20 @@
             margin-bottom: 0.5rem;
         }
 
+        /* Server flash fallback */
+        #serverFlashContainer { margin-top:2rem; display:none; }
+        #serverFlashContainer h3 { margin-bottom:0.75rem; }
+        .inline-group { display:flex; gap:0.75rem; flex-wrap:wrap; align-items:flex-end; }
+        .inline-group > div { display:flex; flex-direction:column; gap:0.25rem; }
+        .inline-group label { font-size:0.75rem; opacity:0.8; display:block; margin-bottom:0.25rem; }
+        .inline-group select { padding:0.6rem; border-radius:6px; border:1px solid rgba(255,255,255,0.3); background:rgba(255,255,255,0.1); color:#fff; font-size:0.9rem; min-width:200px; }
+        .inline-group button { padding:0.6rem 1rem; border-radius:6px; cursor:pointer; background:linear-gradient(45deg,#2196F3,#1976D2); border:none; color:#fff; font-size:0.9rem; white-space:nowrap; }
+        .inline-group button:hover { filter:brightness(1.1); }
+        #serverFlashStatus { margin-top:0.75rem; white-space:pre-line; font-size:0.85rem; background:rgba(0,0,0,0.25); padding:0.75rem; border-radius:8px; max-height:220px; overflow:auto; }
+        #toggleModeBtn { margin-top:0.5rem; background:linear-gradient(45deg,#ff9800,#f57c00); border:none; padding:0.4rem 0.8rem; border-radius:6px; color:#fff; cursor:pointer; font-size:0.8rem; }
+        #toggleModeBtn:hover { filter:brightness(1.1); }
+        .badge { background:#2196F3; padding:0.2rem 0.5rem; border-radius:4px; font-size:0.7rem; vertical-align:middle; }
+
         @media (max-width: 768px) {
             .device-grid {
                 grid-template-columns: 1fr;
@@ -414,6 +428,10 @@
                         <input type="radio" name="firmwareSource" value="custom">
                         <span>Browse for Custom .bin File</span>
                     </label>
+                    <label class="firmware-option">
+                        <input type="radio" name="firmwareSource" value="github">
+                        <span>Download from GitHub (online)</span>
+                    </label>
                 </div>
                 
                 <div id="customFileSection" style="display: none; margin-top: 1rem;">
@@ -426,6 +444,14 @@
                     <div id="fileSelected" class="file-selected" style="display: none;">
                         <span>📄 Selected: </span><span id="selectedFileName"></span>
                         <span> (</span><span id="selectedFileSize"></span><span>)</span>
+                    </div>
+                </div>
+                <div id="githubOptions" style="display:none; margin-top:1rem;">
+                    <label style="font-size:0.85rem; display:block; margin-bottom:0.25rem;">GitHub branch (optional)</label>
+                    <input id="githubBranch" type="text" placeholder="main" style="padding:0.5rem; width:100%; border-radius:6px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.03); color:#fff;" />
+                    <div style="font-size:0.8rem; opacity:0.9; margin-top:0.5rem;">
+                        Downloads firmware from <code>tallyhubpro/Tallyhub</code> repository. 
+                        Leave blank to use the <code>main</code> branch.
                     </div>
                 </div>
             </div>
@@ -454,12 +480,38 @@
                 <div id="status" class="status"></div>
             </div>
 
-            <div class="note">
+            <div class="note" id="browserRequirements">
                 <h4>💡 Browser Requirements & Usage</h4>
                 <p><strong>Browser:</strong> This flasher requires a Chromium-based browser (Chrome, Edge, Opera) with Web Serial API support.</p>
                 <p><strong>Built-in Firmware:</strong> Use the recommended firmware that comes with IP display improvements.</p>
                 <p><strong>Custom Firmware:</strong> Upload your own .bin firmware file for testing or custom builds.</p>
                 <p><strong>Connection:</strong> Make sure your device is connected via USB and the appropriate drivers are installed.</p>
+            </div>
+
+            <div id="serverFlashContainer" class="card" style="background:rgba(0,0,0,0.25); display:none;">
+                <h3>🖥️ Server Flash Mode <span class="badge">Raspberry Pi</span></h3>
+                <p style="opacity:0.85; font-size:0.9rem; margin-bottom:0.75rem;">
+                    <strong>✅ Using Server-Side Flashing</strong><br>
+                    Your browser doesn't support Web Serial API (expected on Raspberry Pi). 
+                    Devices connected to the server's USB ports can be flashed using this mode.
+                </p>
+                <div class="inline-group">
+                    <div style="flex:1;">
+                        <label>Serial Port</label>
+                        <select id="serverPortSelect"></select>
+                    </div>
+                    <div style="flex:1;">
+                        <label>Firmware</label>
+                        <select id="serverFirmwareSelect"></select>
+                    </div>
+                    <div style="display:flex; gap:0.5rem;">
+                        <button id="refreshServerListsBtn" type="button">🔄 Refresh</button>
+                        <button id="startServerFlashBtn" type="button" style="background:linear-gradient(45deg,#4CAF50,#45a049);">⚡ Flash</button>
+                    </div>
+                </div>
+                <div style="margin-top:0.75rem; font-size:0.75rem; opacity:0.7;">Ports are detected from /dev (USB/ACM/AMA/by-id). Firmware list comes from <code>/api/flash/firmware</code>.</div>
+                <div id="serverFlashStatus"></div>
+                <button id="toggleModeBtn" type="button" style="display:none;">Switch to Web Serial Mode</button>
             </div>
         </div>
     </div>
@@ -478,6 +530,7 @@
         const deviceConfigs = {
             'ESP32-1732S019': {
                 name: 'ESP32-1732S019',
+                // Relative path so it works whether hosted at root or /Tallyhub/
                 firmware: 'firmware/ESP32-1732S019/ESP32-1732S019.bin',
                 chip: 'esp32',
                 flashSize: '8MB',
@@ -568,6 +621,22 @@
             progressText.textContent = `${Math.round(percent)}%`;
         }
 
+        // Resolve firmware path for GitHub Pages project sites where absolute paths break
+        function resolveFirmwarePath(p){
+            if (!p) return p;
+            // For root site (tallyhubpro.github.io), use paths as-is
+            // For project site (tallyhubpro.github.io/Tallyhub), prefix with /Tallyhub
+            if (p.startsWith('/')){
+                const parts = location.pathname.split('/').filter(Boolean);
+                // Only add prefix if we're in a project subdirectory (not root site)
+                if (parts.length >= 1 && parts[0] !== 'flash.html'){
+                    const base = '/' + parts[0];
+                    return base + p;
+                }
+            }
+            return p;
+        }
+
         window.flashFirmware = async function() {
             if (!selectedDevice) {
                 showStatus('Please select a device type first', 'error');
@@ -582,7 +651,13 @@
             }
 
             if (!navigator.serial) {
-                showStatus('Web Serial API not supported. Please use Chrome, Edge, or Opera browser.', 'error');
+                if (/\.github\.io$/.test(location.hostname)) {
+                    showStatus('Web Serial API not available. Please use Chrome, Edge, or Opera.', 'error');
+                    return;
+                }
+                // Server available case (non-GitHub Pages)
+                enableServerMode('⚠️ Web Serial API not available');
+                showStatus('Web Serial unavailable — switched to Server Flash Mode.', 'info');
                 return;
             }
 
@@ -630,12 +705,54 @@
                     showStatus('Reading custom firmware file...', 'info');
                     firmwareData = await customFirmwareFile.arrayBuffer();
                     firmwareSize = (firmwareData.byteLength / 1024).toFixed(1);
+                } else if (firmwareSource === 'github') {
+                    // Download from GitHub using server proxy
+                    flashButton.textContent = '⬇️ Downloading from GitHub...';
+                    showStatus('Downloading firmware from GitHub via server...', 'info');
+                    try {
+                        const branchInput = document.getElementById('githubBranch').value || 'main';
+                        
+                        // Use server proxy endpoint
+                        const apiUrl = `/api/flash/github-firmware?device=${encodeURIComponent(selectedDevice)}&branch=${encodeURIComponent(branchInput)}`;
+                        const response = await fetch(apiUrl);
+                        
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.error || `Server error: ${response.status}`);
+                        }
+                        
+                        const result = await response.json();
+                        if (!result.success || !result.firmware?.url) {
+                            throw new Error('Invalid response from server');
+                        }
+                        
+                        showStatus(`Found firmware: ${result.firmware.file} (${(result.firmware.size / 1024).toFixed(1)} KB)`, 'info');
+                        
+                        // Download the binary from GitHub
+                        const binResponse = await fetch(result.firmware.url);
+                        if (!binResponse.ok) {
+                            throw new Error(`Failed to download binary: ${binResponse.status}`);
+                        }
+                        
+                        firmwareData = await binResponse.arrayBuffer();
+                        firmwareSize = (firmwareData.byteLength / 1024).toFixed(1);
+                    } catch (ghErr) {
+                        throw new Error('GitHub download failed: ' + ghErr.message);
+                    }
                 } else {
                     // Download built-in firmware
                     flashButton.textContent = '⬇️ Downloading...';
                     showStatus('Downloading built-in firmware...', 'info');
-                    const response = await fetch(config.firmware + '?t=' + Date.now());
+                    const fwPath = resolveFirmwarePath(config.firmware);
+                    const response = await fetch(fwPath + '?t=' + Date.now());
                     if (!response.ok) {
+                        if(response.status === 404){
+                            const here = location.pathname;
+                            const hint = here.startsWith('/Tallyhub/')
+                                ? 'Ensure firmware directory exists under docs/ and was published to Pages.'
+                                : 'If hosted under a sub-path (e.g. /Tallyhub/), remove leading slash from firmware paths.';
+                            throw new Error(`Failed to download firmware: 404\nFile: ${fwPath}\nHint: ${hint}`);
+                        }
                         throw new Error(`Failed to download firmware: ${response.status}`);
                     }
                     firmwareData = await response.arrayBuffer();
@@ -755,22 +872,201 @@
 
         function delay(ms){ return new Promise(r=>setTimeout(r, ms)); }
 
-        // Check browser compatibility on load
-        if (!navigator.serial) {
-            showStatus('⚠️ Web Serial API not supported. Please use Chrome, Edge, or Opera browser.', 'error');
+        // ---- Insecure Context Messaging ---- (moved below initialization)
+        // Defer insecure-context handling until after server mode helpers are initialized
+        let _pendingInsecureReason = null;
+        (function(){
+            const insecure = !window.isSecureContext && location.protocol !== 'https:' && location.hostname !== 'localhost';
+            if(insecure){
+                if(navigator.serial){
+                    _pendingInsecureReason = '⚠️ This page is not a secure context. Some serial features may be blocked soon by browsers.';
+                } else {
+                    _pendingInsecureReason = '🌐 Insecure remote origin blocks Web Serial';
+                }
+            }
+        })();
+
+        // ---- Web Serial vs Server Fallback ----
+        const serverFlashEl = document.getElementById('serverFlashContainer');
+        const toggleModeBtn = document.getElementById('toggleModeBtn');
+        const isGitHubPages = /\.github\.io$/.test(location.hostname);
+        let serverMode = false;
+
+        function enableServerMode(autoReason){
+            if (isGitHubPages) {
+                // GitHub Pages has no server endpoints; keep Web Serial only
+                showStatus((autoReason || 'Info') + ' – Web Serial only on GitHub Pages. Use Chrome/Edge/Opera.', 'info');
+                const browserReqEl = document.getElementById('browserRequirements');
+                if (browserReqEl) browserReqEl.style.display = 'block';
+                return;
+            }
+            serverMode = true;
+            serverFlashEl.style.display = 'block';
+            toggleModeBtn.style.display = navigator.serial ? 'inline-block' : 'none';
             document.getElementById('flashButton').disabled = true;
+            
+            // Hide browser requirements note when in server mode
+            const browserReqEl = document.getElementById('browserRequirements');
+            if (browserReqEl) browserReqEl.style.display = 'none';
+            
+            if(autoReason){
+                showStatus(autoReason + ' – using Server Flash Mode.', 'info');
+            }
+            refreshServerLists();
         }
 
-        // Handle firmware source selection
+        if (!navigator.serial) {
+            if (isGitHubPages) {
+                showStatus('Web Serial API not available. Please use Chrome, Edge, or Opera.', 'error');
+            } else {
+                enableServerMode('⚠️ Web Serial API not available');
+            }
+        } else {
+            toggleModeBtn.textContent = 'Use Server Flash Mode';
+            toggleModeBtn.style.display = 'inline-block';
+        }
+
+        // Now apply any pending insecure-context messaging or fallback
+        if (_pendingInsecureReason){
+            if(navigator.serial){
+                showStatus(_pendingInsecureReason, 'warning');
+            } else {
+                enableServerMode(_pendingInsecureReason);
+                showStatus('Remote HTTP origin prevents Web Serial. Using Server Flash Mode. For direct flashing, host this page over HTTPS or use localhost.', 'warning');
+            }
+        }
+
+        toggleModeBtn?.addEventListener('click', () => {
+            const browserReqEl = document.getElementById('browserRequirements');
+            if(serverMode){
+                serverMode = false;
+                serverFlashEl.style.display = 'none';
+                if (browserReqEl) browserReqEl.style.display = 'block';
+                showStatus('Returned to Web Serial mode. Select device and flash via browser.', 'info');
+                if(selectedDevice) document.getElementById('flashButton').disabled = false;
+                toggleModeBtn.textContent = 'Use Server Flash Mode';
+            } else {
+                if (isGitHubPages) {
+                    showStatus('Server mode not available on GitHub Pages. Use Web Serial in Chrome/Edge/Opera.', 'warning');
+                } else {
+                    enableServerMode('🔁 Manual switch');
+                }
+                toggleModeBtn.textContent = 'Switch to Web Serial Mode';
+            }
+        });
+
+        // ---- Server Flash Mode logic ----
+        let currentJobId = null;
+        const serverStatusBox = document.getElementById('serverFlashStatus');
+        const portSelect = document.getElementById('serverPortSelect');
+        const fwSelect = document.getElementById('serverFirmwareSelect');
+        const refreshBtn = document.getElementById('refreshServerListsBtn');
+        const startBtn = document.getElementById('startServerFlashBtn');
+
+        function serverLog(msg){
+            const ts = new Date().toISOString().split('T')[1].split('Z')[0];
+            serverStatusBox.textContent += `[${ts}] ${msg}\n`;
+            serverStatusBox.style.display = 'block';
+            serverStatusBox.scrollTop = serverStatusBox.scrollHeight;
+        }
+
+        async function refreshServerLists(){
+            try {
+                serverLog('Refreshing ports & firmware...');
+                const [portsResp, fwResp] = await Promise.all([
+                    fetch('/api/flash/ports'),
+                    fetch('/api/flash/firmware')
+                ]);
+                const portsJson = await portsResp.json();
+                const fwJson = await fwResp.json();
+                portSelect.innerHTML = '';
+                (portsJson.ports || []).forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p; opt.textContent = p; portSelect.appendChild(opt);
+                });
+                if(!portSelect.value) serverLog('No ports detected yet. Plug device & Refresh.');
+                fwSelect.innerHTML = '';
+                (fwJson.files || []).forEach(f => {
+                    const opt = document.createElement('option');
+                    opt.value = f; opt.textContent = f; fwSelect.appendChild(opt);
+                });
+                if(selectedDevice){
+                    const cfg = deviceConfigs[selectedDevice];
+                    if(cfg){
+                        const rel = cfg.firmware.replace('/firmware/','');
+                        const tail = rel.split('/').slice(-1)[0];
+                        const match = Array.from(fwSelect.options).find(o=>o.value.endsWith(tail));
+                        if(match) fwSelect.value = match.value;
+                    }
+                }
+                serverLog('Lists updated.');
+            } catch(e){
+                serverLog('Error refreshing lists: ' + e.message);
+            }
+        }
+
+        async function startServerFlash(){
+            if(!portSelect.value){ serverLog('Select a port first.'); return; }
+            if(!fwSelect.value){ serverLog('Select firmware first.'); return; }
+            startBtn.disabled = true; refreshBtn.disabled = true;
+            serverLog('Starting flash job...');
+            try {
+                const body = { port: portSelect.value, firmware: fwSelect.value, chip: 'esp32' };
+                const resp = await fetch('/api/flash/jobs', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+                const json = await resp.json();
+                if(!json.success){ serverLog('Failed to start job: '+ json.error); startBtn.disabled=false; refreshBtn.disabled=false; return; }
+                currentJobId = json.job.id;
+                serverLog('Job started: ' + currentJobId);
+                pollJob();
+            } catch(e){
+                serverLog('Error starting job: '+ e.message);
+                startBtn.disabled=false; refreshBtn.disabled=false;
+            }
+        }
+
+        async function pollJob(){
+            if(!currentJobId) return;
+            try {
+                const r = await fetch('/api/flash/jobs/' + currentJobId);
+                if(!r.ok){ serverLog('Job lookup failed (status '+r.status+').'); return; }
+                const j = await r.json();
+                if(!j.success){ serverLog('Job error: '+ j.error); return; }
+                const job = j.job;
+                const lastLine = job.log[job.log.length-1];
+                serverLog('Status: '+ job.status + (lastLine ? ' | '+ lastLine : ''));
+                if(job.status === 'running'){
+                    setTimeout(pollJob, 1500);
+                } else {
+                    serverLog('Job finished: ' + job.status);
+                    startBtn.disabled=false; refreshBtn.disabled=false;
+                }
+            } catch(e){
+                serverLog('Poll error: '+ e.message);
+                setTimeout(pollJob, 2500);
+            }
+        }
+
+        refreshBtn?.addEventListener('click', refreshServerLists);
+        startBtn?.addEventListener('click', startServerFlash);
+
+        // Handle firmware source selection (show/hide custom/github sections)
         document.querySelectorAll('input[name="firmwareSource"]').forEach(radio => {
             radio.addEventListener('change', function() {
                 const customSection = document.getElementById('customFileSection');
+                const githubSection = document.getElementById('githubOptions');
                 if (this.value === 'custom') {
                     customSection.style.display = 'block';
+                    githubSection.style.display = 'none';
+                } else if (this.value === 'github') {
+                    customSection.style.display = 'none';
+                    document.getElementById('fileSelected').style.display = 'none';
+                    customFirmwareFile = null;
+                    githubSection.style.display = 'block';
                 } else {
                     customSection.style.display = 'none';
                     customFirmwareFile = null;
                     document.getElementById('fileSelected').style.display = 'none';
+                    githubSection.style.display = 'none';
                 }
             });
         });

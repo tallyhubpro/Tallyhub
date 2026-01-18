@@ -18,13 +18,16 @@ export class ATEMConnector extends EventEmitter {
   private isConnected: boolean = false;
   private statusPollInterval: NodeJS.Timeout | null = null;
   private loggedNoStatusSupport: boolean = false;
-  // Added for transition spam suppression / debounce
+  // Track last seen buses to detect real changes and force refresh at end of AUTO transitions
   private lastProgramInput: number | null = null;
   private lastPreviewInput: number | null = null;
+  // Track transition state & emission timing to suppress noisy transitionPosition updates
   private lastInTransition: boolean = false;
   private lastEmitTimestamp: number = 0;
-  private MIN_EMIT_INTERVAL_MS = 150;
+  private MIN_EMIT_INTERVAL_MS = 150; // debounce identical stable states
+  // Verbose logging toggle (set ATEM_VERBOSE=true to enable detailed logs)
   private verbose: boolean = (process.env.ATEM_VERBOSE === '1' || process.env.ATEM_VERBOSE === 'true');
+  // Grace window timer to avoid immediate stop flicker for streaming
   private streamingStopTimer: NodeJS.Timeout | null = null;
 
   constructor(connection: MixerConnection) {
@@ -42,16 +45,30 @@ export class ATEMConnector extends EventEmitter {
       this.emit('connected');
       this.clearReconnectInterval();
       
-      // Initialize input tracking and rec/stream flags
-      setTimeout(() => {
+      // Get initial state immediately
+      if (this.verbose) console.log('🔍 Getting initial ATEM state...');
+      try {
+        const state = this.atem.state;
+        this.currentState = state || null;
+        if (this.verbose) {
+          console.log('📊 Initial ATEM state:', {
+            hasState: !!this.currentState,
+            keys: this.currentState ? Object.keys(this.currentState) : []
+          });
+        }
+        // Initialize recording/streaming flags from initial state if available
         try {
-          // Prime currentState from live atem state if available
-          this.currentState = this.atem.state || this.currentState;
           this.handleRecordingStateChange();
           this.handleStreamingStateChange();
         } catch {}
-        this.initializeInputTracking();
-      }, 500);
+      } catch (error) {
+        console.error('❌ Error getting initial ATEM state:', error);
+      }
+      
+      // Initialize input tracking with multiple attempts
+      this.attemptInputTracking(0);
+
+      // Start status polling as a fallback in case events aren't emitted
       this.startStatusPolling();
     });
 
@@ -73,28 +90,79 @@ export class ATEMConnector extends EventEmitter {
 
     // Listen for state changes to track tally updates
     this.atem.on('stateChanged', (state: AtemState, pathToChange: string[]) => {
+      if (this.verbose) {
+        console.log('🔄 ATEM state changed:', {
+          pathToChange,
+          hasInputs: !!state.inputs,
+          hasVideo: !!state.video,
+          inputCount: state.inputs ? Object.keys(state.inputs).length : 0
+        });
+      }
+      
       this.currentState = state;
-      const tallyRelated = pathToChange.some(p =>
+      
+      // Handle program/preview changes (original check missed nested paths like 'video.mixEffects.0.programInput')
+      const tallyRelated = pathToChange.some(p => 
         p === 'video' ||
         p === 'mixEffects' ||
         p.startsWith('video.mixEffects') ||
-        p.includes('programInput') ||
-        p.includes('previewInput') ||
-        p.includes('transition') ||
-        p.includes('transitionPosition')
+  p.includes('programInput') ||
+  p.includes('previewInput') ||
+  p.includes('transition') || // capture transitionPosition / transitionStyle changes
+  p.includes('transitionPosition')
       );
       if (tallyRelated) {
+        if (this.verbose) console.log('🎛️ ATEM program/preview path change detected:', pathToChange);
         this.handleTallyStateChange();
       }
+      
+      // Relevant path filters for recording/streaming
       const recordingRelevant = pathToChange.some(p => (
-        p === 'recording' || p.includes('recording.status') || p.includes('recording.state') || p.includes('recording.onAir') || p.includes('recording.active')
+        p === 'recording' ||
+        p.includes('recording.status') || p.includes('recording.state') || p.includes('recording.onAir') || p.includes('recording.active')
       ));
       const streamingRelevant = pathToChange.some(p => (
-        p === 'streaming' || p.includes('streaming.status') || p.includes('streaming.state') || p.includes('streaming.onAir') || p.includes('streaming.active')
+        p === 'streaming' ||
+        p.includes('streaming.status') || p.includes('streaming.state') || p.includes('streaming.onAir') || p.includes('streaming.active')
       ));
-      if (recordingRelevant) this.handleRecordingStateChange();
-      if (streamingRelevant) this.handleStreamingStateChange();
+
+      // Handle recording state changes (ignore duration/counter/stat updates)
+      if (recordingRelevant) {
+        if (this.verbose) console.log('🔴 ATEM recording state path (relevant) detected');
+        this.handleRecordingStateChange();
+      }
+      
+      // Handle streaming state changes (ignore duration/counter/stat updates)
+      if (streamingRelevant) {
+        if (this.verbose) console.log('📡 ATEM streaming state path (relevant) detected');
+        this.handleStreamingStateChange();
+      }
+      
+      // If this is the first time we get inputs, initialize tracking
+      if (state.inputs && this.inputSources.size === 0) {
+        if (this.verbose) console.log('📥 ATEM inputs now available, initializing tracking');
+        this.initializeInputTracking();
+      }
     });
+  }
+
+  private attemptInputTracking(attempt: number): void {
+    const maxAttempts = 5;
+    const delay = Math.min(1000 * Math.pow(2, attempt), 5000); // Exponential backoff, max 5 seconds
+    
+    setTimeout(() => {
+      if (this.currentState && this.currentState.inputs) {
+        console.log(`📊 ATEM state available, initializing input tracking (attempt ${attempt + 1})`);
+        this.initializeInputTracking();
+      } else {
+        if (attempt < maxAttempts - 1) {
+          console.log(`⏳ ATEM state not ready, retrying in ${delay}ms (attempt ${attempt + 1}/${maxAttempts})`);
+          this.attemptInputTracking(attempt + 1);
+        } else {
+          console.warn(`⚠️  ATEM state not available after ${maxAttempts} attempts, input tracking disabled`);
+        }
+      }
+    }, delay);
   }
 
   public async connect(): Promise<void> {
@@ -142,60 +210,114 @@ export class ATEMConnector extends EventEmitter {
       // Get input sources from ATEM state
       this.inputSources.clear();
       
+      if (this.verbose) {
+        console.log('🔍 ATEM State structure:', {
+          hasInputs: !!this.currentState.inputs,
+          hasVideo: !!this.currentState.video,
+          hasMixEffects: !!(this.currentState.video?.mixEffects),
+          inputKeys: this.currentState.inputs ? Object.keys(this.currentState.inputs) : []
+        });
+      }
+      
       if (this.currentState.inputs) {
+        let inputCount = 0;
         for (const [inputId, input] of Object.entries(this.currentState.inputs)) {
           const id = parseInt(inputId);
-          if (input && input.longName) {
-            this.inputSources.set(id, input.longName);
-            console.log(`📹 ATEM Input ${id}: ${input.longName}`);
+          if (input && typeof input === 'object') {
+            // Try different property names for input name
+            const inputName = (input as any).longName || 
+                             (input as any).shortName || 
+                             (input as any).name || 
+                             `Input ${id}`;
+            
+            this.inputSources.set(id, inputName);
+            if (this.verbose) console.log(`📹 ATEM Input ${id}: ${inputName}`);
+            inputCount++;
           }
         }
+        
+        if (inputCount === 0) {
+          console.warn('⚠️  No valid inputs found in ATEM state');
+        } else {
+          if (this.verbose) console.log(`📊 ATEM input tracking initialized with ${inputCount} inputs`);
+        }
+      } else {
+        console.warn('⚠️  ATEM inputs not found in state');
       }
 
-      console.log(`📊 ATEM input tracking initialized with ${this.inputSources.size} inputs`);
+      // Log current mix effects state
+      if (this.currentState.video?.mixEffects) {
+        const mixEffect = this.currentState.video.mixEffects[0];
+        if (mixEffect) {
+          if (this.verbose) console.log(`🎛️ ATEM Mix Effect - Program: ${mixEffect.programInput}, Preview: ${mixEffect.previewInput}`);
+        }
+      }
       
       // Send initial tally state
       this.handleTallyStateChange();
       
     } catch (error) {
       console.error(`🚨 Error initializing ATEM input tracking:`, this.getErrorMessage(error));
+      console.error('🔍 ATEM State dump:', JSON.stringify(this.currentState, null, 2));
     }
   }
 
   private handleTallyStateChange(forceEmit: boolean = false): void {
     if (!this.currentState || !this.currentState.video || !this.currentState.video.mixEffects) {
+      console.log('⚠️  ATEM tally state not available');
       return;
     }
 
     try {
       // ATEM typically has one or more mix effects buses
       const mixEffect = this.currentState.video.mixEffects[0]; // Use first ME
-      if (!mixEffect) return;
+      if (!mixEffect) {
+        console.log('⚠️  ATEM mix effect not available');
+        return;
+      }
 
       const programInput = mixEffect.programInput;
       const previewInput = mixEffect.previewInput;
-      const rawTransition: any = (mixEffect as any).transitionPosition;
+      const rawTransition = (mixEffect as any).transitionPosition;
       let numericTransition: number | null = null;
       if (typeof rawTransition === 'number') numericTransition = rawTransition;
       else if (rawTransition && typeof rawTransition === 'object') {
+        // Try common property names used by atem-connection
         numericTransition = (rawTransition.position ?? rawTransition.value ?? rawTransition.handle ?? null) as number | null;
       }
       const inTransition = numericTransition !== null && numericTransition > 0 && numericTransition < 10000;
 
+      // Suppress noisy transitionPosition-only updates:
+      // 1. If we are mid-transition (transition active) and nothing about program/preview changed from last emission, skip.
       if (!forceEmit && inTransition && this.lastInTransition && this.lastProgramInput === programInput && this.lastPreviewInput === previewInput) {
-        return;
+        return; // ongoing transition progress update (position changing) -> ignore
       }
+
+      // 2. If we are stable (not in transition) and buses unchanged and recently emitted, debounce.
       if (!forceEmit && !inTransition && !this.lastInTransition && this.lastProgramInput === programInput && this.lastPreviewInput === previewInput) {
         const now = Date.now();
         if (now - this.lastEmitTimestamp < this.MIN_EMIT_INTERVAL_MS) {
-          return;
+          return; // duplicate stable state within debounce window
         }
       }
 
-      for (const [inputId, inputName] of this.inputSources) {
-        if (!this.isCameraSource(inputName)) continue;
+      if (this.verbose) console.log(`🎛️ ATEM Tally Update: Program=${programInput}, Preview=${previewInput}, InTransition=${inTransition} (${numericTransition}), Inputs=${this.inputSources.size}`);
+      if (!inTransition && programInput === previewInput) {
+        if (this.verbose) console.log('ℹ️  Program and Preview identical (no active transition) – treating as Program only for tally output');
+      }
+
+      // Emit tally updates for all inputs
+      let tallyCount = 0;
+        for (const [inputId, inputName] of this.inputSources) {
+          if (!this.isCameraSource(inputName)) continue; // emit only camera sources
         const isProgram = inputId === programInput;
-        const isPreview = (!inTransition && programInput === previewInput && isProgram) ? false : (inputId === previewInput);
+        let isPreview = inputId === previewInput;
+
+        // After transition completion ATEM often reports program==preview briefly; suppress preview flag then.
+        if (!inTransition && programInput === previewInput && isProgram) {
+          isPreview = false;
+        }
+
         const tallyUpdate: TallyUpdate = {
           deviceId: `atem-input-${inputId}`,
           preview: isPreview,
@@ -204,20 +326,45 @@ export class ATEMConnector extends EventEmitter {
           recording: this.isRecording,
           streaming: this.isStreaming
         };
-        this.emit('tally:update', tallyUpdate);
-      }
-      console.log(`📡 ATEM Tally: Program=${programInput}, Preview=${previewInput}, InTransition=${inTransition} (${numericTransition})`);
 
+        this.emit('tally:update', tallyUpdate);
+        
+        if (isProgram || isPreview) {
+          if (this.verbose) {
+            const flags = `${isProgram ? 'PROGRAM' : ''}${isPreview ? 'PREVIEW' : ''}`;
+            console.log(`📡 ATEM Tally: Input ${inputId} (${inputName}) - ${flags}`);
+          }
+          tallyCount++;
+        }
+      }
+
+      // Detect transition start/end boundaries
       const programChanged = this.lastProgramInput !== null && this.lastProgramInput !== programInput;
       const previewChanged = this.lastPreviewInput !== null && this.lastPreviewInput !== previewInput;
-      const transitionEnded = this.lastInTransition && !inTransition;
+      const transitionEnded = this.lastInTransition && !inTransition; // edge when transition just ended
+      const transitionStarted = !this.lastInTransition && inTransition;
+
       if (transitionEnded && (programChanged || previewChanged)) {
-        setTimeout(() => this.handleTallyStateChange(true), 50);
+        // Small delayed re-emit to catch any final bus settling
+        setTimeout(() => {
+          if (this.currentState) {
+            const me = this.currentState.video?.mixEffects?.[0];
+            if (me) {
+              if (this.verbose) console.log('🔁 Post-transition verification emit');
+              this.handleTallyStateChange(true); // force emit
+            }
+          }
+        }, 50);
       }
+
       this.lastProgramInput = programInput;
       this.lastPreviewInput = previewInput;
       this.lastInTransition = inTransition;
       this.lastEmitTimestamp = Date.now();
+      
+      if (tallyCount === 0 && this.verbose) {
+        console.log('ℹ️  No active tally states (all inputs off)');
+      }
       
     } catch (error) {
       console.error(`🚨 Error handling ATEM tally state change:`, this.getErrorMessage(error));
@@ -231,6 +378,7 @@ export class ATEMConnector extends EventEmitter {
 
     try {
   const wasRecording = this.isRecording;
+  // Check if recording is active based on ATEM state (explicit)
   this.isRecording = this.isRecordingActive(this.currentState.recording);
       
       if (wasRecording !== this.isRecording) {
@@ -243,7 +391,7 @@ export class ATEMConnector extends EventEmitter {
           timestamp: new Date()
         };
         
-  this.emit('status:update', statusUpdate);
+        this.emit('status:update', statusUpdate);
         
         // Re-emit tally updates with new recording state
         this.handleTallyStateChange();
@@ -266,6 +414,7 @@ export class ATEMConnector extends EventEmitter {
     }
   }
 
+  // Apply streaming state with a short grace window on stop to avoid flicker
   private applyStreamingActive(newActive: boolean, source: 'event' | 'poll' = 'event'): void {
     const wasStreaming = this.isStreaming;
     if (this.verbose) {
@@ -275,23 +424,40 @@ export class ATEMConnector extends EventEmitter {
         console.log(`ℹ️  ATEM streaming apply (${source}): newActive=${newActive}, was=${wasStreaming}, rawState=`, rawState);
       } catch {}
     }
+
+    // If turning ON: emit immediately, cancel any pending stop timer
     if (newActive) {
-      if (this.streamingStopTimer) { clearTimeout(this.streamingStopTimer); this.streamingStopTimer = null; }
+      if (this.streamingStopTimer) {
+        clearTimeout(this.streamingStopTimer);
+        this.streamingStopTimer = null;
+      }
       if (!wasStreaming) {
         this.isStreaming = true;
-        const statusUpdate: MixerStatusUpdate = { mixerId: this.connection.id, recording: this.isRecording, streaming: this.isStreaming, timestamp: new Date() };
+        const statusUpdate: MixerStatusUpdate = {
+          mixerId: this.connection.id,
+          recording: this.isRecording,
+          streaming: this.isStreaming,
+          timestamp: new Date()
+        };
         this.emit('status:update', statusUpdate);
         this.handleTallyStateChange();
       }
       return;
     }
+
+    // If turning OFF: wait briefly to confirm still off (handles brief transitional blips)
     if (wasStreaming && !this.streamingStopTimer) {
       this.streamingStopTimer = setTimeout(() => {
         this.streamingStopTimer = null;
         const confirmActive = this.isStreamingActive(this.currentState?.streaming);
         if (!confirmActive && this.isStreaming) {
           this.isStreaming = false;
-          const statusUpdate: MixerStatusUpdate = { mixerId: this.connection.id, recording: this.isRecording, streaming: this.isStreaming, timestamp: new Date() };
+          const statusUpdate: MixerStatusUpdate = {
+            mixerId: this.connection.id,
+            recording: this.isRecording,
+            streaming: this.isStreaming,
+            timestamp: new Date()
+          };
           this.emit('status:update', statusUpdate);
           this.handleTallyStateChange();
         }
@@ -351,17 +517,24 @@ export class ATEMConnector extends EventEmitter {
         const st = this.currentState;
         const recObj: any = st?.recording;
         const strObj: any = st?.streaming;
+
         if (!recObj && !strObj) {
           if (!this.loggedNoStatusSupport) {
-            console.log('ℹ️  ATEM recording/streaming status not present in state (Windows bundle)');
+            console.log('ℹ️  ATEM recording/streaming status objects not present in state – model may not support these features.');
             this.loggedNoStatusSupport = true;
           }
           return;
         }
+
         const recActive = this.isRecordingActive(recObj);
         const strActive = this.isStreamingActive(strObj);
+
         let changed = false;
-        if (recActive !== this.isRecording) { this.isRecording = recActive; changed = true; }
+        if (recActive !== this.isRecording) {
+          this.isRecording = recActive;
+          changed = true;
+        }
+        // Apply streaming via helper (handles grace window); do not mark changed here for streaming
         this.applyStreamingActive(strActive, 'poll');
         if (changed) {
           const statusUpdate: MixerStatusUpdate = {
@@ -373,7 +546,9 @@ export class ATEMConnector extends EventEmitter {
           this.emit('status:update', statusUpdate);
           this.handleTallyStateChange();
         }
-      } catch {}
+      } catch (e) {
+        // Silent poll errors to avoid spam
+      }
     }, 2000);
   }
 
@@ -385,15 +560,17 @@ export class ATEMConnector extends EventEmitter {
     this.loggedNoStatusSupport = false;
   }
 
+  // Explicit detection for Streaming (treat only Streaming/LIVE as true)
   private isStreamingActive(streaming: any): boolean {
     if (!streaming) return false;
-    const s: any = (streaming as any).status || streaming;
+    const s = streaming.status || streaming;
     if (s && typeof s === 'object') {
-      if (typeof s.onAir === 'boolean') return s.onAir;
-      if (typeof s.active === 'boolean') return s.active;
-      if (typeof s.state === 'number') return s.state >= 2;
-      if (typeof s.state === 'string') {
-        const v = String(s.state).toLowerCase();
+      const so: any = s;
+      if (typeof so.onAir === 'boolean') return so.onAir;
+      if (typeof so.active === 'boolean') return so.active;
+      if (typeof so.state === 'number') return so.state >= 2; // 0/1 = idle/connecting, >=2 = on air on many models
+      if (typeof so.state === 'string') {
+        const v = String(so.state).toLowerCase();
         return v === 'streaming' || v === 'onair' || v === 'live';
       }
     }
@@ -406,11 +583,12 @@ export class ATEMConnector extends EventEmitter {
     return false;
   }
 
+  // Detection for Recording (most models: 0=Idle, 1=Recording)
   private isRecordingActive(recording: any): boolean {
     if (!recording) return false;
-    const s = (recording as any).status || recording;
-    const stateVal = (s && typeof s === 'object') ? (s as any).state ?? (s as any).onAir ?? (s as any).active : s as any;
-    if (typeof stateVal === 'number') return stateVal === 1 || stateVal === 2;
+    const s = recording.status || recording;
+    const stateVal = (s && typeof s === 'object') ? (s.state ?? s.onAir ?? s.active) : s;
+    if (typeof stateVal === 'number') return stateVal === 1 || stateVal === 2; // some firmwares use 1=Rec, accept 2 as active if present
     if (typeof stateVal === 'boolean') return stateVal === true;
     if (typeof stateVal === 'string') {
       const v = stateVal.toLowerCase();
@@ -420,13 +598,14 @@ export class ATEMConnector extends EventEmitter {
   }
 
   private isCameraSource(name: string): boolean {
-    // Relaxed filter to include all non-system sources
+    // Relaxed: include all inputs except obvious system/utility sources
     if (!name) return false;
     const lower = name.toLowerCase();
-    const excluded = [
-      'black','color','bars','media player','multiview','program','preview','output','recording status','streaming status','audio status','direct'
+    const excludedPatterns = [
+      'black', 'color', 'bars', 'media player', 'multiview', 'program', 'preview',
+      'output', 'recording status', 'streaming status', 'audio status', 'direct'
     ];
-    return !excluded.some(p => lower.includes(p));
+    return !excludedPatterns.some(p => lower.includes(p));
   }
 
   public isConnectedToMixer(): boolean {
@@ -441,10 +620,11 @@ export class ATEMConnector extends EventEmitter {
     const sources: Array<{ id: string; name: string; type: string }> = [];
     
     for (const [inputId, inputName] of this.inputSources) {
-      if (!this.isCameraSource(inputName)) continue;
-      sources.push({ id: `atem-input-${inputId}`, name: inputName, type: 'input' });
+  if (!this.isCameraSource(inputName)) continue;
+  sources.push({ id: `atem-input-${inputId}`, name: inputName, type: 'input' });
     }
     
+    console.log(`📋 ATEM returning ${sources.length} sources:`, sources.map(s => `${s.id}: ${s.name}`));
     return sources;
   }
 
@@ -462,7 +642,7 @@ export class ATEMConnector extends EventEmitter {
       recording: this.isRecording,
       streaming: this.isStreaming,
       inputs: Array.from(this.inputSources.entries()).map(([id, name]) => ({
-        id: id.toString(),
+        id: `atem-input-${id}`,
         name,
         program: id === mixEffect.programInput,
         preview: id === mixEffect.previewInput

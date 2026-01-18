@@ -480,11 +480,14 @@ export class UDPServer {
   }
 
   private broadcastTallyUpdate(tallyState: TallyState): void {
-    // Broadcast global PROGRAM state so devices can learn the live source even when not assigned to it.
+    // Broadcast only when a source is in PROGRAM to allow devices to learn the global live source.
+    // Firmware will capture this before assignment filtering to show "Live: <source>" in IDLE/PREVIEW.
     if (!tallyState.program) return;
-    // Only broadcast OBS scenes (skip OBS sources) to avoid overlays/logos; include vMix/ATEM inputs.
+
+    // Only broadcast OBS scenes (not individual OBS sources) to avoid overlays/logos being treated as live.
+    // Allow vMix inputs and ATEM inputs as they represent program buses.
     const id = tallyState.id || '';
-    if (id.startsWith('obs-source-')) return;
+    if (id.startsWith('obs-source-')) return; // skip OBS sources
     if (!(id.startsWith('obs-scene-') || id.startsWith('vmix-input-') || id.startsWith('atem-input-'))) return;
 
     const message = {
@@ -498,6 +501,7 @@ export class UDPServer {
         streaming: tallyState.streaming || false
       }
     };
+
     for (const m5Device of this.m5Devices.values()) {
       this.sendToAddress(m5Device.address, m5Device.port, message);
     }

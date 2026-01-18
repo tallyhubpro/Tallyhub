@@ -406,26 +406,21 @@ export class VMixConnector extends EventEmitter {
   }
 
   public async forceReconnect(): Promise<void> {
-    console.log(`🔄 Forcing reconnect to vMix API...`);
-    await this.disconnect();
+    console.log(`🔄 Forcing reconnection to vMix ${this.connection.host}:${this.connection.port}`);
     
-    // Reset reconnect attempts for a fresh start
+    // Clear any pending reconnection
+    this.clearReconnectInterval();
+    
+    // Reset reconnection attempts to allow immediate retry
     this.resetReconnectAttempts();
     
-    // Immediate reconnect
-    await this.connect();
-  }
-
-  public getInputs(): Array<{ number: number; name: string; type: string }> {
-    const inputs: Array<{ number: number; name: string; type: string }> = [];
-    for (const [inputNumber, inputData] of this.currentInputs.entries()) {
-      inputs.push({
-        number: inputNumber,
-        name: inputData.name || `Input ${inputNumber}`,
-        type: inputData.type || 'Unknown'
-      });
+    try {
+      await this.connect();
+    } catch (error) {
+      console.error(`🔄 Force reconnection failed:`, error);
+      // Start normal reconnection schedule
+      this.scheduleReconnect();
     }
-    return inputs;
   }
 
   private async initializeInputTracking(): Promise<void> {
@@ -507,5 +502,21 @@ export class VMixConnector extends EventEmitter {
     if (updatesCount > 0) {
       console.log(`📊 Updated ${updatesCount} vMix input tally states`);
     }
+  }
+
+  public async getInputs(): Promise<any[]> {
+    return Array.from(this.currentInputs.values());
+  }
+
+  public async setPreview(inputNumber: number): Promise<void> {
+    await this.sendCommand(`PreviewInput&Input=${inputNumber}`);
+  }
+
+  public async setCut(inputNumber: number): Promise<void> {
+    await this.sendCommand(`Cut&Input=${inputNumber}`);
+  }
+
+  public async setProgram(inputNumber: number): Promise<void> {
+    await this.sendCommand(`ActiveInput&Input=${inputNumber}`);
   }
 }
