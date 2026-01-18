@@ -22,11 +22,11 @@ def merge_firmware(source, target, env):
     bootloader_path = os.path.join(build_dir, "bootloader.bin")
     partitions_path = os.path.join(build_dir, "partitions.bin")
     firmware_path = os.path.join(build_dir, "firmware.bin")
-    merged_path = os.path.join(build_dir, "firmware-merged.bin")
+    merged_path = os.path.join(build_dir, "ESP32-1732S019.bin")
     
     # Public firmware directory (for web flasher)
     public_dir = os.path.join(project_dir, "..", "..", "public", "firmware", "ESP32-1732S019")
-    public_merged_path = os.path.join(public_dir, "firmware-merged.bin")
+    public_merged_path = os.path.join(public_dir, "ESP32-1732S019.bin")
     
     print("\n" + "="*50)
     print("🔧 ESP32-1732S019 Firmware Merge Process")
