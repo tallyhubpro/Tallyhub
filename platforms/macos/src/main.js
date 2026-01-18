@@ -175,7 +175,7 @@ function createMenu() {
               type: 'info',
               title: 'About TallyHub',
               message: 'TallyHub',
-              detail: 'Professional Tally Light Management System\\nVersion 1.0.0\\n\\nBuilt with ❤️ by TallyHub Pro',
+              detail: `Professional Tally Light Management System\nVersion ${app.getVersion()}\n\nBuilt with ❤️ by TallyHub Pro`,
               icon: path.join(__dirname, '../assets/tally-hub-icon-128.svg')
             });
           }

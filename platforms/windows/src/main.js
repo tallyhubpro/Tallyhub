@@ -350,7 +350,7 @@ function createMenu() {
               title: 'About TallyHub',
               message: 'TallyHub for Windows',
               detail: `Professional Tally Light Management System
-Version 1.0.0
+Version ${app.getVersion()}
 
 Built with ❤️ by TallyHub Pro
 Platform: Windows ${process.arch}
