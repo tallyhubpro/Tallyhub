@@ -357,9 +357,11 @@
         /* Server flash fallback */
         #serverFlashContainer { margin-top:2rem; display:none; }
         #serverFlashContainer h3 { margin-bottom:0.75rem; }
-        .inline-group { display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end; }
-        .inline-group select, .inline-group button { padding:0.5rem; border-radius:6px; border:1px solid rgba(255,255,255,0.3); background:rgba(255,255,255,0.1); color:#fff; }
-        .inline-group button { cursor:pointer; background:linear-gradient(45deg,#2196F3,#1976D2); border:none; }
+        .inline-group { display:flex; gap:0.75rem; flex-wrap:wrap; align-items:flex-end; }
+        .inline-group > div { display:flex; flex-direction:column; gap:0.25rem; }
+        .inline-group label { font-size:0.75rem; opacity:0.8; display:block; margin-bottom:0.25rem; }
+        .inline-group select { padding:0.6rem; border-radius:6px; border:1px solid rgba(255,255,255,0.3); background:rgba(255,255,255,0.1); color:#fff; font-size:0.9rem; min-width:200px; }
+        .inline-group button { padding:0.6rem 1rem; border-radius:6px; cursor:pointer; background:linear-gradient(45deg,#2196F3,#1976D2); border:none; color:#fff; font-size:0.9rem; white-space:nowrap; }
         .inline-group button:hover { filter:brightness(1.1); }
         #serverFlashStatus { margin-top:0.75rem; white-space:pre-line; font-size:0.85rem; background:rgba(0,0,0,0.25); padding:0.75rem; border-radius:8px; max-height:220px; overflow:auto; }
         #toggleModeBtn { margin-top:0.5rem; background:linear-gradient(45deg,#ff9800,#f57c00); border:none; padding:0.4rem 0.8rem; border-radius:6px; color:#fff; cursor:pointer; font-size:0.8rem; }
@@ -494,12 +496,12 @@
                     Devices connected to the server's USB ports can be flashed using this mode.
                 </p>
                 <div class="inline-group">
-                    <div style="flex:1; min-width:160px;">
-                        <label style="font-size:0.75rem; opacity:0.8;">Serial Port</label>
+                    <div style="flex:1;">
+                        <label>Serial Port</label>
                         <select id="serverPortSelect"></select>
                     </div>
-                    <div style="flex:1; min-width:200px;">
-                        <label style="font-size:0.75rem; opacity:0.8;">Firmware</label>
+                    <div style="flex:1;">
+                        <label>Firmware</label>
                         <select id="serverFirmwareSelect"></select>
                     </div>
                     <div style="display:flex; gap:0.5rem;">
