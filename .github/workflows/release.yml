@@ -145,6 +145,8 @@ jobs:
   create-release:
     needs: [build-windows, build-macos, build-server]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       
@@ -213,10 +215,11 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            release-files/TallyHub-Setup.exe
-            release-files/TallyHub.dmg
-            release-files/tally-hub-server-linux.tar.gz
-            public/firmware/ESP32-1732S019/firmware-merged.bin
-            public/firmware/M5Stick_Tally/firmware-merged.bin
+            release-files/*.exe
+            release-files/*.dmg
+            release-files/*.tar.gz
+            public/firmware/ESP32-1732S019/ESP32-1732S019.bin
+            public/firmware/M5Stick_Tally/M5Stick_Tally.bin
+            public/firmware/M5Stick_Tally/M5Stick_Tally_Plus2.bin
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
