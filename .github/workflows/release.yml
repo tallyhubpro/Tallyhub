@@ -45,11 +45,11 @@ jobs:
           cd platforms/windows
           npm install
           npm run build
-          
+      
       - name: Create Windows installer
         run: |
           cd platforms/windows
-          npm run build -- --publish=never
+          npx electron-builder --win --publish=never
       
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
@@ -93,11 +93,11 @@ jobs:
           npm install
           chmod +x build-app.sh
           ./build-app.sh
-          
+      
       - name: Create macOS DMG
         run: |
           cd platforms/macos
-          npm run build -- --publish=never
+          npx electron-builder --mac --publish=never
       
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
