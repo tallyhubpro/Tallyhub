@@ -27,13 +27,17 @@ jobs:
         run: npm install
       
       - name: Copy server files to Windows app
+        shell: pwsh
         run: |
           # Copy server source to Windows platform
-          mkdir -p platforms/windows/server/src
-          cp -r src/* platforms/windows/server/src/
-          cp -r public platforms/windows/server/
-          cp package.json platforms/windows/server/
-          cp tsconfig.json platforms/windows/server/
+          New-Item -ItemType Directory -Force -Path platforms/windows/server/src
+          Copy-Item -Path src/* -Destination platforms/windows/server/src/ -Recurse -Force
+          Copy-Item -Path public -Destination platforms/windows/server/ -Recurse -Force
+          Copy-Item -Path package.json -Destination platforms/windows/server/
+          Copy-Item -Path tsconfig.json -Destination platforms/windows/server/
+          # Install server dependencies
+          cd platforms/windows/server
+          npm install
       
       - name: Build Windows app
         run: |
@@ -77,6 +81,9 @@ jobs:
           cp -r public platforms/macos/server/
           cp package.json platforms/macos/server/
           cp tsconfig.json platforms/macos/server/
+          # Install server dependencies
+          cd platforms/macos/server
+          npm install
       
       - name: Build macOS app
         run: |
