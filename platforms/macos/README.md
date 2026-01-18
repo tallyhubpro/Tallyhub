@@ -22,7 +22,7 @@ A native macOS application for the Tally Hub tally light control system, built w
 
 1. **Setup the application:**
    ```bash
-   cd TallyHub-Mac
+   cd platforms/macos
    ./scripts/setup.sh
    ```
 
@@ -84,7 +84,7 @@ Recipients may need to:
 ## Project Structure
 
 ```
-TallyHub-Mac/
+platforms/macos/
 ├── src/
 │   ├── main.js          # Main Electron process
 │   ├── preload.js       # Preload script for security

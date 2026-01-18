@@ -5,14 +5,14 @@ Your unsigned Mac app build is now ready! Here's everything you need to know:
 ## ✅ What Was Built
 
 ### Development Files
-- **Mac App Source**: `/TallyHub-Mac/src/`
+- **Mac App Source**: `/platforms/macos/src/`
   - `main.js` - Electron main process
   - `preload.js` - Secure IPC bridge
   - `renderer.html` - Beautiful Mac UI
 - **Server Integration**: Full Tally Hub server copied and configured
 - **Build Scripts**: Automated setup and build processes
 
-### Production Builds (in `/TallyHub-Mac/dist/`)
+### Production Builds (in `/platforms/macos/dist/`)
 - **Intel Macs (x64)**:
   - `TallyHub-1.0.0.dmg` - DMG installer
   - `TallyHub-1.0.0-mac.zip` - ZIP package
@@ -27,7 +27,7 @@ Your unsigned Mac app build is now ready! Here's everything you need to know:
 
 ### For Development
 ```bash
-cd TallyHub-Mac
+cd platforms/macos
 npm run dev           # Run in development mode
 ```
 
@@ -88,7 +88,7 @@ Since this is an unsigned app:
 If you make changes to the Tally Hub server:
 
 ```bash
-cd TallyHub-Mac
+cd platforms/macos
 ./scripts/setup.sh     # Re-copy server files
 npm run build-mac      # Rebuild app
 ```
@@ -112,7 +112,7 @@ npm run dist-mac       # Build and package for distribution
 ## 📁 Project Structure
 
 ```
-TallyHub-Mac/
+platforms/macos/
 ├── src/
 │   ├── main.js          # ✅ Electron main process
 │   ├── preload.js       # ✅ Secure IPC bridge  

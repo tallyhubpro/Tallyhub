@@ -57,9 +57,9 @@ npm run prebuild  # Runs convert-icons automatically
 ```
 
 ### Source Files Used
-- **Main Icon**: `TallyHub-Mac/assets/icon.png` → `icon.ico`
-- **Tray 16x16**: `TallyHub-Mac/assets/tray-icon-16.png` → `tray-icon-16.ico`
-- **Tray 32x32**: `TallyHub-Mac/assets/tray-icon-32.png` → `tray-icon-32.ico`
+- **Main Icon**: `platforms/macos/assets/icon.png` → `icon.ico`
+- **Tray 16x16**: `platforms/macos/assets/tray-icon-16.png` → `tray-icon-16.ico`
+- **Tray 32x32**: `platforms/macos/assets/tray-icon-32.png` → `tray-icon-32.ico`
 - **Combined Tray**: Multiple sizes → `tray-icon.ico`
 
 ## 🎨 Windows Icon Standards
@@ -117,8 +117,8 @@ Icons are automatically included in the Windows installer:
 ### Updating Icons
 To update icons in the future:
 
-1. **Replace Source PNGs**: Update files in `TallyHub-Mac/assets/`
-2. **Copy to Windows**: `cp TallyHub-Mac/assets/*.png TallyHub-Windows/assets/`
+1. **Replace Source PNGs**: Update files in `platforms/macos/assets/`
+2. **Copy to Windows**: `cp platforms/macos/assets/*.png platforms/windows/assets/`
 3. **Convert**: `npm run convert-icons`
 4. **Validate**: `npm run validate-icons`
 5. **Test**: Build and verify display
@@ -127,7 +127,7 @@ To update icons in the future:
 If icons become corrupted or need regeneration:
 
 ```bash
-cd TallyHub-Windows
+cd platforms/windows
 npm run convert-icons
 npm run validate-icons
 ```

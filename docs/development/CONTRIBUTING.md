@@ -12,7 +12,7 @@ Tally Hub aims to be a production‑ready, low‑latency, hardware + software ta
 - Server: Node.js + TypeScript (`src/`)
 - Realtime: WebSocket + UDP discovery & messaging
 - Firmware: `firmware/<device>/` (PlatformIO)
-- Desktop Apps: Electron wrappers (`TallyHub-Windows/`, `TallyHub-Mac/`)
+- Desktop Apps: Electron wrappers (`platforms/windows/`, `platforms/macos/`)
 - Docs: MkDocs site under `docs/`
 
 ## 🛠 Local Development

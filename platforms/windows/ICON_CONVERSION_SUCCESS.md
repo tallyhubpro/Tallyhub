@@ -79,7 +79,7 @@ The Windows version is now complete with professional iconography:
 
 ```bash
 # Test the completed Windows app
-cd TallyHub-Windows
+cd platforms/windows
 npm start
 
 # Build Windows distributable

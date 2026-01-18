@@ -9,8 +9,8 @@
 
 ### Quick Setup
 ```cmd
-# Clone or download the TallyHub-Windows folder
-cd TallyHub-Windows
+# Clone or download the platforms/windows folder
+cd platforms/windows
 
 # Run automated setup
 setup.bat
@@ -22,7 +22,7 @@ npm start
 ## 📁 Project Structure
 
 ```
-TallyHub-Windows/
+platforms/windows/
 ├── src/                     # Application source
 │   ├── main.js             # Main Electron process (Windows-optimized)
 │   ├── preload.js          # Preload script with Windows features

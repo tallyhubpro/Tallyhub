@@ -28,13 +28,13 @@ jobs:
       
       - name: Build Windows app
         run: |
-          cd TallyHub-Windows
+          cd platforms/windows
           npm install
           npm run build
           
       - name: Create Windows installer
         run: |
-          cd TallyHub-Windows
+          cd platforms/windows
           npm run dist
       
       - name: Upload Windows artifacts
@@ -42,8 +42,8 @@ jobs:
         with:
           name: tally-hub-windows
           path: |
-            TallyHub-Windows/dist/*.exe
-            TallyHub-Windows/dist/*.zip
+            platforms/windows/dist/*.exe
+            platforms/windows/dist/*.zip
           retention-days: 30
 
   build-macos:
@@ -62,14 +62,14 @@ jobs:
       
       - name: Build macOS app
         run: |
-          cd TallyHub-Mac
+          cd platforms/macos
           npm install
           chmod +x build-app.sh
           ./build-app.sh
           
       - name: Create macOS DMG
         run: |
-          cd TallyHub-Mac
+          cd platforms/macos
           npm run dist
       
       - name: Upload macOS artifacts
@@ -77,8 +77,8 @@ jobs:
         with:
           name: tally-hub-macos
           path: |
-            TallyHub-Mac/dist/*.dmg
-            TallyHub-Mac/dist/*.zip
+            platforms/macos/dist/*.dmg
+            platforms/macos/dist/*.zip
           retention-days: 30
 
   build-server:
@@ -104,8 +104,7 @@ jobs:
           tar -czf releases/tally-hub-server-linux.tar.gz \
             --exclude=node_modules \
             --exclude=.git \
-            --exclude=TallyHub-Windows \
-            --exclude=TallyHub-Mac \
+            --exclude=platforms \
             --exclude=logs \
             --exclude=.env \
             .

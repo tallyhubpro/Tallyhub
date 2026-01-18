@@ -58,8 +58,8 @@ module.exports = [
       'node_modules/',
       '*.d.ts',
       'firmware/',
-      'TallyHub-Windows/',
-      'TallyHub-Mac/'
+      'platforms/windows/',
+      'platforms/macos/'
     ]
   }
 ];

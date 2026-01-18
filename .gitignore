@@ -171,8 +171,8 @@ mixer-config.json
 # Project-specific ignores
 .server.pid
 .venv/
-TallyHub-Windows.zip
-TallyHub-Mac.zip
+platforms/windows.zip
+platforms/macos.zip
 src/Archive.zip
 
 # Firmware build artifacts

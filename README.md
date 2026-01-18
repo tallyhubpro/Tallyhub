@@ -257,7 +257,7 @@ If discovery fails completely, the device will enter its configuration (AP) mode
 
 ## 🤝 Contributing
 
-We welcome contributions! Start by reading `CONTRIBUTING.md` in the repository root for:
+We welcome contributions! Start by reading [CONTRIBUTING.md](docs/development/CONTRIBUTING.md) for:
 - Branch naming & commit message style
 - Code quality gates (lint, typecheck, formatting)
 - Release & versioning notes
