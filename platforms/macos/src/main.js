@@ -38,8 +38,21 @@ function toggleAutoLaunch() {
 
 // Check if server files exist
 function checkServerFiles() {
-  const serverPath = path.join(__dirname, '../server');
-  return fs.existsSync(serverPath) && fs.existsSync(path.join(serverPath, 'src'));
+  // In development, server is in ../server
+  // In production (packaged), server is in app.asar.unpacked/server
+  let serverPath = path.join(__dirname, '../server');
+  
+  // Check if we're running from asar and adjust path
+  if (!fs.existsSync(serverPath)) {
+    // Try the unpacked asar path
+    serverPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'server');
+  }
+  
+  console.log('Checking for server at:', serverPath);
+  const exists = fs.existsSync(serverPath) && fs.existsSync(path.join(serverPath, 'src'));
+  console.log('Server exists:', exists);
+  
+  return exists;
 }
 
 function createWindow() {
