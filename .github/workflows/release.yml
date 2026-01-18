@@ -44,7 +44,6 @@ jobs:
         run: |
           cd platforms/windows
           npm install
-          npm run build
       
       - name: Create Windows installer
         run: |
