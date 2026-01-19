@@ -4,7 +4,7 @@ const path = require('path');
 async function copyServerFiles() {
   console.log('📦 Copying Tally Hub server files...');
   
-  const sourceDir = path.join(__dirname, '../../');
+  const sourceDir = path.resolve(__dirname, '../../../');
   const targetDir = path.join(__dirname, '../server');
   
   // Ensure target directory exists
@@ -19,7 +19,10 @@ async function copyServerFiles() {
       'public',
       'device-assignments.json',
       'device-storage.json',
-      'mixer-config.json'
+      'mixer-config.json',
+      'data/device-assignments.json',
+      'data/device-storage.json',
+      'data/mixer-config.json'
     ];
     
     // Also copy additional files if they exist
@@ -31,7 +34,7 @@ async function copyServerFiles() {
     // Copy required files
     for (const file of filesToCopy) {
       const sourcePath = path.join(sourceDir, file);
-      const targetPath = path.join(targetDir, file);
+      const targetPath = path.join(targetDir, path.basename(file));
       
       if (await fs.pathExists(sourcePath)) {
         await fs.copy(sourcePath, targetPath, { overwrite: true });

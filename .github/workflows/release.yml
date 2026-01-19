@@ -26,6 +26,9 @@ jobs:
       - name: Install dependencies
         run: npm install
       
+      - name: Build server
+        run: npm run build
+      
       - name: Copy server files to Windows app
         shell: pwsh
         run: |
@@ -36,6 +39,8 @@ jobs:
           Copy-Item -Path public -Destination platforms/windows/server/ -Recurse -Force
           Copy-Item -Path package.json -Destination platforms/windows/server/
           Copy-Item -Path tsconfig.json -Destination platforms/windows/server/
+          # Copy data files if they exist
+          Get-ChildItem -Path data/*.json -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item $_.FullName platforms/windows/server/ }
           # Install server dependencies
           cd platforms/windows/server
           npm install --omit=dev
@@ -73,6 +78,9 @@ jobs:
       - name: Install dependencies
         run: npm install
       
+      - name: Build server
+        run: npm run build
+      
       - name: Copy server files to macOS app
         run: |
           # Copy server source to macOS platform
@@ -82,6 +90,7 @@ jobs:
           cp -r public platforms/macos/server/
           cp package.json platforms/macos/server/
           cp tsconfig.json platforms/macos/server/
+          cp -r data/*.json platforms/macos/server/ 2>/dev/null || true
           # Install server dependencies
           cd platforms/macos/server
           npm install --omit=dev

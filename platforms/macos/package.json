@@ -80,7 +80,9 @@
       ],
       "darkModeSupport": true,
       "gatekeeperAssess": false,
-      "hardenedRuntime": false
+      "hardenedRuntime": true,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
     },
     "dmg": {
       "title": "TallyHub Installer",

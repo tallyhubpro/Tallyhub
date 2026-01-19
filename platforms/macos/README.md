@@ -2,6 +2,16 @@
 
 A native macOS application for the Tally Hub tally light control system, built with Electron.
 
+## ⚠️ Downloaded from GitHub Releases?
+
+If you get **"TallyHub is damaged and can't be opened"** error, run this in Terminal:
+
+```bash
+xattr -cr /Applications/TallyHub.app
+```
+
+Then right-click the app and select "Open". See [GATEKEEPER_FIX.md](GATEKEEPER_FIX.md) for details.
+
 ## Features
 
 - 🖥️ Native macOS interface with modern design
@@ -22,7 +32,7 @@ A native macOS application for the Tally Hub tally light control system, built w
 
 1. **Setup the application:**
    ```bash
-   cd platforms/macos
+   cd TallyHub-Mac
    ./scripts/setup.sh
    ```
 
@@ -66,25 +76,26 @@ npm run dev          # Run in development mode with hot reload
 
 ### Production Build
 ```bash
-npm run build-mac    # Build unsigned Mac app (.app bundle)
-npm run dist-mac     # Build and create distributable DMG
+npm run build-mac    # Build Mac app and create DMG (recommended)
+npm run build-mac-universal  # Build universal binary (Intel + Apple Silicon)
 ```
 
 ### Distribution
 
-The built app will be unsigned and can be distributed directly:
-
-- **App Bundle**: `dist/mac/Tally Hub.app`
-- **DMG**: `dist/Tally Hub-1.0.0.dmg` (if using `dist-mac`)
+The built DMG files will be in `dist/`:
+- **Apple Silicon**: `TallyHub-1.2.0-arm64.dmg`
+- **Intel**: `TallyHub-1.2.0.dmg`
 
 Recipients may need to:
-1. Right-click the app and select "Open" (for first launch)
-2. Or go to System Preferences → Security & Privacy → Allow anyway
+1. Run `xattr -cr /Applications/TallyHub.app` in Terminal
+2. Right-click the app and select "Open" (for first launch)
+
+See [LOCAL_BUILD_AND_RELEASE.md](LOCAL_BUILD_AND_RELEASE.md) for uploading to GitHub releases.
 
 ## Project Structure
 
 ```
-platforms/macos/
+TallyHub-Mac/
 ├── src/
 │   ├── main.js          # Main Electron process
 │   ├── preload.js       # Preload script for security

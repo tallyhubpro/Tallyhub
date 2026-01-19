@@ -221,7 +221,11 @@ export class WebSocketManager {
       data: tallyState
     };
 
+    const clientCount = this.clients.size;
+    console.log(`📡 Broadcasting tally update to ${clientCount} client(s): ${tallyState.id} (${tallyState.name}) - Program: ${tallyState.program}, Preview: ${tallyState.preview}`);
+    
     for (const client of this.clients.values()) {
+      console.log(`  → Sending to ${client.device.name} (${client.id}) [${client.device.type}]`);
       this.sendToClient(client, message);
     }
   }

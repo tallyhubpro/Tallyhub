@@ -445,9 +445,10 @@ class TallyHubServer {
 
         // Device firmware mapping (matches flash.html deviceConfigs)
         const firmwareMap: Record<string, string> = {
-          'ESP32-1732S019': 'public/firmware/ESP32-1732S019/firmware-merged.bin',
-          'M5Stick_Tally': 'public/firmware/M5Stick_Tally/firmware-merged.bin',
-          'M5Stick_Tally_Plus2': 'public/firmware/M5Stick_Tally_Plus2/firmware-merged.bin'
+          // Match actual filenames in repo under public/firmware/
+          'ESP32-1732S019': 'public/firmware/ESP32-1732S019/ESP32-1732S019.bin',
+          'M5Stick_Tally': 'public/firmware/M5Stick_Tally/M5Stick_Tally.bin',
+          'M5Stick_Tally_Plus2': 'public/firmware/M5Stick_Tally_Plus2/M5Stick_Tally_Plus2.bin'
         };
 
         const firmwarePath = firmwareMap[device];

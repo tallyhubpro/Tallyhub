@@ -104,8 +104,14 @@ export function setupRoutes(app: Application, tallyHub: TallyHub): void {
 
   // Device assignment endpoints
   const assignDeviceHandler: RequestHandler = (req: Request, res: Response) => {
-    const { deviceId } = req.params;
+    const rawDeviceId = req.params.deviceId as string | string[] | undefined;
+    const deviceId = Array.isArray(rawDeviceId) ? rawDeviceId[0] : rawDeviceId;
     const { sourceId, assignedBy = 'admin' } = req.body;
+
+    if (!deviceId) {
+      res.status(400).json({ error: 'deviceId is required' });
+      return;
+    }
     
     console.log(`📍 Assignment request: deviceId=${deviceId}, sourceId='${sourceId}', type=${typeof sourceId}`);
     
@@ -150,7 +156,13 @@ export function setupRoutes(app: Application, tallyHub: TallyHub): void {
   };
 
   const unassignDeviceHandler: RequestHandler = (req: Request, res: Response) => {
-    const { deviceId } = req.params;
+    const rawDeviceId = req.params.deviceId as string | string[] | undefined;
+    const deviceId = Array.isArray(rawDeviceId) ? rawDeviceId[0] : rawDeviceId;
+
+    if (!deviceId) {
+      res.status(400).json({ error: 'deviceId is required' });
+      return;
+    }
     
     const success = tallyHub.unassignDevice(deviceId);
     
@@ -215,7 +227,12 @@ export function setupRoutes(app: Application, tallyHub: TallyHub): void {
 
   // Mixer inputs endpoint
   app.get('/api/mixers/:id/inputs', (async (req, res) => {
-    const { id } = req.params;
+    const rawId = req.params.id as string | string[] | undefined;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
+    if (!id) {
+      res.status(400).json({ error: 'id is required' });
+      return;
+    }
     console.log(`🔍 Mixer inputs request for ID: ${id}`);
     const mixer = tallyHub.getMixerById(id);
     console.log(`🔍 Found mixer:`, mixer ? `${mixer.constructor.name}` : 'null');

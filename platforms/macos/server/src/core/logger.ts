@@ -1,14 +1,21 @@
-/** Lightweight logger (Mac server) */
+/** Lightweight logger with levels (error,warn,info,debug). Controlled by LOG_LEVEL env var. */
 export type LogLevel = 'error' | 'warn' | 'info' | 'debug';
+
 const LEVELS: LogLevel[] = ['error', 'warn', 'info', 'debug'];
 const envLevel = (process.env.LOG_LEVEL || 'info').toLowerCase();
-const active = LEVELS.includes(envLevel as LogLevel) ? (envLevel as LogLevel) : 'info';
-function idx(l: LogLevel){ return LEVELS.indexOf(l); }
-function ts(){ return new Date().toISOString(); }
-function enabled(l: LogLevel){ return idx(l) <= idx(active); }
+const activeIndex = LEVELS.indexOf(envLevel as LogLevel) === -1 ? 2 : LEVELS.indexOf(envLevel as LogLevel);
+
+function ts() {
+  return new Date().toISOString();
+}
+
+function should(level: LogLevel) {
+  return LEVELS.indexOf(level) <= activeIndex;
+}
+
 export const logger = {
-  error: (m: string, meta?: any) => enabled('error') && console.error(`[${ts()}] ERROR  ${m}`, meta ?? ''),
-  warn:  (m: string, meta?: any) => enabled('warn')  && console.warn(`[${ts()}] WARN   ${m}`, meta ?? ''),
-  info:  (m: string, meta?: any) => enabled('info')  && console.log(`[${ts()}] INFO   ${m}`, meta ?? ''),
-  debug: (m: string, meta?: any) => enabled('debug') && console.debug(`[${ts()}] DEBUG  ${m}`, meta ?? ''),
+  error: (msg: string, meta?: any) => should('error') && console.error(`[${ts()}] ERROR  ${msg}`, meta ?? ''),
+  warn:  (msg: string, meta?: any) => should('warn')  && console.warn(`[${ts()}] WARN   ${msg}`, meta ?? ''),
+  info:  (msg: string, meta?: any) => should('info')  && console.log(`[${ts()}] INFO   ${msg}`, meta ?? ''),
+  debug: (msg: string, meta?: any) => should('debug') && console.debug(`[${ts()}] DEBUG  ${msg}`, meta ?? ''),
 };
