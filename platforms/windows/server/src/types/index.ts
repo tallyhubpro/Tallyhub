@@ -12,7 +12,7 @@ export interface TallyState {
 export interface MixerConnection {
   id: string;
   name: string;
-  type: 'obs' | 'vmix';
+  type: 'obs' | 'vmix' | 'atem';
   host: string;
   port: number;
   connected: boolean;

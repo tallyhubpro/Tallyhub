@@ -10,7 +10,6 @@ import { TallyHub } from './core/TallyHub';
 import { WebSocketManager } from './core/WebSocketManager';
 import { ATEMConnector } from './core/mixers/ATEMConnector';
 import { logger } from './core/logger';
-import { FlashManager } from './core/FlashManager';
 
 // Global error handlers to prevent crashes from unhandled rejections
 process.on('unhandledRejection', (reason, promise) => {
@@ -42,7 +41,6 @@ class TallyHubServer {
   private tallyHub: TallyHub;
   private wsManager: WebSocketManager;
   private udpServer: UDPServer;
-  private flashManager: FlashManager;
 
   constructor() {
     this.app = express();
@@ -56,7 +54,6 @@ class TallyHubServer {
     this.tallyHub = new TallyHub();
     this.wsManager = new WebSocketManager(this.wss, this.tallyHub);
     this.udpServer = new UDPServer(this.tallyHub);
-  this.flashManager = new FlashManager();
     
     // Set the references after creation
     this.tallyHub.setManagers(this.wsManager, this.udpServer);
@@ -375,153 +372,6 @@ class TallyHubServer {
     // Health check endpoint
     this.app.get('/health', (req, res) => {
       res.json({ status: 'healthy', timestamp: new Date() });
-    });
-
-    // ---- Server-side firmware flashing API (experimental) ----
-    this.app.get('/api/flash/firmware', async (req, res) => {
-      try {
-        const files = await this.flashManager.listFirmwareFiles();
-        res.json({ success: true, files });
-      } catch (e: any) {
-        res.status(500).json({ success: false, error: e.message });
-      }
-    });
-
-    this.app.get('/api/flash/ports', async (req, res) => {
-      try {
-        const ports = await this.flashManager.detectPorts();
-        res.json({ success: true, ports });
-      } catch (e: any) {
-        res.status(500).json({ success: false, error: e.message });
-      }
-    });
-
-    // Flash diagnostics (esptool availability, ports, groups) for troubleshooting Pi issues
-    this.app.get('/api/flash/diagnostics', async (req, res) => {
-      try {
-        const diag = await this.flashManager.diagnostics();
-        res.json({ success: true, diagnostics: diag });
-      } catch (e: any) {
-        res.status(500).json({ success: false, error: e.message });
-      }
-    });
-
-    this.app.post('/api/flash/jobs', express.json(), async (req, res): Promise<void> => {
-      try {
-        const { port, firmware, chip } = req.body || {};
-        if (!port || !firmware) {
-          res.status(400).json({ success: false, error: 'port and firmware are required' });
-          return;
-        }
-        const job = this.flashManager.createJob({ port, firmwareRel: firmware, chip });
-        res.json({ success: true, job });
-      } catch (e: any) {
-        res.status(500).json({ success: false, error: e.message });
-      }
-    });
-
-    this.app.get('/api/flash/jobs', (req, res) => {
-      const jobs = this.flashManager.listJobs();
-      res.json({ success: true, jobs });
-    });
-
-    this.app.get('/api/flash/jobs/:id', (req, res): void => {
-      const job = this.flashManager.getJob(req.params.id);
-      if (!job) {
-        res.status(404).json({ success: false, error: 'job not found' });
-        return;
-      }
-      res.json({ success: true, job });
-    });
-
-    // GitHub firmware download proxy
-    this.app.get('/api/flash/github-firmware', async (req, res): Promise<void> => {
-      try {
-        const device = req.query.device as string;
-        if (!device) {
-          res.status(400).json({ success: false, error: 'device parameter is required' });
-          return;
-        }
-
-        // Device firmware mapping (matches flash.html deviceConfigs)
-        const firmwareMap: Record<string, string> = {
-          // Match actual filenames in repo under public/firmware/
-          'ESP32-1732S019': 'public/firmware/ESP32-1732S019/ESP32-1732S019.bin',
-          'M5Stick_Tally': 'public/firmware/M5Stick_Tally/M5Stick_Tally.bin',
-          'M5Stick_Tally_Plus2': 'public/firmware/M5Stick_Tally_Plus2/M5Stick_Tally_Plus2.bin'
-        };
-
-        const firmwarePath = firmwareMap[device];
-        if (!firmwarePath) {
-          res.status(404).json({ success: false, error: 'Unknown device type' });
-          return;
-        }
-
-        // GitHub repository info
-        const owner = 'tallyhubpro';
-        const repo = 'Tallyhub';
-        const branch = (req.query.branch as string) || 'main';
-        
-        // Optional GitHub token from environment (for private repos / higher rate limits)
-        const token = process.env.GITHUB_TOKEN || '';
-        
-        // Fetch file info from GitHub Contents API
-        const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${firmwarePath}?ref=${branch}`;
-        const headers: Record<string, string> = {
-          'User-Agent': 'TallyHub-Server',
-          'Accept': 'application/vnd.github.v3+json'
-        };
-        if (token) {
-          headers['Authorization'] = `token ${token}`;
-        }
-
-        const response = await fetch(apiUrl, { headers });
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`GitHub API error: ${response.status} - ${errorText}`);
-          res.status(response.status).json({ 
-            success: false, 
-            error: `GitHub API error: ${response.status}`,
-            details: errorText
-          });
-          return;
-        }
-
-        const fileInfo = await response.json() as {
-          name: string;
-          download_url: string;
-          size: number;
-          sha: string;
-        };
-        
-        if (!fileInfo.download_url) {
-          res.status(500).json({ 
-            success: false, 
-            error: 'No download URL found in GitHub response' 
-          });
-          return;
-        }
-
-        // Return firmware info with download URL
-        res.json({
-          success: true,
-          firmware: {
-            device,
-            file: fileInfo.name,
-            url: fileInfo.download_url,
-            size: fileInfo.size,
-            sha: fileInfo.sha,
-            path: firmwarePath
-          }
-        });
-      } catch (error) {
-        console.error('GitHub firmware fetch error:', error);
-        res.status(500).json({ 
-          success: false, 
-          error: error instanceof Error ? error.message : 'Failed to fetch firmware from GitHub' 
-        });
-      }
     });
 
     // (Removed test endpoint /api/test/status for production hardening)

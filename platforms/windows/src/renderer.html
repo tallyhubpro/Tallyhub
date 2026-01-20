@@ -133,21 +133,6 @@
             transform: translateY(-1px);
         }
 
-        .flash-buttons {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .chrome-btn {
-            background: rgba(66, 133, 244, 0.2) !important;
-            border-color: rgba(66, 133, 244, 0.4) !important;
-        }
-
-        .chrome-btn:hover {
-            background: rgba(66, 133, 244, 0.3) !important;
-        }
-
         .version-info {
             position: absolute;
             bottom: 20px;
@@ -949,10 +934,7 @@
                 <a href="#" class="link-btn" id="webInterfaceBtn">Open Web Interface</a>
                 <a href="#" class="link-btn" id="adminPanelBtn">Admin Panel</a>
                 <a href="#" class="link-btn" id="tallyDisplayBtn">Web Tally</a>
-                <div class="flash-buttons">
-                    <a href="#" class="link-btn" id="flashFirmwareBtn">Flash Firmware</a>
-                    <a href="#" class="link-btn chrome-btn" id="flashFirmwareChromeBtn">Flash in Chrome</a>
-                </div>
+                <a href="#" class="link-btn" id="flashFirmwareOnlineBtn">Flash Firmware Online</a>
             </div>
 
             <!-- Connected Devices Section -->
@@ -1124,8 +1106,7 @@
         const webInterfaceBtn = document.getElementById('webInterfaceBtn');
         const adminPanelBtn = document.getElementById('adminPanelBtn');
         const tallyDisplayBtn = document.getElementById('tallyDisplayBtn');
-        const flashFirmwareBtn = document.getElementById('flashFirmwareBtn');
-        const flashFirmwareChromeBtn = document.getElementById('flashFirmwareChromeBtn');
+        const flashFirmwareOnlineBtn = document.getElementById('flashFirmwareOnlineBtn');
 
         let serverStatus = 'stopped';
         let serverStartTime = null;
@@ -1345,15 +1326,13 @@
                 electronAPI.openExternal('http://localhost:3000/tally.html');
             });
 
-            flashFirmwareBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                electronAPI.openExternal('http://localhost:3000/flash.html');
-            });
-
-            flashFirmwareChromeBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                electronAPI.openInChrome('http://localhost:3000/flash.html');
-            });
+            const flashFirmwareOnlineBtn = document.getElementById('flashFirmwareOnlineBtn');
+            if (flashFirmwareOnlineBtn) {
+                flashFirmwareOnlineBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    electronAPI.openExternal('https://tallyhub.pro/flash/');
+                });
+            }
         }
 
         async function updateServerStatus() {
@@ -1470,12 +1449,24 @@
             stopBtn.disabled = serverStatus === 'stopped';
             restartBtn.disabled = serverStatus === 'stopped' || isRestarting;
 
-            // Update quick links
-            webInterfaceBtn.style.opacity = isRunning ? '1' : '0.5';
-            adminPanelBtn.style.opacity = isRunning ? '1' : '0.5';
-            tallyDisplayBtn.style.opacity = isRunning ? '1' : '0.5';
-            flashFirmwareBtn.style.opacity = isRunning ? '1' : '0.5';
-            flashFirmwareChromeBtn.style.opacity = isRunning ? '1' : '0.5';
+            // Update quick links - only disable web interface links when server is not running
+            if (webInterfaceBtn) {
+                webInterfaceBtn.style.opacity = isRunning ? '1' : '0.5';
+                webInterfaceBtn.style.pointerEvents = isRunning ? 'auto' : 'none';
+            }
+            if (adminPanelBtn) {
+                adminPanelBtn.style.opacity = isRunning ? '1' : '0.5';
+                adminPanelBtn.style.pointerEvents = isRunning ? 'auto' : 'none';
+            }
+            if (tallyDisplayBtn) {
+                tallyDisplayBtn.style.opacity = isRunning ? '1' : '0.5';
+                tallyDisplayBtn.style.pointerEvents = isRunning ? 'auto' : 'none';
+            }
+            // Flash firmware link is always available (external website)
+            if (flashFirmwareOnlineBtn) {
+                flashFirmwareOnlineBtn.style.opacity = '1';
+                flashFirmwareOnlineBtn.style.pointerEvents = 'auto';
+            }
 
             // Update uptime
             updateUptime();

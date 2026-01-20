@@ -50,7 +50,8 @@ function checkServerFiles() {
   }
   
   console.log('Checking for server at:', serverPath);
-  const exists = fs.existsSync(serverPath) && fs.existsSync(path.join(serverPath, 'src'));
+  // Check for either src (dev) or dist (built) directory
+  const exists = fs.existsSync(serverPath) && (fs.existsSync(path.join(serverPath, 'src')) || fs.existsSync(path.join(serverPath, 'dist')));
   console.log('Server exists:', exists);
   
   return exists;
@@ -238,9 +239,9 @@ function createMenu() {
       label: 'Tools',
       submenu: [
         {
-          label: 'Flash Firmware',
+          label: 'Flash Firmware Online',
           click: () => {
-            shell.openExternal(`http://localhost:${SERVER_PORT}/flash`);
+            shell.openExternal('https://tallyhub.pro/flash/');
           }
         },
         {
