@@ -374,6 +374,8 @@ class TallyHubServer {
       res.json({ status: 'healthy', timestamp: new Date() });
     });
 
+<<<<<<< HEAD
+=======
     // GitHub firmware download proxy
     this.app.get('/api/flash/github-firmware', async (req, res): Promise<void> => {
       try {
@@ -464,6 +466,7 @@ class TallyHubServer {
       }
     });
 
+>>>>>>> a3ecbe2cb5174b16cb214468858f6a25feed398f
     // (Removed test endpoint /api/test/status for production hardening)
 
     // Save mixer configurations endpoint
