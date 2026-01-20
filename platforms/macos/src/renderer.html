@@ -917,8 +917,7 @@
                 <a href="#" class="link-btn" id="adminPanelBtn">Admin Panel</a>
                 <a href="#" class="link-btn" id="tallyDisplayBtn">Web Tally</a>
                 <div class="flash-buttons">
-                    <a href="#" class="link-btn" id="flashFirmwareBtn">Flash Firmware</a>
-                    <a href="#" class="link-btn chrome-btn" id="flashFirmwareChromeBtn">Flash in Chrome</a>
+                    <a href="#" class="link-btn" id="flashFirmwareBtn">Flash ESP32 (Web Flasher)</a>
                 </div>
             </div>
 
@@ -1063,7 +1062,6 @@
         const adminPanelBtn = document.getElementById('adminPanelBtn');
         const tallyDisplayBtn = document.getElementById('tallyDisplayBtn');
         const flashFirmwareBtn = document.getElementById('flashFirmwareBtn');
-        const flashFirmwareChromeBtn = document.getElementById('flashFirmwareChromeBtn');
 
         let serverStatus = 'stopped';
         let serverStartTime = null;
@@ -1280,12 +1278,7 @@
 
             flashFirmwareBtn.addEventListener('click', (e) => {
                 e.preventDefault();
-                electronAPI.openExternal('http://localhost:3000/flash.html');
-            });
-
-            flashFirmwareChromeBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                electronAPI.openInChrome('http://localhost:3000/flash.html');
+                electronAPI.openExternal('https://tallyhub.pro/flash');
             });
         }
 
@@ -1406,8 +1399,7 @@
             webInterfaceBtn.style.opacity = isRunning ? '1' : '0.5';
             adminPanelBtn.style.opacity = isRunning ? '1' : '0.5';
             tallyDisplayBtn.style.opacity = isRunning ? '1' : '0.5';
-            flashFirmwareBtn.style.opacity = isRunning ? '1' : '0.5';
-            flashFirmwareChromeBtn.style.opacity = isRunning ? '1' : '0.5';
+            flashFirmwareBtn.style.opacity = '1'; // Always enabled - external link
 
             // Update uptime
             updateUptime();
