@@ -1,6 +1,6 @@
 {
   "name": "tally-hub",
-   "version": "1.2.0",
+  "version": "1.2.0",
   "description": "Professional Tally Light System for Video Production",
   "main": "dist/index.js",
   "files": [
@@ -47,8 +47,7 @@
     "lint:fix": "eslint 'src/**/*.{ts,tsx}' --fix",
     "format": "prettier --write .",
     "logs:prune": "node scripts/clean-logs.js",
-  
-  "prepare": "npm run build",
+    "prepare": "npm run build",
     "postinstall": "node scripts/postinstall-check.js || echo 'Postinstall check failed (non-fatal)'"
   },
   "devDependencies": {
@@ -57,26 +56,30 @@
     "@types/express": "^5.0.3",
     "@types/node": "^24.0.3",
     "@types/ws": "^8.18.1",
-    "eslint": "^9.11.1",
-    "@typescript-eslint/parser": "^8.7.0",
     "@typescript-eslint/eslint-plugin": "^8.7.0",
-    "eslint-plugin-import": "^2.29.1",
+    "@typescript-eslint/parser": "^8.7.0",
+    "eslint": "^9.11.1",
     "eslint-config-prettier": "^9.1.0",
-    "prettier": "^3.3.3",
+    "eslint-plugin-import": "^2.29.1",
     "nodemon": "^3.1.10",
+    "prettier": "^3.3.3",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   },
   "dependencies": {
     "@types/multer": "^1.4.13",
     "atem-connection": "^3.6.0",
-  "bonjour": "^3.5.0",
+    "axios": "1.13.2",
+    "bonjour": "^3.5.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "multer": "^2.0.1",
     "obs-websocket-js": "^5.0.6",
-    "ws": "^8.18.0"
+    "osc": "2.4.5",
+    "tsl-umd": "1.1.2",
+    "ws": "^8.18.0",
+    "xml2js": "0.6.2"
   },
   "overrides": {
     "ip": "^2.0.1",

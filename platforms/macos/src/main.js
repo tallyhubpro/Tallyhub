@@ -67,6 +67,7 @@ function createWindow() {
     titleBarStyle: 'default', // Use standard title bar
     trafficLightPosition: { x: 12, y: 12 }, // Position window controls nicely
     icon: path.join(__dirname, '../assets/icon.png'), // Use the icon.png file as app icon
+    show: true, // Show window immediately
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -1107,6 +1108,11 @@ function showMainWindow() {
     
     mainWindow.show();
     mainWindow.focus();
+    
+    // Ensure window is brought to foreground on macOS
+    if (process.platform === 'darwin') {
+      app.focus({ steal: true });
+    }
   }
   // Removed the else clause to prevent creating duplicate windows
 }

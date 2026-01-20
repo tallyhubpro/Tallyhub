@@ -1073,6 +1073,11 @@
                                 <option value="obs">OBS Studio</option>
                                 <option value="vmix">vMix</option>
                                 <option value="atem">ATEM Mini Pro</option>
+                                <option value="tsl_umd">TSL UMD 3.1 (Broadcast)</option>
+                                <option value="tsl_umd5">TSL UMD 5.0 (Advanced)</option>
+                                <option value="osc">OSC Protocol</option>
+                                <option value="roland">Roland V-Series</option>
+                                <option value="tricaster">NewTek TriCaster</option>
                             </select>
                         </div>
                         <div class="form-field">
@@ -1082,10 +1087,6 @@
                         <div class="form-field">
                             <label class="form-label" for="mixerPort">Port</label>
                             <input type="number" id="mixerPort" class="form-input" placeholder="4455" value="4455">
-                        </div>
-                        <div class="form-field" id="obsPasswordField">
-                            <label class="form-label" for="mixerPassword">Password (OBS)</label>
-                            <input type="password" id="mixerPassword" class="form-input" placeholder="Optional">
                         </div>
                     </div>
                     <div class="form-actions">
@@ -1772,6 +1773,16 @@
                         return '🎬';
                     case 'atem':
                         return '🎛️';
+                    case 'tsl_umd':
+                        return '📡';
+                    case 'tsl_umd5':
+                        return '📡';
+                    case 'osc':
+                        return '🎵';
+                    case 'roland':
+                        return '🎥';
+                    case 'tricaster':
+                        return '🎞️';
                     default:
                         return '📡';
                 }
@@ -2325,18 +2336,24 @@
 
         function updateFormForMixerType() {
             const type = document.getElementById('mixerType').value;
-            const passwordField = document.getElementById('obsPasswordField');
             const portField = document.getElementById('mixerPort');
             
             if (type === 'obs') {
-                passwordField.style.display = 'block';
                 portField.value = '4455';
             } else if (type === 'vmix') {
-                passwordField.style.display = 'none';
                 portField.value = '8088';
             } else if (type === 'atem') {
-                passwordField.style.display = 'none';
                 portField.value = '9910';
+            } else if (type === 'tsl_umd') {
+                portField.value = '5000';
+            } else if (type === 'tsl_umd5') {
+                portField.value = '5000';
+            } else if (type === 'osc') {
+                portField.value = '8000';
+            } else if (type === 'roland') {
+                portField.value = '80';
+            } else if (type === 'tricaster') {
+                portField.value = '5951';
             }
         }
 

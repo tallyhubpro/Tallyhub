@@ -15,7 +15,32 @@
 
 ## 🚀 Quick Start
 
-### Raspberry Pi / Linux (Recommended)
+### macOS Desktop App
+
+Download the latest release for your Mac:
+
+**[⬇️ Download TallyHub for Mac](https://github.com/tallyhubpro/Tallyhub/releases/latest)**
+
+- **Apple Silicon (M1/M2/M3)**: `TallyHub-1.2.0-arm64.dmg`
+- **Intel Macs**: `TallyHub-1.2.0.dmg`
+
+**First Time Opening (Gatekeeper):**
+```bash
+xattr -cr /Applications/TallyHub.app
+```
+Then right-click → Open
+
+See [macOS Setup Guide](platforms/macos/GATEKEEPER_FIX.md) for details.
+
+### Windows Desktop App
+
+Download the latest release for Windows:
+
+**[⬇️ Download TallyHub for Windows](https://github.com/tallyhubpro/Tallyhub/releases/latest)**
+
+- **Windows 10/11**: `TallyHub-Setup-1.2.0.exe`
+
+### Raspberry Pi / Linux (Recommended for Server)
 
 Install TallyHub with a single command:
 

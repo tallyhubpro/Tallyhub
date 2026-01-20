@@ -3,6 +3,11 @@ import { TallyState, TallyUpdate, MixerConnection, MixerStatusUpdate, TallyDevic
 import { OBSConnector } from './mixers/OBSConnector';
 import { VMixConnector } from './mixers/VMixConnector';
 import { ATEMConnector } from './mixers/ATEMConnector';
+import { TSLUMDConnector } from './mixers/TSLUMDConnector';
+import { OSCConnector } from './mixers/OSCConnector';
+import { RolandConnector } from './mixers/RolandConnector';
+import { TriCasterConnector } from './mixers/TriCasterConnector';
+import { TSLUMD5Connector } from './mixers/TSLUMD5Connector';
 import { WebSocketManager } from './WebSocketManager';
 import { UDPServer } from './UDPServer';
 import * as fs from 'fs';
@@ -11,7 +16,7 @@ import * as dgram from 'dgram';
 import * as net from 'net';
 
 export class TallyHub extends EventEmitter {
-  private mixers: Map<string, OBSConnector | VMixConnector | ATEMConnector> = new Map();
+  private mixers: Map<string, OBSConnector | VMixConnector | ATEMConnector | TSLUMDConnector | OSCConnector | RolandConnector | TriCasterConnector | TSLUMD5Connector> = new Map();
   private tallies: Map<string, TallyState> = new Map();
   private devices: Map<string, TallyDevice> = new Map();
   private webSocketManager!: WebSocketManager;
@@ -291,6 +296,21 @@ export class TallyHub extends EventEmitter {
         break;
       case 'atem':
         mixer = new ATEMConnector(connection);
+        break;
+      case 'tsl_umd':
+        mixer = new TSLUMDConnector(connection);
+        break;
+      case 'osc':
+        mixer = new OSCConnector(connection);
+        break;
+      case 'roland':
+        mixer = new RolandConnector(connection);
+        break;
+      case 'tricaster':
+        mixer = new TriCasterConnector(connection);
+        break;
+      case 'tsl_umd5':
+        mixer = new TSLUMD5Connector(connection);
         break;
       default:
         throw new Error(`Unsupported mixer type: ${connection.type}`);
@@ -606,7 +626,7 @@ export class TallyHub extends EventEmitter {
   }
 
   // Public method to get a mixer instance by ID
-  public getMixerById(id: string): OBSConnector | VMixConnector | ATEMConnector | undefined {
+  public getMixerById(id: string): OBSConnector | VMixConnector | ATEMConnector | TSLUMDConnector | OSCConnector | RolandConnector | TriCasterConnector | TSLUMD5Connector | undefined {
     return this.mixers.get(id);
   }
 
