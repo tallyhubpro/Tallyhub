@@ -299,40 +299,6 @@ function createMenu() {
             }
           }
         },
-        {
-          label: 'Flash Firmware',
-          accelerator: 'CmdOrCtrl+4',
-          click: () => {
-            // Open the flasher in the default browser served by the local server
-            shell.openExternal(`http://localhost:${SERVER_PORT}/flash.html`);
-          }
-        },
-        {
-          label: 'Flash in Chrome',
-          click: () => {
-            // Attempt to open specifically in Google Chrome for Web Serial support
-            const chromePaths = [
-              '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-              '/Applications/Chromium.app/Contents/MacOS/Chromium'
-            ];
-            let opened = false;
-            for (const chromePath of chromePaths) {
-              if (fs.existsSync(chromePath)) {
-                try {
-                  const { spawn } = require('child_process');
-                  spawn(chromePath, [`http://localhost:${SERVER_PORT}/flash.html`], { detached: true, stdio: 'ignore' });
-                  opened = true;
-                  break;
-                } catch (e) {
-                  // fallthrough
-                }
-              }
-            }
-            if (!opened) {
-              shell.openExternal(`http://localhost:${SERVER_PORT}/flash.html`);
-            }
-          }
-        },
         { type: 'separator' },
         {
           label: 'Reload',
@@ -401,7 +367,7 @@ function createMenu() {
         {
           label: 'Documentation',
           click: () => {
-            shell.openExternal('https://tallyhubpro.github.io');
+            shell.openExternal('https://tallyhubpro.github.io/docs/');
           }
         },
         {
@@ -505,42 +471,32 @@ function startTallyHubServer() {
   
   console.log(`Using built server: node dist/index.js`);
   
-  // Find Node.js executable - be more thorough for packaged apps
+  // Find Node.js executable
   let nodeExecutable;
   if (isPackaged) {
-    // Try multiple locations for Node.js in packaged apps
+    // For packaged apps, look for system Node.js installation
+    // Common Node.js locations on macOS
     const possibleNodePaths = [
-      // Electron's embedded Node.js
-      path.join(process.resourcesPath, '..', 'Frameworks', 'Electron Framework.framework', 'Versions', 'A', 'Resources', 'node'),
-      // Common system Node.js locations
       '/usr/local/bin/node',
       '/opt/homebrew/bin/node',
-      '/opt/homebrew/opt/node@18/bin/node',
       '/opt/homebrew/opt/node@20/bin/node',
-      // Check if node is in PATH by using which command
-      'node'
+      '/opt/homebrew/opt/node@18/bin/node',
+      '/usr/bin/node'
     ];
     
     nodeExecutable = null;
     for (const nodePath of possibleNodePaths) {
-      if (nodePath === 'node') {
-        // For 'node', we'll try to use it but need to set up PATH properly
-        nodeExecutable = 'node';
-        break;
-      } else if (fs.existsSync(nodePath)) {
+      if (fs.existsSync(nodePath)) {
         nodeExecutable = nodePath;
         console.log(`Found Node.js at: ${nodePath}`);
         break;
       }
     }
     
+    // If no Node found in common locations, try 'node' and hope it's in PATH
     if (!nodeExecutable) {
-      console.error('Could not find Node.js executable!');
-      dialog.showErrorBox(
-        'Node.js Not Found',
-        'Could not find Node.js on this system. Please install Node.js from https://nodejs.org/ and try again.'
-      );
-      return;
+      console.log('Node.js not found in common locations, trying PATH...');
+      nodeExecutable = 'node';
     }
   } else {
     // In development, use system node
@@ -548,7 +504,7 @@ function startTallyHubServer() {
   }
   
   console.log(`Using Node executable: ${nodeExecutable}`);
-  console.log(`Node executable exists: ${nodeExecutable === 'node' ? 'checking PATH' : fs.existsSync(nodeExecutable)}`);
+  console.log(`Electron Node version: ${process.version}`);
   
   // Set up environment with enhanced PATH for macOS
   const serverEnv = {
@@ -583,17 +539,33 @@ function startTallyHubServer() {
   });
   
   try {
-    console.log(`Spawning server with command: ${nodeExecutable} dist/index.js`);
-    console.log(`Working directory: ${serverDir}`);
-    console.log(`Environment variables:`, serverEnv);
+    const spawnArgs = ['dist/index.js'];
     
-    serverProcess = spawn(nodeExecutable, ['dist/index.js'], {
+    console.log(`Command: ${nodeExecutable} ${spawnArgs.join(' ')}`);
+    console.log(`Working directory: ${serverDir}`);
+    console.log(`Environment:`, { PORT: serverEnv.PORT, NODE_ENV: serverEnv.NODE_ENV, NODE_PATH: serverEnv.NODE_PATH });
+    
+    serverProcess = spawn(nodeExecutable, spawnArgs, {
       cwd: serverDir,
       env: serverEnv,
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
+      detached: false
     });
     
     console.log(`✅ Server process spawned with PID: ${serverProcess.pid}`);
+    
+    // Capture any spawn errors
+    serverProcess.on('error', (error) => {
+      console.error(`❌ Server process spawn error:`, error);
+      if (error.code === 'ENOENT') {
+        dialog.showErrorBox(
+          'Node.js Not Found',
+          `TallyHub requires Node.js to be installed.\\n\\nPlease install Node.js from https://nodejs.org/ and try again.\\n\\nError: ${error.message}`
+        );
+      } else {
+        dialog.showErrorBox('Server Spawn Error', `Failed to start server process: ${error.message}`);
+      }
+    });
     
     // Add immediate error checking
     setTimeout(() => {
@@ -611,6 +583,8 @@ function startTallyHubServer() {
   }
 
   let serverReadyEmitted = false;
+  let serverErrorOutput = [];
+  
   serverProcess.stdout.on('data', (data) => {
     const line = data.toString().trim();
     try {
@@ -628,10 +602,12 @@ function startTallyHubServer() {
   });
 
   serverProcess.stderr.on('data', (data) => {
+    const errorLine = data.toString().trim();
+    serverErrorOutput.push(errorLine);
     try {
       if (!app.isQuitting && mainWindow && !mainWindow.isDestroyed()) {
-        console.error(`[Server Error] ${data.toString().trim()}`);
-        mainWindow.webContents.send('server-log', `ERROR: ${data.toString().trim()}`);
+        console.error(`[Server Error] ${errorLine}`);
+        mainWindow.webContents.send('server-log', `ERROR: ${errorLine}`);
       }
     } catch (error) {
       // Ignore write errors when app is quitting
@@ -647,10 +623,15 @@ function startTallyHubServer() {
 
       if (!isQuitting && !isRestarting && !isStopping && !wasNormal) {
         if (mainWindow && !mainWindow.isDestroyed()) {
-          dialog.showErrorBox(
-            'Server Error',
-            `TallyHub server stopped unexpectedly (code: ${code}). Please check the console for details.`
-          );
+          let errorMessage = `TallyHub server stopped unexpectedly (code: ${code}).`;
+          if (serverErrorOutput.length > 0) {
+            errorMessage += `\\n\\nError output:\\n${serverErrorOutput.slice(-10).join('\\n')}`;
+          }
+          if (code === 1) {
+            errorMessage += '\\n\\nThis usually means Node.js encountered an error starting the server.';
+            errorMessage += '\\nPlease ensure Node.js is installed (https://nodejs.org/) and check Console.app for details.';
+          }
+          dialog.showErrorBox('Server Error', errorMessage);
         }
       } else if (isRestarting) {
         console.log('Server process stopped for restart');
@@ -1045,12 +1026,7 @@ function updateTrayMenu() {
     {
       label: 'Open Admin Panel',
       enabled: serverRunning,
-      click: () => shell.openExternal(`http://localhost:${SERVER_PORT}/admin.html`)
-    },
-    {
-      label: 'Flash Firmware',
-      enabled: serverRunning,
-      click: () => shell.openExternal(`http://localhost:${SERVER_PORT}/flash.html`)
+      click: () => shell.openExternal(`http://localhost:${SERVER_PORT}/admin`)
     },
     { type: 'separator' },
     {

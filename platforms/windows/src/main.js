@@ -239,9 +239,9 @@ function createMenu() {
       label: 'Tools',
       submenu: [
         {
-          label: 'Flash Firmware Online',
+          label: 'Flash Firmware',
           click: () => {
-            shell.openExternal('https://tallyhub.pro/flash/');
+            shell.openExternal('https://tallyhubpro.github.io/flash/');
           }
         },
         {
@@ -365,6 +365,12 @@ Node.js: ${process.versions.node}`,
           label: 'Documentation',
           click: () => {
             shell.openExternal('https://tallyhubpro.github.io/docs/');
+          }
+        },
+        {
+          label: 'GitHub Repository',
+          click: () => {
+            shell.openExternal('https://github.com/tallyhubpro/Tallyhub');
           }
         },
         {

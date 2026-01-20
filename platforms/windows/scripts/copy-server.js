@@ -67,8 +67,51 @@ try {
     const nodeModulesPath = path.join(targetServerPath, 'node_modules');
     if (fs.existsSync(nodeModulesPath)) {
         console.log('✅ Server dependencies installed');
+        
+        // Check for critical dependencies
+        const criticalDeps = ['osc', 'tsl-umd', 'xml2js', 'axios', 'atem-connection', 'obs-websocket-js'];
+        const missingDeps = [];
+        
+        for (const dep of criticalDeps) {
+            const depPath = path.join(nodeModulesPath, dep);
+            if (!fs.existsSync(depPath)) {
+                missingDeps.push(dep);
+            }
+        }
+        
+        if (missingDeps.length > 0) {
+            console.log(`⚠️ Missing dependencies: ${missingDeps.join(', ')}`);
+            console.log('   Run: cd server && npm install');
+        } else {
+            console.log('✅ All critical dependencies present');
+        }
     } else {
         console.log('⚠️ Server dependencies not installed, you may need to run: cd server && npm install');
+    }
+    
+    // Ensure data files have correct format
+    const dataFiles = {
+        'device-storage.json': [],
+        'device-assignments.json': [],
+        'mixer-config.json': []
+    };
+    
+    for (const [filename, defaultContent] of Object.entries(dataFiles)) {
+        const filePath = path.join(targetServerPath, filename);
+        if (!fs.existsSync(filePath)) {
+            console.log(`📝 Creating ${filename} with default content`);
+            fs.writeFileSync(filePath, JSON.stringify(defaultContent, null, 2));
+        } else {
+            // Validate file format
+            try {
+                const content = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+                if (!Array.isArray(content) && filename !== 'device-storage.json') {
+                    console.log(`⚠️ ${filename} should be an array, found object. Consider resetting.`);
+                }
+            } catch (e) {
+                console.log(`⚠️ ${filename} has invalid JSON format`);
+            }
+        }
     }
     
     console.log('🎉 Server validation completed for Windows!');

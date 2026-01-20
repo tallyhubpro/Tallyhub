@@ -85,7 +85,11 @@ async function copyServerFiles() {
         "obs-websocket-js": "^5.0.6",
         "dotenv": "^16.5.0",
         "multer": "^2.0.1",
-        "bonjour": "^3.5.0"
+        "bonjour": "^3.5.0",
+        "osc": "2.4.5",
+        "tsl-umd": "1.1.2",
+        "xml2js": "0.6.2",
+        "axios": "1.13.2"
       },
       "devDependencies": {
         "@types/node": "^24.0.3",
@@ -101,6 +105,25 @@ async function copyServerFiles() {
     
     await fs.writeJson(path.join(targetDir, 'package.json'), serverPackageJson, { spaces: 2 });
     console.log('✅ Created server package.json');
+    
+    // Create data directory with necessary files
+    const dataDir = path.join(targetDir, 'data');
+    await fs.ensureDir(dataDir);
+    
+    // Create empty data files if they don't exist
+    const dataFiles = {
+      'device-storage.json': [],
+      'device-assignments.json': [],
+      'mixer-config.json': []
+    };
+    
+    for (const [file, defaultContent] of Object.entries(dataFiles)) {
+      const dataFilePath = path.join(dataDir, file);
+      if (!await fs.pathExists(dataFilePath)) {
+        await fs.writeJson(dataFilePath, defaultContent);
+      }
+    }
+    console.log('✅ Created data directory and files');
     
     // Create start script
     const startScript = `#!/bin/bash
