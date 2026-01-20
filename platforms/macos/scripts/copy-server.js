@@ -37,8 +37,17 @@ async function copyServerFiles() {
       const targetPath = path.join(targetDir, path.basename(file));
       
       if (await fs.pathExists(sourcePath)) {
-        await fs.copy(sourcePath, targetPath, { overwrite: true });
-        console.log(`✅ Copied ${file}`);
+        // Exclude firmware files from public directory
+        const filter = (src) => {
+          const relative = path.relative(sourcePath, src);
+          return !relative.startsWith('firmware');
+        };
+        
+        await fs.copy(sourcePath, targetPath, { 
+          overwrite: true,
+          filter: file === 'public' ? filter : undefined
+        });
+        console.log(`✅ Copied ${file}${file === 'public' ? ' (excluding firmware)' : ''}`);
       } else {
         console.log(`⚠️  Skipped ${file} (not found)`);
       }
