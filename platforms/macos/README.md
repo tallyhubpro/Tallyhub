@@ -22,6 +22,39 @@ Then right-click the app and select "Open". See [GATEKEEPER_FIX.md](GATEKEEPER_F
 - 📋 Server log viewing
 - 🎯 Menu bar integration
 
+## 🎛️ Supported Mixers
+
+The Mac app bundles the same connectors as the server:
+
+- **OBS Studio**: WebSocket connector (scene/program/preview, recording/streaming)
+- **vMix**: HTTP API polling (`/api`) for input tallies
+- **Blackmagic ATEM**: Network control via `atem-connection`
+- **NewTek TriCaster**: TCP XML protocol (port 5951)
+- **Roland Smart Tally**: HTTP `/tally` polling for V‑series mixers
+- **TSL UMD 3.1 / 5.0**: UDP/TCP listeners for broadcast tally packets
+- **OSC (Open Sound Control)**: UDP listener for `/tally/*` messages
+
+### By Manufacturer
+
+- **Blackmagic Design**: ATEM Mini/Mini Pro/Mini Pro ISO/Mini Extreme; Television Studio (Pro HD/Pro 4K); 1ME/2ME/4ME Production Studio; Constellation 8K
+- **NewTek**: TriCaster TC1, TriCaster Mini, and other Ethernet‑tally models
+- **StudioCoast**: vMix
+- **OBS Project**: OBS Studio
+- **Roland**: V‑60HD, XS‑62S, VR‑50HD‑MKII, other Smart Tally models
+- **Panasonic**: AV‑HS410, AV‑HS6000, models supporting TSL UMD 3.1/5.0
+- **FOR‑A**: HVS‑490/1200/2000/6000 (TSL UMD 5.0)
+- **Ross Video**: Acuity, Carbonite (Black/Solo/Ultra), Graphite, TouchDrive, Vision
+- **Grass Valley**: Mixers supporting TSL UMD 3.1/5.0
+- **TSL UMD 3.1/5.0**: Any device emitting TSL packets (UDP/TCP)
+- **OSC**: Any OSC‑capable system emitting `/tally/*`
+
+## 📱 Device Support
+
+- **ESP32‑1732S019**: 1.9" display, budget tally
+- **M5Stick C Plus 1.1**: 1.14" display, premium build
+- **M5Stick C Plus2**: Latest hardware with improved battery
+- **Web Tally (no hardware)**: Use any browser via `/tally.html`
+
 ## Prerequisites
 
 - macOS 10.15 or later
