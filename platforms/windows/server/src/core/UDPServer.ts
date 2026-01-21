@@ -212,15 +212,42 @@ export class UDPServer {
   /** Determine a suitable LAN IPv4 address for discovery responses */
   private getLocalIPv4(): string {
     const nets = os.networkInterfaces();
+    const candidates: { name: string; address: string; priority: number }[] = [];
+    
     for (const name of Object.keys(nets)) {
       const list = nets[name];
       if (!list) continue;
       for (const ni of list) {
         if (ni.family === 'IPv4' && !ni.internal && ni.address) {
-          return ni.address;
+          // Skip virtual adapters (Docker, Hyper-V, VirtualBox, VMware)
+          const nameLower = name.toLowerCase();
+          let priority = 100; // default priority
+          
+          if (nameLower.includes('vethernet') || nameLower.includes('hyper-v')) {
+            priority = 10; // low priority for Hyper-V virtual switch
+          } else if (nameLower.includes('virtualbox') || nameLower.includes('vmware') || nameLower.includes('vboxnet')) {
+            priority = 20; // low priority for VM adapters
+          } else if (nameLower.includes('docker')) {
+            priority = 15; // low priority for Docker
+          } else if (nameLower.includes('ethernet') || nameLower.includes('wi-fi') || nameLower.includes('wireless')) {
+            priority = 1000; // high priority for physical adapters
+          }
+          
+          candidates.push({ name, address: ni.address, priority });
         }
       }
     }
+    
+    // Sort by priority (highest first) and return the best match
+    if (candidates.length > 0) {
+      candidates.sort((a, b) => b.priority - a.priority);
+      console.log(`🌐 Selected IP ${candidates[0].address} from ${candidates[0].name} (priority ${candidates[0].priority})`);
+      if (candidates.length > 1) {
+        console.log(`   Other candidates: ${candidates.slice(1).map(c => `${c.address} (${c.name})`).join(', ')}`);
+      }
+      return candidates[0].address;
+    }
+    
     return '0.0.0.0';
   }
 
