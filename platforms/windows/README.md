@@ -63,11 +63,13 @@ Professional Tally Light Management System for Windows
 
 ## 🎛️ Supported Mixers
 
-- **OBS Studio**: WebSocket connection
-- **Blackmagic ATEM**: Network control
-- **vMix**: TCP/UDP control
-- **Wirecast**: Network integration
-- **XSplit**: Plugin support
+- **OBS Studio**: WebSocket connector (scene/program/preview, recording/streaming)
+- **Blackmagic ATEM**: Network connector via Atem protocol
+- **vMix**: HTTP API polling for input tallies
+- **NewTek TriCaster**: TCP XML tally connector
+- **Roland Smart Tally**: HTTP tally polling for V‑series mixers
+- **TSL UMD 3.1 / 5.0**: UDP/TCP tally listeners
+- **OSC**: UDP listener for `/tally/*` messages
 
 ## 📱 Device Support
 

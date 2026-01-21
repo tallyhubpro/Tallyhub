@@ -170,6 +170,21 @@ Tally Hub is a professional tally light system that works with OBS Studio, vMix,
 - **🔌 Universal Compatibility**: Works with any computer and popular video software
 - **📱 Device Flexibility**: ESP32, M5Stick, or any web browser as tally lights
 
+## 🎛️ Supported Mixers
+
+Tally Hub includes built-in connectors for popular mixers and protocols:
+
+- **OBS Studio**: Native via `obs-websocket` (scene/program/preview, recording/streaming status)
+- **vMix**: HTTP API polling (`/api`) for input tallies and status
+- **Blackmagic ATEM**: Network control via `atem-connection` (program/preview, transitions)
+- **NewTek TriCaster**: TCP XML protocol (port 5951) for shortcut/tally states
+- **Roland Smart Tally**: HTTP polling (`/tally`) for program/preset on V‑series mixers
+- **TSL UMD 3.1**: UDP/TCP listener for broadcast tally packets (preview/program bits)
+- **TSL UMD 5.0**: UDP/TCP listener with extended UMD features
+- **OSC (Open Sound Control)**: UDP listener for `/tally/*` messages from OSC‑capable systems
+
+You can enable and configure mixers in the Admin panel. Advanced environments can run multiple connectors concurrently.
+
 ### Recent Firmware Improvements (Sept 2025)
 - Unified battery smoothing & percent logic across M5StickC Plus and Plus2.
 - Always-on Wi‑Fi outline and disconnect indicator (simpler, clearer status at a glance).
