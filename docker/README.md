@@ -2,6 +2,12 @@
 
 This Docker setup builds the TypeScript app and runs it on Raspberry Pi (armv7/arm64) or x86_64.
 
+## Supported Mixers & Devices
+
+The container includes the same connectors and device support as the main server:
+- Mixers: OBS, vMix, Blackmagic ATEM, NewTek TriCaster, Roland Smart Tally, TSL UMD 3.1/5.0, OSC
+- Devices: ESP32-1732S019, M5Stick C Plus 1.1, M5Stick C Plus2, and Web Tally (`/tally.html`)
+
 ## Why host networking?
 - Bonjour/mDNS and UDP discovery work best with `network_mode: host` on Linux (Raspberry Pi). Bridge networks can block or limit multicast/broadcast.
 

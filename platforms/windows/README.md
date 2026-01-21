@@ -73,10 +73,10 @@ Professional Tally Light Management System for Windows
 
 ## 📱 Device Support
 
-- **ESP32 Devices**: WiFi-based tally lights
-- **M5Stick Series**: Compact tally displays
-- **Web Tally**: Browser-based tally pages
-- **Custom Hardware**: API integration support
+- **ESP32-1732S019**: 1.9" display, budget tally
+- **M5Stick C Plus 1.1**: 1.14" display, premium build
+- **M5Stick C Plus2**: Latest hardware with improved battery
+- **Web Tally (no hardware)**: Use any browser via `/tally.html`
 
 ## 🌐 Web Interfaces
 
