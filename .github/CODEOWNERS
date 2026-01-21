@@ -1,0 +1,9 @@
+# CODEOWNERS
+
+# Specify the users or teams responsible for code in this repository.
+# Each line is a file pattern followed by one or more owners.
+
+# Example:
+# *       @owner1 @owner2
+
+*       @tallyhubpro
