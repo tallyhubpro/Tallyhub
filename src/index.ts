@@ -115,6 +115,8 @@ class TallyHubServer {
       if (dur < 1000) dur = 1000; if (dur > 30000) dur = 30000;
       try {
         this.udpServer.sendAdminMessage(text, { color, duration: dur, deviceId });
+        // Also notify web tally clients over WebSocket
+        this.wsManager.broadcastToWebClients({ type: 'admin:message', data: { text, color, duration: dur, deviceId: deviceId || null } });
         res.json({ success: true, message: 'Message dispatched', target: deviceId || 'all' });
       } catch (err) {
         console.error('❌ Error sending admin message', err);
@@ -220,6 +222,34 @@ class TallyHubServer {
           success: false, 
           error: error instanceof Error ? error.message : 'Connection test failed' 
         });
+      }
+    });
+
+    // Reset reconnection attempts for a mixer
+    this.app.post('/api/mixers/:id/reconnect', (req, res) => {
+      try {
+        const { id } = req.params;
+        const success = this.tallyHub.resetMixerReconnection(id);
+        if (success) {
+          res.json({ success: true, message: 'Reconnection attempts reset' });
+        } else {
+          res.status(404).json({ success: false, error: 'Mixer not found or does not support reconnection reset' });
+        }
+      } catch (error) {
+        console.error('[ERROR]', error instanceof Error ? error.message : error);
+        res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Failed to reset reconnection' });
+      }
+    });
+
+    // Force reconnect a mixer
+    this.app.post('/api/mixers/:id/force-reconnect', async (req, res) => {
+      try {
+        const { id } = req.params;
+        const result = await this.tallyHub.forceReconnectMixer(id);
+        res.status(result.success ? 200 : 400).json(result);
+      } catch (error) {
+        console.error('[ERROR]', error instanceof Error ? error.message : error);
+        res.status(500).json({ success: false, message: 'Force reconnection failed', error: error instanceof Error ? error.message : String(error) });
       }
     });
 

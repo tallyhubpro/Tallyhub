@@ -364,18 +364,14 @@ class TallyHubServer {
     this.app.get('/tally', (req, res) => {
       res.sendFile(path.join(process.cwd(), 'public/tally.html'));
     });
-
-    this.app.get('/admin', (req, res) => {
-      res.sendFile(path.join(process.cwd(), 'public/admin.html'));
-    });
+    
 
     // Health check endpoint
     this.app.get('/health', (req, res) => {
       res.json({ status: 'healthy', timestamp: new Date() });
     });
 
-<<<<<<< HEAD
-=======
+    
     // GitHub firmware download proxy
     this.app.get('/api/flash/github-firmware', async (req, res): Promise<void> => {
       try {
@@ -466,7 +462,6 @@ class TallyHubServer {
       }
     });
 
->>>>>>> a3ecbe2cb5174b16cb214468858f6a25feed398f
     // (Removed test endpoint /api/test/status for production hardening)
 
     // Save mixer configurations endpoint
@@ -483,6 +478,34 @@ class TallyHubServer {
           success: false, 
           error: error instanceof Error ? error.message : 'Failed to save configurations' 
         });
+      }
+    });
+
+    // Reset reconnection attempts for a mixer
+    this.app.post('/api/mixers/:id/reconnect', (req, res) => {
+      try {
+        const { id } = req.params;
+        const success = this.tallyHub.resetMixerReconnection(id);
+        if (success) {
+          res.json({ success: true, message: 'Reconnection attempts reset' });
+        } else {
+          res.status(404).json({ success: false, error: 'Mixer not found or does not support reconnection reset' });
+        }
+      } catch (error) {
+        console.error('[ERROR]', error instanceof Error ? error.message : error);
+        res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Failed to reset reconnection' });
+      }
+    });
+
+    // Force reconnect a mixer
+    this.app.post('/api/mixers/:id/force-reconnect', async (req, res) => {
+      try {
+        const { id } = req.params;
+        const result = await this.tallyHub.forceReconnectMixer(id);
+        res.status(result.success ? 200 : 400).json(result);
+      } catch (error) {
+        console.error('[ERROR]', error instanceof Error ? error.message : error);
+        res.status(500).json({ success: false, message: 'Force reconnection failed', error: error instanceof Error ? error.message : String(error) });
       }
     });
 

@@ -257,6 +257,13 @@ export class WebSocketManager {
     }
   }
 
+  public broadcastToWebClients(message: any): void {
+    const webClients = Array.from(this.clients.values()).filter(client => client.device.name && !client.device.name.includes('Admin'));
+    for (const client of webClients) {
+      this.sendToClient(client, message);
+    }
+  }
+
   private generateDeviceId(): string {
     return `web-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }

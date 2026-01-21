@@ -2187,19 +2187,21 @@
         }
 
         // Mixer configuration functions
-        function addMixer() {
+                function addMixer() {
             const name = document.getElementById('mixerName').value;
             const type = document.getElementById('mixerType').value;
             const host = document.getElementById('mixerHost').value;
             const port = document.getElementById('mixerPort').value;
-            const password = document.getElementById('mixerPassword').value;
+                    // Password field is optional and only used for OBS; guard for null
+                      const passwordEl = document.getElementById('mixerPassword');
+                      const password = passwordEl ? (passwordEl.value || '') : '';
 
             if (!name || !host || !port) {
                 alert('Please fill in all required fields (Name, Host, Port)');
                 return;
             }
 
-            const mixerData = { name, type, host, port };
+                    const mixerData = { name, type, host, port };
             if (type === 'obs' && password) {
                 mixerData.password = password;
             }
@@ -2307,7 +2309,8 @@
             document.getElementById('mixerType').value = 'obs';
             document.getElementById('mixerHost').value = 'localhost';
             document.getElementById('mixerPort').value = '4455';
-            document.getElementById('mixerPassword').value = '';
+            var pwEl = document.getElementById('mixerPassword');
+            if (pwEl) { pwEl.value = ''; }
             updateFormForMixerType();
         }
 

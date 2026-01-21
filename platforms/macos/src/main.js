@@ -5,6 +5,7 @@ const fs = require('fs');
 
 let mainWindow;
 let serverProcess;
+let serverStopPromise = null; // Promise to await clean server shutdown
 let tray;
 let isQuitting = false;
 let isRestarting = false;
@@ -636,6 +637,9 @@ function startTallyHubServer() {
       } else if (isRestarting) {
         console.log('Server process stopped for restart');
       }
+      // Mark process as stopped and refresh tray
+      serverProcess = null;
+      setTimeout(updateTrayMenu, 200);
     } catch (error) {
       if (!isQuitting) {
         console.error('Failed to start server:', error);
@@ -654,26 +658,57 @@ function startTallyHubServer() {
 }
 
 function stopTallyHubServer() {
-  if (serverProcess && !serverProcess.killed) {
-    console.log('Stopping TallyHub server...');
-    isStopping = true; // mark intentional stop
+  if (!serverProcess || serverProcess.killed) {
+    return Promise.resolve();
+  }
+  if (serverStopPromise) {
+    return serverStopPromise; // already stopping
+  }
+  console.log('Stopping TallyHub server...');
+  isStopping = true; // mark intentional stop
+
+  serverStopPromise = new Promise((resolve) => {
+    let resolved = false;
+    const finish = () => {
+      if (!resolved) {
+        resolved = true;
+        serverStopPromise = null;
+        resolve();
+      }
+    };
+    try {
+      serverProcess.once('close', (code, signal) => {
+        console.log(`Server process closed during stop (code=${code}, signal=${signal || 'none'})`);
+        finish();
+      });
+    } catch (_) {}
 
     try {
       // Try graceful shutdown first
       serverProcess.kill('SIGTERM');
+    } catch (error) {
+      console.log('Error sending SIGTERM to server:', error.message);
+    }
 
-      // Force kill after 3 seconds if it doesn't stop gracefully
-      setTimeout(() => {
+    // Force kill after 3 seconds if it doesn't stop gracefully
+    const forceTimer = setTimeout(() => {
+      try {
         if (serverProcess && !serverProcess.killed) {
           console.log('Force killing server process...');
           serverProcess.kill('SIGKILL');
         }
-      }, 3000);
-    } catch (error) {
-      console.log('Error stopping server:', error.message);
-    }
-    // Don't null serverProcess here; allow close handler to run
-  }
+      } catch (_) {}
+      finish();
+    }, 3000);
+
+    // Safety: ensure resolve in 5s regardless
+    setTimeout(() => {
+      clearTimeout(forceTimer);
+      finish();
+    }, 5000);
+  });
+
+  return serverStopPromise;
 }
 
 function restartServer() {
@@ -869,14 +904,20 @@ app.on('window-all-closed', () => {
 app.on('before-quit', (event) => {
   console.log('Application is quitting...');
   isQuitting = true;
-  
+
   // Destroy tray
   if (tray) {
     tray.destroy();
     tray = null;
   }
-  
-  stopTallyHubServer();
+
+  if (serverProcess && !serverProcess.killed) {
+    event.preventDefault();
+    stopTallyHubServer().finally(() => {
+      console.log('Server stopped; exiting.');
+      app.exit(0);
+    });
+  }
 });
 
 app.on('will-quit', (event) => {
@@ -884,10 +925,7 @@ app.on('will-quit', (event) => {
   isQuitting = true;
   if (serverProcess && !serverProcess.killed) {
     event.preventDefault();
-    stopTallyHubServer();
-    setTimeout(() => {
-      app.quit();
-    }, 1000);
+    stopTallyHubServer().finally(() => app.exit(0));
   }
 });
 

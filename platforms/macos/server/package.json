@@ -16,7 +16,11 @@
     "obs-websocket-js": "^5.0.6",
     "dotenv": "^16.5.0",
     "multer": "^2.0.1",
-    "bonjour": "^3.5.0"
+    "bonjour": "^3.5.0",
+    "osc": "2.4.5",
+    "tsl-umd": "1.1.2",
+    "xml2js": "0.6.2",
+    "axios": "1.13.2"
   },
   "devDependencies": {
     "@types/node": "^24.0.3",

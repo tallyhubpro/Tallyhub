@@ -21,6 +21,22 @@
             -webkit-touch-callout: none;
         }
 
+        .admin-message {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 12px 16px;
+            text-align: center;
+            font-weight: 700;
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
+            backdrop-filter: blur(6px);
+            z-index: 2000;
+            display: none;
+        }
+        .admin-message.visible { display: block; }
+
         .tally-display {
             position: fixed;
             top: 0;
@@ -240,6 +256,10 @@
         </div>
     </div>
 
+    <div class="admin-message" id="adminMessageBanner">
+        <span id="adminMessageText"></span>
+    </div>
+
     <div class="connection-status" id="connectionStatus"></div>
 
     <div class="controls" id="controls">
@@ -279,6 +299,8 @@
                 this.showControls = false;
                 this.selectedSource = localStorage.getItem('selectedSource') || '';
                 this.availableSources = [];
+                this.heartbeatInterval = null;
+                this.messageTimeout = null;
                 
                 this.setupEventListeners();
                 this.connect();
@@ -575,6 +597,9 @@
                     
                     // Refresh sources when connected
                     this.loadAvailableSources();
+
+                    // Sync assignment from server so selection persists across reconnects
+                    this.syncAssignmentFromServer();
                 };
 
                 this.ws.onmessage = (event) => {
@@ -594,8 +619,12 @@
                     this.updateConnectionStatus(false);
                 };
 
-                // Send heartbeat every 30 seconds
-                setInterval(() => {
+                // Send heartbeat every 30 seconds; ensure only one interval exists
+                if (this.heartbeatInterval) {
+                    clearInterval(this.heartbeatInterval);
+                    this.heartbeatInterval = null;
+                }
+                this.heartbeatInterval = setInterval(() => {
                     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
                         this.ws.send(JSON.stringify({ type: 'ping' }));
                     }
@@ -620,12 +649,90 @@
                         this.handleAssignmentChange(message.data);
                         break;
 
+                    case 'admin:message': {
+                        const payload = message.data || {};
+                        if (!payload.deviceId || payload.deviceId === this.deviceId) {
+                            this.showAdminMessage(payload);
+                        }
+                        break;
+                    }
+
                     case 'pong':
                         // Heartbeat response
                         break;
 
                     default:
                         console.log('Unknown message type:', message.type);
+                }
+            }
+
+            showAdminMessage(data) {
+                try {
+                    const banner = document.getElementById('adminMessageBanner');
+                    const textEl = document.getElementById('adminMessageText');
+                    if (!banner || !textEl) return;
+
+                    const text = (data && data.text) ? String(data.text) : '';
+                    const color = (data && data.color && /^#?[0-9A-Fa-f]{6}$/.test(data.color)) ? data.color : null;
+                    const duration = (data && typeof data.duration === 'number') ? Math.min(Math.max(data.duration, 1000), 30000) : 8000;
+
+                    textEl.textContent = text;
+
+                    banner.style.background = 'rgba(255, 255, 255, 0.15)';
+                    if (color) {
+                        const hex = color.startsWith('#') ? color : '#' + color;
+                        banner.style.background = hex + 'CC';
+                    }
+
+                    banner.classList.add('visible');
+
+                    if (this.messageTimeout) {
+                        clearTimeout(this.messageTimeout);
+                        this.messageTimeout = null;
+                    }
+
+                    this.messageTimeout = setTimeout(() => {
+                        banner.classList.remove('visible');
+                        this.messageTimeout = null;
+                    }, duration);
+                } catch (e) {
+                    console.error('Failed to show admin message:', e);
+                }
+            }
+
+            async syncAssignmentFromServer() {
+                try {
+                    const res = await fetch(`/api/devices/${this.deviceId}/assignment`);
+                    if (!res.ok) return;
+                    const payload = await res.json();
+                    if (payload && payload.assignmentMode === 'assigned' && payload.assignment && payload.assignment.sourceId) {
+                        const srvSourceId = payload.assignment.sourceId;
+                        const srvSourceName = payload.assignment.sourceName || 'Assigned Source';
+                        if (this.selectedSource !== srvSourceId) {
+                            this.selectedSource = srvSourceId;
+                            localStorage.setItem('selectedSource', srvSourceId);
+                            localStorage.setItem('assignedSourceName', srvSourceName);
+                            this.populateSourceSelect();
+                            this.updateSelectedSourceUI();
+
+                            const display = document.getElementById('tallyDisplay');
+                            const label = document.getElementById('tallyLabel');
+                            const source = document.getElementById('tallySource');
+                            const status = document.getElementById('tallyStatus');
+                            display.className = 'tally-display idle';
+                            label.textContent = 'ASSIGNED';
+                            const baseName = this.cleanSourceName(srvSourceId, srvSourceName);
+                            let cleanSourceName = baseName;
+                            if (srvSourceId.startsWith('obs-source-')) cleanSourceName = '📹 ' + baseName;
+                            else if (srvSourceId.startsWith('obs-scene-')) cleanSourceName = '🎬 ' + baseName;
+                            else if (srvSourceId.startsWith('vmix-input-')) cleanSourceName = '📺 ' + baseName;
+                            else if (srvSourceId.startsWith('atem-input-')) cleanSourceName = '🎛️ ' + baseName;
+                            source.textContent = cleanSourceName;
+                            status.textContent = 'WAITING...';
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Assignment sync failed:', e);
                 }
             }
 
