@@ -205,6 +205,7 @@ Tally Hub includes a built-in web-based firmware flasher at `/flash.html` that s
 - **ESP32-1732S019** - 1.9" display, budget-friendly option
 - **M5Stick C Plus 1.1** - 1.14" display, premium build
 - **M5Stick C Plus2** - Latest hardware with improved battery
+- **Web Browser (no hardware)** – Use any phone, tablet, or computer via the built-in web tally at `/tally.html`
 
 ### Usage
 
