@@ -185,6 +185,21 @@ Tally Hub includes built-in connectors for popular mixers and protocols:
 
 You can enable and configure mixers in the Admin panel. Advanced environments can run multiple connectors concurrently.
 
+### By Manufacturer
+
+- **Blackmagic Design**: ATEM Mini/Mini Pro/Mini Pro ISO/Mini Extreme; Television Studio (Pro HD/Pro 4K); 1ME/2ME/4ME Production Studio; Constellation 8K (via ATEM connector)
+- **NewTek**: TriCaster TC1, TriCaster Mini, and other models that support Tally over Ethernet (via TriCaster connector)
+- **StudioCoast**: vMix (via HTTP API)
+- **Open Broadcaster Software**: OBS Studio (via obs-websocket)
+- **Roland**: V‑60HD, XS‑62S, VR‑50HD‑MKII, and other Smart Tally‑capable mixers (via Roland Smart Tally connector)
+- **Panasonic**: AV‑HS410, AV‑HS6000, and any model that supports TSL UMD 3.1 or 5.0 over Ethernet (via TSL UMD connectors)
+- **FOR‑A**: HVS‑490, HVS‑1200, HVS‑2000, HVS‑6000, and any model that supports TSL UMD 5.0 (via TSL UMD 5.0 connector)
+- **Ross Video**: Acuity, Carbonite (Black/Solo/Ultra), Graphite, TouchDrive, Vision (via TSL UMD connectors)
+- **Grass Valley**: Mixers supporting TSL UMD 3.1/5.0 (via TSL UMD connectors)
+- **Open Sound Control (OSC)**: Any OSC‑capable system can send tally states into Tally Hub (via OSC connector)
+- **TSL UMD 3.1 Protocol**: Any device that emits TSL UMD 3.1 packets (UDP/TCP)
+- **TSL UMD 5.0 Protocol**: Any device that emits TSL UMD 5.0 packets (UDP/TCP)
+
 ### Recent Firmware Improvements (Sept 2025)
 - Unified battery smoothing & percent logic across M5StickC Plus and Plus2.
 - Always-on Wi‑Fi outline and disconnect indicator (simpler, clearer status at a glance).
